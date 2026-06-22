@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconClipboard, IconX, IconPlus, IconSun } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
@@ -25,13 +25,16 @@ import { SwipeRevealRow } from "../components/SwipeRevealRow";
 import { IconCheck } from "../components/Icons";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session/note/group rows
+type Row = any;
+
 /* ── Free-day empty state ──
    Positive "you have no sessions today" surface. Reuses the canonical
    .empty-state structure with the --day variant for the premium warm
    icon + gentle float. Promoted out of the JSX because it was repeated
    four times across the Today/Mañana carousel + desktop side-by-side
    panels — keeps the copy and styling in one place to avoid drift. */
-function FreeDayEmptyState({ t }) {
+function FreeDayEmptyState({ t }: { t: (key: string, vars?: Record<string, unknown>) => string }) {
   return (
     <div className="empty-state empty-state--day">
       <div className="empty-state-icon"><IconSun size={32} /></div>
@@ -42,7 +45,7 @@ function FreeDayEmptyState({ t }) {
 }
 
 /* ── Compute next working day for the "Mañana" carousel panel ── */
-function getNextDay(today, sessions) {
+function getNextDay(today: Date, sessions: Row[]) {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -52,8 +55,8 @@ function getNextDay(today, sessions) {
     const sun = new Date(today); sun.setDate(sun.getDate() + 2);
     const satStr = formatShortDate(sat);
     const sunStr = formatShortDate(sun);
-    const hasSatSessions = sessions.some(s => s.date === satStr);
-    const hasSunSessions = sessions.some(s => s.date === sunStr);
+    const hasSatSessions = sessions.some((s: Row) => s.date === satStr);
+    const hasSunSessions = sessions.some((s: Row) => s.date === sunStr);
     if (!hasSatSessions && !hasSunSessions) {
       const monday = new Date(today);
       monday.setDate(monday.getDate() + 3);
@@ -64,7 +67,7 @@ function getNextDay(today, sessions) {
   if (today.getDay() === 6) {
     const sun = new Date(today); sun.setDate(sun.getDate() + 1);
     const sunStr = formatShortDate(sun);
-    const hasSunSessions = sessions.some(s => s.date === sunStr);
+    const hasSunSessions = sessions.some((s: Row) => s.date === sunStr);
     if (!hasSunSessions) {
       const monday = new Date(today);
       monday.setDate(monday.getDate() + 2);
@@ -74,9 +77,14 @@ function getNextDay(today, sessions) {
   return tomorrow;
 }
 
-export function Home({ setScreen, userName }) {
+type HomeProps = {
+  setScreen: (screen: string) => void;
+  userName?: string;
+};
+
+export function Home({ setScreen, userName }: HomeProps) {
   const { patients, upcomingSessions, groups, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, createNote, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription, rescheduleRequests = [] } = useCardigan();
-  const groupsById = useMemo(() => new Map((groups || []).map(g => [g.id, g])), [groups]);
+  const groupsById = useMemo(() => new Map<string, Row>((groups || []).map((g: Row) => [g.id, g])), [groups]);
   const [rescheduleSheetOpen, setRescheduleSheetOpen] = useState(false);
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
@@ -95,18 +103,18 @@ export function Home({ setScreen, userName }) {
   // is still surfaced inside the Potencial profile sheet — just not in
   // the global KPI.
   const totalOwed = useMemo(
-    () => patients.reduce((s, p) => isPotentialOrDiscarded(p) ? s : s + p.amountDue, 0),
+    () => patients.reduce((s: number, p: Row) => isPotentialOrDiscarded(p) ? s : s + p.amountDue, 0),
     [patients]
   );
   const activeCount = useMemo(
-    () => patients.filter(p => p.status === "active").length,
+    () => patients.filter((p: Row) => p.status === "active").length,
     [patients]
   );
   const todaySessions = useMemo(
     () => collapseGroupOccurrences(
       upcomingSessions
-        .filter(s => s.date === todayStr)
-        .sort((a, b) => (a.time || "").localeCompare(b.time || "")),
+        .filter((s: Row) => s.date === todayStr)
+        .sort((a: Row, b: Row) => (a.time || "").localeCompare(b.time || "")),
       groupsById
     ),
     [upcomingSessions, todayStr, groupsById]
@@ -118,23 +126,23 @@ export function Home({ setScreen, userName }) {
   const nextDayName = DAY_ORDER[(nextDay.getDay() + 6) % 7];
   const nextDaySessions = useMemo(() =>
     collapseGroupOccurrences(
-      upcomingSessions.filter(s => s.date === nextDayStr).sort((a, b) => (a.time || "").localeCompare(b.time || "")),
+      upcomingSessions.filter((s: Row) => s.date === nextDayStr).sort((a: Row, b: Row) => (a.time || "").localeCompare(b.time || "")),
       groupsById
     ),
     [upcomingSessions, nextDayStr, groupsById]
   );
   // Label: "Mañana" if it's actually tomorrow, otherwise the day name
-  const diffDays = Math.round((nextDay - TODAY) / 86400000);
+  const diffDays = Math.round((nextDay.getTime() - TODAY.getTime()) / 86400000);
   const nextDayLabel = diffDays === 1 ? t("home.tomorrow") : nextDayName;
 
   // Carousel swipe state
   const [carouselPage, setCarouselPage] = useState(0); // 0 = today, 1 = next day
-  const carouselRef = useRef(null);
+  const carouselRef = useRef<{ x: number; y: number; active: boolean } | null>(null);
   const [carouselOffset, setCarouselOffset] = useState(0);
   const [carouselSwiping, setCarouselSwiping] = useState(false);
   const [carouselSettling, setCarouselSettling] = useState(false);
 
-  const onCarouselTouchStart = useCallback((e) => {
+  const onCarouselTouchStart = useCallback((e: React.TouchEvent) => {
     // Keep a 50px dead zone so the left-edge drawer gesture wins — with
     // App.jsx's 20px drawer threshold, this gives a 30px gap where
     // neither fires, preventing the "drawer opens mid-swipe" bug.
@@ -142,7 +150,7 @@ export function Home({ setScreen, userName }) {
     carouselRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
   }, []);
 
-  const onCarouselTouchMove = useCallback((e) => {
+  const onCarouselTouchMove = useCallback((e: React.TouchEvent) => {
     if (!carouselRef.current) return;
     const dx = e.touches[0].clientX - carouselRef.current.x;
     const dy = e.touches[0].clientY - carouselRef.current.y;
@@ -158,7 +166,7 @@ export function Home({ setScreen, userName }) {
     if (carouselRef.current.active) setCarouselOffset(dx);
   }, []);
 
-  const onCarouselTouchEnd = useCallback((e) => {
+  const onCarouselTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!carouselRef.current?.active) { carouselRef.current = null; return; }
     const dx = e.changedTouches[0].clientX - carouselRef.current.x;
     carouselRef.current = null;
@@ -179,7 +187,7 @@ export function Home({ setScreen, userName }) {
     setTimeout(() => setCarouselSettling(false), 540);
   }, [carouselPage]);
 
-  const currentMonthPayments = payments.filter(p => {
+  const currentMonthPayments = payments.filter((p: Row) => {
     if (p.created_at) {
       const d = new Date(p.created_at);
       return d.getFullYear() === TODAY.getFullYear() && d.getMonth() === TODAY.getMonth();
@@ -187,22 +195,22 @@ export function Home({ setScreen, userName }) {
     const parts = p.date.split(" ");
     return parts[1] === SHORT_MONTHS[TODAY.getMonth()];
   });
-  const cobradoMes = currentMonthPayments.reduce((s,p) => s+p.amount, 0);
+  const cobradoMes = currentMonthPayments.reduce((s: number, p: Row) => s+p.amount, 0);
 
-  const [selected, setSelected] = useState(null);
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [selectedGroupOcc, setSelectedGroupOcc] = useState(null);
-  const [tutorBooking, setTutorBooking] = useState(null);
-  const [editingNote, setEditingNote] = useState(null);
+  const [selected, setSelected] = useState<Row | null>(null);
+  const [selectedSession, setSelectedSession] = useState<Row | null>(null);
+  const [selectedGroupOcc, setSelectedGroupOcc] = useState<Row | null>(null);
+  const [tutorBooking, setTutorBooking] = useState<Row | null>(null);
+  const [editingNote, setEditingNote] = useState<Row | null>(null);
   const closeSelected = useCallback(() => setSelected(null), [setSelected]);
   useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : tutorBooking ? () => setTutorBooking(null) : editingNote ? () => setEditingNote(null) : null);
   const { scrollRef: selectedScrollRef, setPanelEl: setSelectedPanelEl, panelHandlers: selectedPanelHandlers } = useSheetDrag(closeSelected);
-  const setSelectedPanel = (el) => { selectedScrollRef.current = el; setSelectedPanelEl(el); };
+  const setSelectedPanel = (el: HTMLDivElement | null) => { selectedScrollRef.current = el; setSelectedPanelEl(el); };
 
   // Mirrors Notes.jsx so the NoteEditor's handleClose always sees a stable
   // save/delete pair and always reaches its onClose() cleanup — critical in
   // demo mode where the underlying mutations are no-ops.
-  const handleSaveNote = useCallback(async ({ title, content }) => {
+  const handleSaveNote = useCallback(async ({ title, content }: { title: string; content: string }) => {
     if (editingNote?.id) await updateNote(editingNote.id, { title, content });
   }, [editingNote, updateNote]);
   const handleDeleteNote = useCallback(async () => {
@@ -214,29 +222,29 @@ export function Home({ setScreen, userName }) {
   // button in SessionSheet behaves identically across Home, Agenda,
   // and the patient profile. Closing the SessionSheet first so the
   // sheet's focus trap doesn't fight the NoteEditor's.
-  const openSessionNote = useCallback(async (session) => {
+  const openSessionNote = useCallback(async (session: Row) => {
     if (!session) return;
-    const existing = (notes || []).find(n => n.session_id === session.id);
+    const existing = (notes || []).find((n: Row) => n.session_id === session.id);
     setSelectedSession(null);
     if (existing) { setEditingNote(existing); return; }
     const created = await createNote?.({ patientId: session.patient_id || null, sessionId: session.id, title: "", content: "" });
     if (created) setEditingNote(created);
   }, [notes, createNote, setSelectedSession, setEditingNote]);
-  const owingPatients = patients.filter(p => p.amountDue > 0 && !isPotentialOrDiscarded(p));
+  const owingPatients = patients.filter((p: Row) => p.amountDue > 0 && !isPotentialOrDiscarded(p));
 
-  const openPatient = (name) => {
-    const p = patients.find(p => p.name === name);
+  const openPatient = (name: string) => {
+    const p = patients.find((p: Row) => p.name === name);
     if (p) setSelected(p);
   };
 
-  const emptyHint = (text, action) => (
+  const emptyHint = (text: React.ReactNode, action?: React.ReactNode) => (
     <div className="empty-hint">
       {text}
       {action && <div style={{ marginTop:8 }}>{action}</div>}
     </div>
   );
 
-  const renderSessionRow = (s) => {
+  const renderSessionRow = (s: Row) => {
     if (s._groupOccurrence) {
       return <GroupSessionRow key={s.id} occ={s} onClick={() => setSelectedGroupOcc(s)} />;
     }
@@ -603,7 +611,7 @@ export function Home({ setScreen, userName }) {
         <div className="card">
           {owingPatients.length === 0
             ? emptyHint(t("home.emptyBalances"))
-            : owingPatients.slice(0,4).map((p,i) => (
+            : owingPatients.slice(0,4).map((p: Row, i: number) => (
                 <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
                   <Avatar initials={p.initials} color={getClientColor(p.colorIdx ?? i)} size="md" />
                   <div className="row-content">
@@ -618,7 +626,7 @@ export function Home({ setScreen, userName }) {
       </div>
 
       {/* Tutor reminders — only shown when at least one minor has tutor_frequency set */}
-      {patients.some(p => p.tutor_frequency) && (
+      {patients.some((p: Row) => p.tutor_frequency) && (
       <div className="section">
         <div className="section-header">
           <span className="section-title">{t("home.tutorReminders")}</span>
@@ -627,7 +635,7 @@ export function Home({ setScreen, userName }) {
         <div className="card">
           {tutorReminders.length === 0
             ? emptyHint(t("home.tutorRemindersEmpty"))
-            : tutorReminders.slice(0, 3).map(r => {
+            : tutorReminders.slice(0, 3).map((r: Row) => {
               const overdue = r.daysUntilDue < 0;
               const dueSoon = r.daysUntilDue >= 0 && r.daysUntilDue <= 7;
               const hasScheduled = !!r.nextTutorSession;
@@ -686,8 +694,8 @@ export function Home({ setScreen, userName }) {
         <div className="card">
           {(notes || []).length === 0
             ? emptyHint(t("home.emptyNotes"))
-            : (notes || []).slice(0,3).map(n => {
-              const pat = n.patient_id ? patients.find(p => p.id === n.patient_id) : null;
+            : (notes || []).slice(0,3).map((n: Row) => {
+              const pat = n.patient_id ? patients.find((p: Row) => p.id === n.patient_id) : null;
               const preview = n.content?.replace(/[*~#[\]]/g, "").replace(/\n/g, " ").slice(0, 60) || "";
               return (
                 <div className="row-item" key={n.id} onClick={() => setEditingNote(n)}>
@@ -780,7 +788,7 @@ export function Home({ setScreen, userName }) {
                   selected.credit > 0
                     ? { label: t("finances.credit"),  value:`+${formatMXN(selected.credit)}`, color:"var(--green)" }
                     : { label: t("finances.balance"), value:`${formatMXN(selected.amountDue)}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
-                ].map((s,i) => (
+                ].map((s, i: number) => (
                   <div key={i} className="stat-tile" style={{ textAlign:"center" }}>
                     <div className="stat-tile-label">{s.label}</div>
                     <div className="stat-tile-val" style={{ color:s.color||"var(--charcoal)", fontSize:"var(--text-lg)" }}>{s.value}</div>

@@ -1,5 +1,8 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { getClientColor } from "../data/seedData";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
 import { shortDateToISO, todayISO, isoToShortDateWithYear } from "../utils/dates";
 import { phoneHref, emailHref, phoneDigits } from "../utils/contact";
 import { isNative } from "../lib/platform";
@@ -28,20 +31,43 @@ import { GruposTab } from "./expediente/GruposTab";
 import { MedicionesTab } from "./expediente/MedicionesTab";
 import { usesAnthropometrics } from "../data/constants";
 
+type PatientExpedienteProps = {
+  patient: Row;
+  upcomingSessions: Row[];
+  notes: Row[];
+  payments: Row[];
+  documents: Row[];
+  onClose: () => void;
+  onRecordPayment: (...args: Row[]) => void;
+  onEdit: (...args: Row[]) => void;
+  createNote: (...args: Row[]) => Row;
+  updateNote: (...args: Row[]) => Row;
+  deleteNote: (...args: Row[]) => Row;
+  uploadDocument: (...args: Row[]) => Row;
+  renameDocument: (...args: Row[]) => Row;
+  tagDocumentSession: (...args: Row[]) => Row;
+  deleteDocument: (...args: Row[]) => Row;
+  getDocumentUrl: (...args: Row[]) => Row;
+  mutating?: boolean;
+  layout?: string;
+  // Passed by Patients.tsx call sites but consumed via context, not props.
+  createSession?: (...args: Row[]) => Row;
+};
+
 export function PatientExpediente({
   patient, upcomingSessions, notes, payments, documents,
   onClose, onRecordPayment, onEdit, createNote, updateNote, deleteNote,
   uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
   mutating,
   layout = "overlay",
-}) {
+}: PatientExpedienteProps) {
   const inline = layout === "inline";
   const { t } = useT();
   const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast, profession, groupMembers, groupsEnabled } = useCardigan();
   // The Grupos tab only appears when this patient actually belongs to a group
   // (keeps the tab bar lean for individual-only patients).
   const patientGroupCount = useMemo(
-    () => (groupMembers || []).filter(m => m.patient_id === patient.id && m.left_at == null).length,
+    () => (groupMembers || []).filter((m: Row) => m.patient_id === patient.id && m.left_at == null).length,
     [groupMembers, patient.id]
   );
   const showMedicionesTab = usesAnthropometrics(profession);
@@ -114,22 +140,22 @@ export function PatientExpediente({
   // useEffect after the new tab paints so the animation only fires
   // on transitions, not the initial mount.
   const prevTabRef = useRef("resumen");
-  const [editingNote, setEditingNote] = useState(null);
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [pendingDocSessionId, setPendingDocSessionId] = useState(null);
+  const [editingNote, setEditingNote] = useState<Row | null>(null);
+  const [selectedSession, setSelectedSession] = useState<Row | null>(null);
+  const [pendingDocSessionId, setPendingDocSessionId] = useState<string | null>(null);
   // Patient-portal invite sheet — opened from the header action.
   // Only meaningful when the patient is not already linked.
-  const [inviteSheetPatient, setInviteSheetPatient] = useState(null);
-  const [dateFrom, setDateFrom] = useState(() => {
+  const [inviteSheetPatient, setInviteSheetPatient] = useState<Row | null>(null);
+  const [dateFrom, setDateFrom] = useState<string | null>(() => {
     const d = new Date(); d.setMonth(d.getMonth() - 3);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   });
-  const [dateTo, setDateTo] = useState(todayISO());
+  const [dateTo, setDateTo] = useState<string | null>(todayISO());
 
   // Session filter state (sesiones tab — also set by Resumen tile clicks)
   const [sessStatusFilter, setSessStatusFilter] = useState("all");
-  const [sessDateFrom, setSessDateFrom] = useState(null);
-  const [sessDateTo, setSessDateTo] = useState(null);
+  const [sessDateFrom, setSessDateFrom] = useState<string | null>(null);
+  const [sessDateTo, setSessDateTo] = useState<string | null>(null);
   // Tutor-only filter is orthogonal to status — it's not part of the
   // segmented control (only ~minors have tutor sessions) so we track
   // it separately and surface it via a dismissible pill on the
@@ -139,8 +165,8 @@ export function PatientExpediente({
   // ── Shared memos ──
   const pSessions = useMemo(() =>
     (upcomingSessions || [])
-      .filter(s => s.patient_id === patient.id)
-      .sort((a, b) => {
+      .filter((s: Row) => s.patient_id === patient.id)
+      .sort((a: Row, b: Row) => {
         const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
         if (da !== db) return db.localeCompare(da);
         return (b.time || "").localeCompare(a.time || "");
@@ -149,7 +175,7 @@ export function PatientExpediente({
   );
 
   const filteredPSessions = useMemo(() => {
-    return pSessions.filter(s => {
+    return pSessions.filter((s: Row) => {
       if (sessTutorOnly && !isTutorSession(s)) return false;
       if (sessStatusFilter !== "all") {
         if (sessStatusFilter === "cancelled_any") {
@@ -169,14 +195,14 @@ export function PatientExpediente({
 
   const { upcomingPSessions, pastPSessions } = useMemo(() => {
     const todayIso = todayISO();
-    const byDateTimeAsc = (a, b) => {
+    const byDateTimeAsc = (a: Row, b: Row) => {
       const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
       if (da !== db) return da.localeCompare(db);
       return (a.time || "").localeCompare(b.time || "");
     };
-    const byDateTimeDesc = (a, b) => byDateTimeAsc(b, a);
-    const upcoming = [];
-    const past = [];
+    const byDateTimeDesc = (a: Row, b: Row) => byDateTimeAsc(b, a);
+    const upcoming: Row[] = [];
+    const past: Row[] = [];
     for (const s of filteredPSessions) {
       if (shortDateToISO(s.date) >= todayIso) upcoming.push(s);
       else past.push(s);
@@ -187,7 +213,7 @@ export function PatientExpediente({
   }, [filteredPSessions]);
 
   const pNotes = useMemo(() =>
-    (notes || []).filter(n => n.patient_id === patient.id),
+    (notes || []).filter((n: Row) => n.patient_id === patient.id),
     [notes, patient.id]
   );
 
@@ -195,7 +221,7 @@ export function PatientExpediente({
 
   const filteredSessions = useMemo(() => {
     const now = todayISO();
-    return pSessions.filter(s => {
+    return pSessions.filter((s: Row) => {
       const iso = shortDateToISO(s.date);
       if (iso > now) return false;
       if (dateFrom && iso < dateFrom) return false;
@@ -205,12 +231,12 @@ export function PatientExpediente({
   }, [pSessions, dateFrom, dateTo]);
 
   const pPayments = useMemo(() =>
-    (payments || []).filter(p => p.patient_id === patient.id),
+    (payments || []).filter((p: Row) => p.patient_id === patient.id),
     [payments, patient.id]
   );
 
   // ── Note callbacks ──
-  const handleSaveNote = useCallback(async ({ title, content }) => {
+  const handleSaveNote = useCallback(async ({ title, content }: { title: string; content: string }) => {
     if (editingNote?.id) {
       await updateNote(editingNote.id, { title, content });
     }
@@ -220,13 +246,13 @@ export function PatientExpediente({
     if (editingNote?.id) await deleteNote(editingNote.id);
   }, [editingNote, deleteNote]);
 
-  const openNewNote = async (sessionId) => {
+  const openNewNote = async (sessionId?: string | null) => {
     const note = await createNote({ patientId: patient.id, sessionId: sessionId || null, title: "", content: "" });
     if (note) setEditingNote(note);
   };
 
-  const openSessionNote = (session) => {
-    const existing = pNotes.find(n => n.session_id === session.id);
+  const openSessionNote = (session: Row) => {
+    const existing = pNotes.find((n: Row) => n.session_id === session.id);
     if (existing) {
       setEditingNote(existing);
     } else {
@@ -236,24 +262,24 @@ export function PatientExpediente({
 
   // ── Documents state ──
   const pDocuments = useMemo(() =>
-    (documents || []).filter(d => d.patient_id === patient.id)
-      .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || "")),
+    (documents || []).filter((d: Row) => d.patient_id === patient.id)
+      .sort((a: Row, b: Row) => (b.created_at || "").localeCompare(a.created_at || "")),
     [documents, patient.id]
   );
   const [uploading, setUploading] = useState(false);
-  const [viewingDoc, setViewingDoc] = useState(null);
-  const fileInputRef = useRef(null);
+  const [viewingDoc, setViewingDoc] = useState<Row | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-  const processFiles = async (rawFiles, sessionId) => {
+  const processFiles = async (rawFiles: FileList | File[] | null, sessionId: string | null) => {
     const files = Array.from(rawFiles || []);
     if (files.length === 0) return;
-    const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
+    const oversized = files.filter((f: File) => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      showToast?.(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }), "warning");
+      showToast?.(t("docs.sizeLimit", { names: oversized.map((f: File) => f.name).join(", "), count: oversized.length }), "warning");
     }
-    const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
+    const valid = files.filter((f: File) => f.size <= MAX_FILE_SIZE);
     if (valid.length === 0) return;
     setUploading(true);
     let ok = 0;
@@ -279,7 +305,7 @@ export function PatientExpediente({
     }
   };
 
-  const handleFileUpload = async (e) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const sessionId = pendingDocSessionId;
     setPendingDocSessionId(null);
     await processFiles(e.target.files, sessionId);
@@ -296,32 +322,32 @@ export function PatientExpediente({
   // UI can surface a drop-zone hint.
   const [dragOverFiles, setDragOverFiles] = useState(false);
   const dragDepthRef = useRef(0);
-  const hasFilePayload = (e) => {
+  const hasFilePayload = (e: React.DragEvent) => {
     const types = e.dataTransfer?.types;
     if (!types) return false;
     for (let i = 0; i < types.length; i++) { if (types[i] === "Files") return true; }
     return false;
   };
-  const onDragEnterArchivo = (e) => {
+  const onDragEnterArchivo = (e: React.DragEvent) => {
     if (tab !== "archivo" || readOnly) return;
     if (!hasFilePayload(e)) return;
     e.preventDefault();
     dragDepthRef.current += 1;
     if (!dragOverFiles) setDragOverFiles(true);
   };
-  const onDragOverArchivo = (e) => {
+  const onDragOverArchivo = (e: React.DragEvent) => {
     if (tab !== "archivo" || readOnly) return;
     if (!hasFilePayload(e)) return;
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
   };
-  const onDragLeaveArchivo = (e) => {
+  const onDragLeaveArchivo = (e: React.DragEvent) => {
     if (tab !== "archivo" || readOnly) return;
     if (!hasFilePayload(e)) return;
     dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
     if (dragDepthRef.current === 0) setDragOverFiles(false);
   };
-  const onDropArchivo = async (e) => {
+  const onDropArchivo = async (e: React.DragEvent) => {
     if (tab !== "archivo" || readOnly) return;
     if (!hasFilePayload(e)) return;
     e.preventDefault();
@@ -330,13 +356,13 @@ export function PatientExpediente({
     await processFiles(e.dataTransfer.files, null);
   };
 
-  const attachDocToSession = useCallback((session) => {
+  const attachDocToSession = useCallback((session: Row) => {
     setPendingDocSessionId(session.id);
     setSelectedSession(null);
     triggerUpload();
   }, [triggerUpload]);
 
-  const openDocViewer = async (doc) => {
+  const openDocViewer = async (doc: Row) => {
     const url = await getDocumentUrl(doc.file_path);
     if (!url) return;
     if (isWordDoc(doc)) {
@@ -347,7 +373,7 @@ export function PatientExpediente({
   };
 
   // ── Navigation callbacks for Resumen → other tabs ──
-  const goToSesiones = useCallback((statusFilter, opts = {}) => {
+  const goToSesiones = useCallback((statusFilter: string, opts: { tutorOnly?: boolean } = {}) => {
     setSessStatusFilter(statusFilter);
     setSessDateFrom(dateFrom);
     setSessDateTo(dateTo);
@@ -381,8 +407,8 @@ export function PatientExpediente({
   // motion. Without coordination, the tab handler at 12px would also
   // activate and yank the user to the next tab while they're trying to
   // reveal the row's delete button.
-  const tabSwipeRef = useRef(null);
-  const onTabContentTouchStart = (e) => {
+  const tabSwipeRef = useRef<{ x: number; y: number; active: boolean } | null>(null);
+  const onTabContentTouchStart = (e: React.TouchEvent) => {
     if (inline) return;
     // Avoid conflicting with the drag-to-close handle (which already
     // fires onDragStart when contentRef is scrolled to top).
@@ -392,7 +418,7 @@ export function PatientExpediente({
       active: false,
     };
   };
-  const onTabContentTouchMove = (e) => {
+  const onTabContentTouchMove = (e: React.TouchEvent) => {
     if (!tabSwipeRef.current) return;
     const dx = e.touches[0].clientX - tabSwipeRef.current.x;
     const dy = e.touches[0].clientY - tabSwipeRef.current.y;
@@ -411,13 +437,13 @@ export function PatientExpediente({
       }
     }
   };
-  const onTabContentTouchEnd = (e) => {
+  const onTabContentTouchEnd = (e: React.TouchEvent) => {
     if (!tabSwipeRef.current?.active) { tabSwipeRef.current = null; releaseSwipe(TAB_SWIPE_OWNER_ID); return; }
     const dx = e.changedTouches[0].clientX - tabSwipeRef.current.x;
     tabSwipeRef.current = null;
     releaseSwipe(TAB_SWIPE_OWNER_ID);
     if (Math.abs(dx) < 60) return;
-    const i = tabs.findIndex(tx => tx.k === tab);
+    const i = tabs.findIndex((tx: Row) => tx.k === tab);
     const next = dx < 0 ? Math.min(tabs.length - 1, i + 1) : Math.max(0, i - 1);
     if (next !== i) setTab(tabs[next].k);
   };
@@ -427,8 +453,8 @@ export function PatientExpediente({
   };
 
   // ── Swipe-to-dismiss ──
-  const dragRef = useRef(null);
-  const contentRef = useRef(null);
+  const dragRef = useRef<{ y: number; active: boolean } | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
 
@@ -443,19 +469,19 @@ export function PatientExpediente({
     prevTabRef.current = tab;
   }, [tab]);
 
-  const onDragStart = (e) => {
+  const onDragStart = (e: React.TouchEvent) => {
     dragRef.current = { y: e.touches[0].clientY, active: false };
   };
 
   // Delegate to the drag gesture only when the content is scrolled to the
   // top — otherwise the user is scrolling the inner list, not pulling the
   // sheet down. Same pattern as the handle drag zone above.
-  const onContentTouchStart = (e) => {
+  const onContentTouchStart = (e: React.TouchEvent) => {
     const el = contentRef.current;
     if (!el || el.scrollTop > 0) return;
     onDragStart(e);
   };
-  const onDragMove = (e) => {
+  const onDragMove = (e: React.TouchEvent) => {
     if (!dragRef.current) return;
     const dy = e.touches[0].clientY - dragRef.current.y;
     if (!dragRef.current.active) {
@@ -470,7 +496,7 @@ export function PatientExpediente({
       setDragY(dy * 0.6);
     }
   };
-  const onDragEnd = (e) => {
+  const onDragEnd = (e?: React.TouchEvent) => {
     if (!dragRef.current?.active) { dragRef.current = null; return; }
     dragRef.current = null;
     setDragging(false);
@@ -586,10 +612,10 @@ export function PatientExpediente({
               that the Resumen tab fits without scrolling. */}
           <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, flexWrap:"wrap" }}>
             {patient.phone && (
-              <a href={phoneHref(patient.phone)} aria-label={t("patients.phone")}
+              <a href={phoneHref(patient.phone) || undefined} aria-label={t("patients.phone")}
                 onClick={e => {
                   e.stopPropagation();
-                  if (isNative()) { e.preventDefault(); launchUrl(phoneHref(patient.phone)).then(ok => { if (!ok) showToast?.(t("patients.contactOpenError"), "error"); }); }
+                  if (isNative()) { e.preventDefault(); launchUrl(phoneHref(patient.phone) || undefined).then((ok: boolean) => { if (!ok) showToast?.(t("patients.contactOpenError"), "error"); }); }
                 }}
                 style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
                 <IconPhone size={16} />
@@ -602,7 +628,7 @@ export function PatientExpediente({
                 <a href={wa} aria-label="WhatsApp"
                   onClick={e => {
                     e.stopPropagation();
-                    if (isNative()) { e.preventDefault(); launchUrl(wa).then(ok => { if (!ok) showToast?.(t("patients.contactOpenError"), "error"); }); }
+                    if (isNative()) { e.preventDefault(); launchUrl(wa).then((ok: boolean) => { if (!ok) showToast?.(t("patients.contactOpenError"), "error"); }); }
                   }}
                   style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -612,10 +638,10 @@ export function PatientExpediente({
               );
             })()}
             {patient.email && (
-              <a href={emailHref(patient.email)} aria-label={t("settings.email")}
+              <a href={emailHref(patient.email) || undefined} aria-label={t("settings.email")}
                 onClick={e => {
                   e.stopPropagation();
-                  if (isNative()) { e.preventDefault(); launchUrl(emailHref(patient.email)).then(ok => { if (!ok) showToast?.(t("patients.contactOpenError"), "error"); }); }
+                  if (isNative()) { e.preventDefault(); launchUrl(emailHref(patient.email) || undefined).then((ok: boolean) => { if (!ok) showToast?.(t("patients.contactOpenError"), "error"); }); }
                 }}
                 style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
                 <IconMail size={16} />
@@ -759,9 +785,7 @@ export function PatientExpediente({
             upcomingPSessions={upcomingPSessions} pastPSessions={pastPSessions}
             onSelectSession={setSelectedSession}
             onOpenNote={openSessionNote}
-            onMarkCompleted={onMarkCompleted}
-            readOnly={readOnly}
-            mutating={mutating}
+            {...({ onMarkCompleted, readOnly, mutating } as Record<string, unknown>)}
           />
         )}
 
@@ -819,38 +843,38 @@ export function PatientExpediente({
         patients={[patient]}
         notes={pNotes}
         onClose={() => setSelectedSession(null)}
-        onOpenNote={(s) => { openSessionNote(s); setSelectedSession(null); }}
-        onAttachDocument={attachDocToSession}
-        onCancelSession={async (session, charge, reason) => {
+        onOpenNote={(s: Row) => { openSessionNote(s); setSelectedSession(null); }}
+        {...({ onAttachDocument: attachDocToSession } as Record<string, unknown>)}
+        onCancelSession={async (session: Row, charge: boolean | null, reason: string) => {
           const ok = await onCancelSession(session, charge, reason);
-          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: charge ? "charged" : "cancelled", cancel_reason: reason || null } : prev));
+          if (ok) setSelectedSession((prev: Row) => (prev ? { ...prev, status: charge ? "charged" : "cancelled", cancel_reason: reason || null } : prev));
           return ok;
         }}
-        onMarkCompleted={async (session, overrideStatus) => {
+        onMarkCompleted={async (session: Row, overrideStatus?: string) => {
           const st = overrideStatus || "completed";
           const ok = await onMarkCompleted(session, overrideStatus);
-          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: st, cancel_reason: null } : prev));
+          if (ok) setSelectedSession((prev: Row) => (prev ? { ...prev, status: st, cancel_reason: null } : prev));
           return ok;
         }}
-        onDelete={async (id) => { await deleteSession(id); setSelectedSession(null); }}
-        onReschedule={async (id, date, time) => {
+        onDelete={async (id: string) => { await deleteSession(id); setSelectedSession(null); }}
+        onReschedule={async (id: string, date: string, time: string) => {
           const ok = await rescheduleSession(id, date, time);
-          if (ok) setSelectedSession(prev => prev ? { ...prev, date, time, status: "scheduled" } : prev);
+          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, date, time, status: "scheduled" } : prev);
           return ok;
         }}
-        onUpdateModality={async (id, modality) => {
+        onUpdateModality={async (id: string, modality: string) => {
           const ok = await updateSessionModality(id, modality);
-          if (ok) setSelectedSession(prev => prev ? { ...prev, modality } : prev);
+          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, modality } : prev);
           return ok;
         }}
-        onUpdateRate={async (id, rate) => {
+        onUpdateRate={async (id: string, rate: string) => {
           const ok = await updateSessionRate(id, rate);
-          if (ok) setSelectedSession(prev => prev ? { ...prev, rate: Number(rate) } : prev);
+          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, rate: Number(rate) } : prev);
           return ok;
         }}
-        onUpdateCancelReason={async (id, reason) => {
+        onUpdateCancelReason={async (id: string, reason: string) => {
           const ok = await updateCancelReason(id, reason);
-          if (ok) setSelectedSession(prev => prev ? { ...prev, cancel_reason: reason.trim() || null } : prev);
+          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, cancel_reason: reason.trim() || null } : prev);
           return ok;
         }}
         mutating={mutating}

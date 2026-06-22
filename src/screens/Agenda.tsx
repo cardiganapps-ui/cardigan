@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { TODAY } from "../data/seedData";
 import { haptic } from "../utils/haptics";
 import { SessionSheet } from "../components/SessionSheet";
@@ -22,10 +22,13 @@ import { DayView } from "./agenda/DayView";
 import { WeekView } from "./agenda/WeekView";
 import { MonthView } from "./agenda/MonthView";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session/patient/group/note rows
+type Row = any;
+
 /* ── AGENDA ROOT ── */
 export function Agenda() {
   const { upcomingSessions, patients, groups, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, rescheduleGroupOccurrence, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, setHideFab, setHideBottomTabs, user } = useCardigan();
-  const groupsById = useMemo(() => new Map((groups || []).map(g => [g.id, g])), [groups]);
+  const groupsById = useMemo(() => new Map<string, Row>((groups || []).map((g: Row) => [g.id, g])), [groups]);
   const { t } = useT();
   const { isTabletSplit } = useViewport();
   // Default to week view on desktop (more horizontal room) and day view on
@@ -35,17 +38,17 @@ export function Agenda() {
   // strictly mobile. Phone stays on day view.
   const [view, setView] = useState(() => consumeAgendaView?.() || (isTabletSplit ? "week" : "day"));
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [selectedGroupOcc, setSelectedGroupOcc] = useState(null);
+  const [selectedSession, setSelectedSession] = useState<Row | null>(null);
+  const [selectedGroupOcc, setSelectedGroupOcc] = useState<Row | null>(null);
   // Bulk selection mode — only the day view participates today (the
   // place a therapist actually goes to "cancel everything next week").
   // Week + Month would require richer hit-testing on the event chips
   // and are an obvious follow-up.
   const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedSet, setSelectedSet] = useState(() => new Set());
+  const [selectedSet, setSelectedSet] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkSheetOpen, setBulkSheetOpen] = useState(false);
-  const onToggleSelect = useCallback((s) => {
+  const onToggleSelect = useCallback((s: Row) => {
     haptic.tap();
     setSelectedSet((prev) => {
       const next = new Set(prev);
@@ -65,14 +68,14 @@ export function Agenda() {
   // bypass the predicate that decides whether `cancelled` counts. The
   // batch is Promise.allSettled so one failure doesn't block the rest;
   // the toast summarises ok / failed counts.
-  const bulkApply = useCallback(async (kind) => {
+  const bulkApply = useCallback(async (kind: string) => {
     if (bulkBusy) return;
     if (selectedSet.size === 0) return;
     const ids = Array.from(selectedSet);
-    const list = upcomingSessions.filter((s) => selectedSet.has(s.id));
+    const list = upcomingSessions.filter((s: Row) => selectedSet.has(s.id));
     setBulkBusy(true);
     try {
-      const tasks = list.map((s) => {
+      const tasks = list.map((s: Row) => {
         if (kind === "delete") return deleteSession(s.id);
         if (kind === "complete") return onMarkCompleted(s);
         if (kind === "cancel-charge") return onCancelSession(s, true, t("agenda.bulkChargeReason"));
@@ -107,16 +110,16 @@ export function Agenda() {
   // "reschedule" when the sheet was opened via a long-press on a week
   // event (mobile drag-reschedule replacement); cleared on close. Null
   // for all other entry points.
-  const [selectedSessionMode, setSelectedSessionMode] = useState(null);
+  const [selectedSessionMode, setSelectedSessionMode] = useState<string | null>(null);
   // Unified tap router for all three views: a collapsed group occurrence
   // opens the group sheet; an ordinary session opens the session sheet.
-  const selectItem = useCallback((item, mode) => {
+  const selectItem = useCallback((item: Row, mode?: string | null) => {
     if (item?._groupOccurrence) { setSelectedGroupOcc(item); return; }
     setSelectedSession(item); setSelectedSessionMode(mode || null);
   }, []);
-  const [editingNote, setEditingNote] = useState(null);
+  const [editingNote, setEditingNote] = useState<Row | null>(null);
   const [filterPatientId, setFilterPatientId] = useState("");
-  const [newSessionPrefill, setNewSessionPrefill] = useState(null);
+  const [newSessionPrefill, setNewSessionPrefill] = useState<Row | null>(null);
   const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
   // Hide the CTA pill once the user has linked their calendar. Until
   // the first /api/calendar-token GET resolves we suppress the pill
@@ -138,12 +141,12 @@ export function Agenda() {
 
   const filteredSessions = useMemo(() => {
     if (!filterPatientId) return upcomingSessions;
-    return upcomingSessions.filter(s => s.patient_id === filterPatientId);
+    return upcomingSessions.filter((s: Row) => s.patient_id === filterPatientId);
   }, [upcomingSessions, filterPatientId]);
 
-  const filterPatientName = filterPatientId ? patients.find(p => p.id === filterPatientId)?.name || "" : "";
+  const filterPatientName = filterPatientId ? patients.find((p: Row) => p.id === filterPatientId)?.name || "" : "";
 
-  const handleCellTap = useCallback((date, hour) => {
+  const handleCellTap = useCallback((date: Date, hour: string) => {
     setNewSessionPrefill({ date: toISODate(date), time: hour });
   }, []);
 
@@ -151,7 +154,7 @@ export function Agenda() {
   // hour cell, move the session to that slot. Keeps duration intact;
   // uses formatShortDate + the hour string which already matches the
   // project's "D MMM" + "HH:MM" format.
-  const handleDropSession = useCallback(async (sessionId, date, hour) => {
+  const handleDropSession = useCallback(async (sessionId: string, date: Date, hour: string) => {
     const newShortDate = formatShortDate(date);
     // Group occurrence drag: id is "grp:<groupId>|<fromDate>|<fromTime>".
     // Move the WHOLE occurrence (all member rows) to the dropped slot.
@@ -161,7 +164,7 @@ export function Agenda() {
       await rescheduleGroupOccurrence(groupId, fromDate, fromTime, newShortDate, hour);
       return;
     }
-    const sess = upcomingSessions.find(s => s.id === sessionId);
+    const sess = upcomingSessions.find((s: Row) => s.id === sessionId);
     if (!sess) return;
     if (sess.date === newShortDate && sess.time === hour) return;
     await rescheduleSession(sessionId, newShortDate, hour, sess.duration || 60);
@@ -174,15 +177,15 @@ export function Agenda() {
   // dozen rows. The actual writes go through the same
   // rescheduleSession path, in a Promise.allSettled batch so a single
   // failure doesn't half-apply.
-  const [moveDayPair, setMoveDayPair] = useState(null); // { srcIso, tgtIso, sessions }
+  const [moveDayPair, setMoveDayPair] = useState<{ srcIso: string; tgtIso: string; sessions: Row[] } | null>(null);
   const [moveDayBusy, setMoveDayBusy] = useState(false);
-  const handleMonthMoveDay = useCallback((srcIso, tgtIso) => {
+  const handleMonthMoveDay = useCallback((srcIso: string, tgtIso: string) => {
     if (!srcIso || !tgtIso || srcIso === tgtIso) return;
     // Resolve src + tgt to the formatShortDate strings the rest of the
     // app uses, then collect the sessions the user is about to move.
     const srcDate = new Date(srcIso + "T00:00:00");
     const srcShort = formatShortDate(srcDate);
-    const sessions = upcomingSessions.filter((s) => s.date === srcShort);
+    const sessions = upcomingSessions.filter((s: Row) => s.date === srcShort);
     if (sessions.length === 0) return;
     setMoveDayPair({ srcIso, tgtIso, sessions });
   }, [upcomingSessions]);
@@ -192,7 +195,7 @@ export function Agenda() {
     try {
       const { tgtIso, sessions } = moveDayPair;
       const newShortDate = formatShortDate(new Date(tgtIso + "T00:00:00"));
-      const tasks = sessions.map((s) =>
+      const tasks = sessions.map((s: Row) =>
         rescheduleSession(s.id, newShortDate, s.time, s.duration || 60)
       );
       const results = await Promise.allSettled(tasks);
@@ -210,10 +213,10 @@ export function Agenda() {
   }, [moveDayPair, moveDayBusy, rescheduleSession, t, showSuccess, showToast]);
 
   const ctxMenu = useContextMenu();
-  const handleEventContextMenu = useCallback((e, sess) => {
+  const handleEventContextMenu = useCallback((e: React.MouseEvent, sess: Row) => {
     const isCancelled = isCancelledStatus(sess.status);
     const isCompleted = sess.status === "completed";
-    const items = [
+    const items: Row[] = [
       { key: "open", label: t("sessions.session"), icon: <IconCalendar size={15} />, onSelect: () => setSelectedSession(sess) },
       { divider: true },
     ];
@@ -235,12 +238,12 @@ export function Agenda() {
     setSelectedDate(new Date(TODAY));
   }, []);
 
-  const handleOpenNote = async (session) => {
-    const existing = notes?.find(n => n.session_id === session.id);
+  const handleOpenNote = async (session: Row) => {
+    const existing = notes?.find((n: Row) => n.session_id === session.id);
     if (existing) {
       setEditingNote(existing);
     } else {
-      const patient = patients?.find(p => p.name === session.patient);
+      const patient = patients?.find((p: Row) => p.name === session.patient);
       const note = await createNote({ patientId: patient?.id || session.patient_id, sessionId: session.id });
       if (note) setEditingNote(note);
     }
@@ -252,7 +255,7 @@ export function Agenda() {
     {editingNote && (
       <NoteEditor
         note={editingNote}
-        onSave={async ({ title, content }) => await updateNote(editingNote.id, { title, content })}
+        onSave={async ({ title, content }: { title: string; content: string }) => await updateNote(editingNote.id, { title, content })}
         onDelete={async () => { await deleteNote(editingNote.id); }}
         onClose={() => setEditingNote(null)}
       />
@@ -320,11 +323,11 @@ export function Agenda() {
             {patients.length > 0 && (
               <select
                 value={filterPatientId}
-                onChange={e => setFilterPatientId(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterPatientId(e.target.value)}
                 style={{ flex:1, minWidth:0, fontSize:"var(--text-sm)", fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", appearance:"auto" }}
               >
                 <option value="">{t("agenda.allPatients")}</option>
-                {patients.filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                {patients.filter((p: Row) => p.status === "active").sort((a: Row, b: Row) => a.name.localeCompare(b.name)).map((p: Row) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
@@ -394,39 +397,39 @@ export function Agenda() {
         session={selectedSession}
         patients={patients}
         notes={notes}
-        initialMode={selectedSessionMode}
+        initialMode={selectedSessionMode || undefined}
         onClose={() => { setSelectedSession(null); setSelectedSessionMode(null); }}
         onOpenNote={handleOpenNote}
-        onCancelSession={async (session, charge, reason) => {
+        onCancelSession={async (session: Row, charge: boolean | null, reason: string) => {
           const ok = await onCancelSession(session, charge, reason);
-          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: charge ? "charged" : "cancelled", cancel_reason: reason || null } : prev));
+          if (ok) setSelectedSession((prev: Row) => (prev ? { ...prev, status: charge ? "charged" : "cancelled", cancel_reason: reason || null } : prev));
           return ok;
         }}
-        onMarkCompleted={async (session, overrideStatus) => {
+        onMarkCompleted={async (session: Row, overrideStatus?: string) => {
           const st = overrideStatus || "completed";
           const ok = await onMarkCompleted(session, overrideStatus);
-          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: st, cancel_reason: null } : prev));
+          if (ok) setSelectedSession((prev: Row) => (prev ? { ...prev, status: st, cancel_reason: null } : prev));
           return ok;
         }}
-        onDelete={async (id) => { await deleteSession(id); setSelectedSession(null); }}
-        onReschedule={async (id, date, time, duration) => {
+        onDelete={async (id: string) => { await deleteSession(id); setSelectedSession(null); }}
+        onReschedule={async (id: string, date: string, time: string, duration: number) => {
           const ok = await rescheduleSession(id, date, time, duration);
-          if (ok) setSelectedSession(prev => prev ? { ...prev, date, time, duration, status: "scheduled" } : prev);
+          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, date, time, duration, status: "scheduled" } : prev);
           return ok;
         }}
-        onUpdateModality={async (id, modality) => {
+        onUpdateModality={async (id: string, modality: string) => {
           const ok = await updateSessionModality(id, modality);
-          if (ok) setSelectedSession(prev => prev ? { ...prev, modality } : prev);
+          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, modality } : prev);
           return ok;
         }}
-        onUpdateRate={async (id, rate) => {
+        onUpdateRate={async (id: string, rate: string) => {
           const ok = await updateSessionRate(id, rate);
-          if (ok) setSelectedSession(prev => prev ? { ...prev, rate: Number(rate) } : prev);
+          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, rate: Number(rate) } : prev);
           return ok;
         }}
-        onUpdateCancelReason={async (id, reason) => {
+        onUpdateCancelReason={async (id: string, reason: string) => {
           const ok = await updateCancelReason(id, reason);
-          if (ok) setSelectedSession(prev => prev ? { ...prev, cancel_reason: reason.trim() || null } : prev);
+          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, cancel_reason: reason.trim() || null } : prev);
           return ok;
         }}
         mutating={mutating}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
@@ -24,12 +24,23 @@ import { ConvertPotentialSheet } from "../components/sheets/ConvertPotentialShee
 import { SegmentedControl } from "../components/SegmentedControl";
 import { formatMXN } from "../utils/format";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 /* ── Collapsible section for the edit form ──
    Hides secondary info by default so the sheet doesn't overwhelm. The
    header is a tappable row with the section title + a chevron that
    rotates when open. Callers pass `forceOpen` when contextual state
    (e.g. finalize warning) needs the section expanded. */
-function EditSection({ title, open, onToggle, forceOpen = false, children }) {
+type EditSectionProps = {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  forceOpen?: boolean;
+  children: React.ReactNode;
+};
+
+function EditSection({ title, open, onToggle, forceOpen = false, children }: EditSectionProps) {
   const isOpen = open || forceOpen;
   return (
     <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4 }}>
@@ -57,9 +68,9 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
    at create / applyScheduleChange time). Pre-migration-044 rows
    have 'weekly' via the column default, so existing patients show
    "Semanal" in the edit form — no behavioral change for them. */
-function deriveSlotFrequency(p, sessions) {
+function deriveSlotFrequency(p: Row, sessions: Row[]) {
   if (!p?.day || !p?.time) return DEFAULT_RECURRENCE_FREQUENCY;
-  const future = (sessions || []).filter(s =>
+  const future = (sessions || []).filter((s: Row) =>
     s.patient_id === p.id
     && s.day === p.day
     && s.time === p.time
@@ -84,17 +95,33 @@ function deriveSlotFrequency(p, sessions) {
    moment ANY motion exceeds 10px. A still hold-for-450ms triggers the
    menu, suppressing the synthetic click that would otherwise reach
    the row's onClick. */
-function PatientRow({ p, i, swipeEnabled, isInterviewLane, isPotential, isDiscarded, filter, splitMode, expediente, rowClick, openCtxMenu, onPay, t }) {
+type PatientRowProps = {
+  p: Row;
+  i: number;
+  swipeEnabled: boolean;
+  isInterviewLane: boolean;
+  isPotential: boolean;
+  isDiscarded: boolean;
+  filter: string;
+  splitMode: boolean;
+  expediente: Row | null;
+  rowClick: () => void;
+  openCtxMenu: ((x: number, y: number, p: Row, e?: Row) => void) | null;
+  onPay: (p: Row) => void;
+  t: (key: string, ...args: Row[]) => string;
+};
+
+function PatientRow({ p, i, swipeEnabled, isInterviewLane, isPotential, isDiscarded, filter, splitMode, expediente, rowClick, openCtxMenu, onPay, t }: PatientRowProps) {
   const longPress = useLongPress(
-    openCtxMenu ? (x, y) => openCtxMenu(x, y, p) : null,
+    openCtxMenu ? (x: number, y: number) => openCtxMenu(x, y, p) : null,
     { enabled: !!openCtxMenu }
   );
   const rowBody = (
     <div
       className={`row-item list-entry-stagger ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""} ${isInterviewLane ? "row-potential" : ""} ${isDiscarded ? "row-discarded" : ""}`}
-      style={{ "--stagger-i": Math.min(i, 12) }}
+      style={{ "--stagger-i": Math.min(i, 12) } as React.CSSProperties}
       onClick={swipeEnabled ? undefined : rowClick}
-      onContextMenu={(e) => isInterviewLane ? null : openCtxMenu?.(e.clientX, e.clientY, p, e)}>
+      onContextMenu={(e: React.MouseEvent) => isInterviewLane ? null : openCtxMenu?.(e.clientX, e.clientY, p, e)}>
       <Avatar initials={p.initials} color={isInterviewLane ? "var(--rose)" : getClientColor(i)} size="md" />
       <div className="row-content">
         <div className="row-title">{p.name}</div>
@@ -149,13 +176,13 @@ export function Patients() {
   // 'potential' rows (default), archived = 'discarded'. Only renders
   // when filter === 'potential'.
   const [potentialSubFilter, setPotentialSubFilter] = useState("active");
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<Row | null>(null);
   // Slim profile sheet for a single potential. Distinct from
   // `expediente` (the full PatientExpediente) — potentials never
   // open the full record.
-  const [potentialProfile, setPotentialProfile] = useState(null);
+  const [potentialProfile, setPotentialProfile] = useState<Row | null>(null);
   // Standalone Convertir sheet, opened from PotentialProfileSheet.
-  const [converting, setConverting] = useState(null);
+  const [converting, setConverting] = useState<Row | null>(null);
   const [editing, setEditing]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -166,13 +193,13 @@ export function Patients() {
   const closeSheet = useCallback(() => { setSelected(null); setEditing(false); setConfirmDelete(false); setDeleteConfirmText(""); setOpenContact(false); setOpenDates(false); }, []);
   useEscape(selected ? closeSheet : null);
   const { scrollRef: editScrollRef, setPanelEl: setEditPanelEl, panelHandlers: editPanelHandlers } = useSheetDrag(closeSheet);
-  const setEditPanel = (el) => { editScrollRef.current = el; setEditPanelEl(el); };
-  const [expediente, setExpediente] = useState(null);
+  const setEditPanel = (el: HTMLElement | null) => { editScrollRef.current = el; setEditPanelEl(el); };
+  const [expediente, setExpediente] = useState<Row | null>(null);
   // When Patients is opened via openExpediente() from another screen
   // (e.g. tapping a patient on Home), remember that origin so closing
   // the expediente can send the user back there instead of stranding
   // them on Pacientes.
-  const [expedienteOrigin, setExpedienteOrigin] = useState(null);
+  const [expedienteOrigin, setExpedienteOrigin] = useState<string | null>(null);
   // Edit form state
   const [editName, setEditName]       = useState("");
   const [editIsMinor, setEditIsMinor] = useState(false);
@@ -186,11 +213,11 @@ export function Patients() {
   const [editPhone, setEditPhone]     = useState("");
   const [editEmail, setEditEmail]     = useState("");
   const [editWhatsappEnabled, setEditWhatsappEnabled] = useState(false);
-  const [editWhatsappConsentAt, setEditWhatsappConsentAt] = useState(null);
+  const [editWhatsappConsentAt, setEditWhatsappConsentAt] = useState<string | null>(null);
   const [editBirthdate, setEditBirthdate] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editStatus, setEditStatus]   = useState("");
-  const [editSchedules, setEditSchedules] = useState([{ day: "Lunes", time: "16:00", modality: "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }]);
+  const [editSchedules, setEditSchedules] = useState<Row[]>([{ day: "Lunes", time: "16:00", modality: "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }]);
   const [effectiveDate, setEffectiveDate] = useState(todayISO());
   const [hasEndDate, setHasEndDate]       = useState(false);
   const [endDate, setEndDate]             = useState("");
@@ -199,7 +226,7 @@ export function Patients() {
   const [origRate, setOrigRate]           = useState(0);
   const [origSchedules, setOrigSchedules] = useState("[]");
 
-  const openDetail = (p) => {
+  const openDetail = (p: Row) => {
     setExpediente(p);
     // Desktop split view keeps the topbar + FAB visible; the expediente
     // renders inline alongside the list so nothing is covered.
@@ -221,7 +248,7 @@ export function Patients() {
   // Right-click menu for patient rows. Desktop-only affordance —
   // contextmenu events don't fire for normal mobile long-presses so
   // the mobile long-press/swipe gestures are untouched.
-  const openPatientContextMenu = (x, y, p, e) => {
+  const openPatientContextMenu = (x: number, y: number, p: Row, e?: Row) => {
     if (readOnly) return;
     if (e?.preventDefault) e.preventDefault();
     // openAt expects an event-shaped object so it can call
@@ -237,7 +264,7 @@ export function Patients() {
     ]);
   };
 
-  const openEditForPatient = (p, opts = {}) => {
+  const openEditForPatient = (p: Row, opts: { confirmDelete?: boolean } = {}) => {
     // Episodic patients have no perpetual day/time; reading p.day / p.time
     // for them produces (null, null) which would render as empty selects
     // and, on save, trigger applyScheduleChange with bogus values that
@@ -280,14 +307,14 @@ export function Patients() {
   useEffect(() => {
     const pending = consumeExpediente?.();
     if (pending) {
-      const match = patients.find(p => p.id === pending.patient.id) || pending.patient;
+      const match = patients.find((p: Row) => p.id === pending.patient.id) || pending.patient;
       setExpedienteOrigin(pending.origin || null);
       openDetail(match);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const updateEditSched = (i, f, v) => setEditSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
+  const updateEditSched = (i: number, f: string, v: Row) => setEditSchedules((prev: Row[]) => prev.map((s: Row, idx: number) => idx === i ? { ...s, [f]: v } : s));
 
   const scheduleOrRateChanged = () => {
     const rateChanged = Number(editRate) !== origRate;
@@ -415,7 +442,7 @@ export function Patients() {
   // Count of currently-active potentials (used for the chip badge so
   // the practitioner sees at a glance there are pending interviews).
   const potentialCount = useMemo(
-    () => patients.filter(p => p.status === PATIENT_STATUS.POTENTIAL).length,
+    () => patients.filter((p: Row) => p.status === PATIENT_STATUS.POTENTIAL).length,
     [patients]
   );
 
@@ -432,7 +459,7 @@ export function Patients() {
   // potentials/discarded — they never appear in the regular lanes.
   // The 'potential' filter switches to its sub-filter (Activos /
   // Archivados) for active vs. discarded potentials.
-  const applyFilter = (p) => {
+  const applyFilter = (p: Row) => {
     if (filter==="potential") {
       if (potentialSubFilter === "archived") return p.status === PATIENT_STATUS.DISCARDED;
       return p.status === PATIENT_STATUS.POTENTIAL;
@@ -444,14 +471,14 @@ export function Patients() {
     if (filter==="paid")   return p.amountDue<=0;
     return true;
   };
-  const applySort = (a,b) => {
+  const applySort = (a: Row, b: Row) => {
     if (a.status !== b.status) {
       if (a.status === "active") return -1;
       if (b.status === "active") return 1;
     }
     return a.name.localeCompare(b.name);
   };
-  const filtered = patients.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) && applyFilter(p)).sort(applySort);
+  const filtered = patients.filter((p: Row) => p.name.toLowerCase().includes(search.toLowerCase()) && applyFilter(p)).sort(applySort);
   const isPotentialView = filter === "potential";
 
   // Empty state
@@ -619,7 +646,7 @@ export function Patients() {
                   />
                 </div>
               ))
-            : filtered.map((p,i) => {
+            : filtered.map((p: Row, i: number) => {
               const isPotential = p.status === PATIENT_STATUS.POTENTIAL;
               const isDiscarded = p.status === PATIENT_STATUS.DISCARDED;
               const isInterviewLane = isPotential || isDiscarded;
@@ -666,7 +693,7 @@ export function Patients() {
           {expediente ? (
             <PatientExpediente
               layout="inline"
-              patient={patients.find(p => p.id === expediente.id) || expediente}
+              patient={patients.find((p: Row) => p.id === expediente.id) || expediente}
               upcomingSessions={upcomingSessions}
               notes={notes}
               payments={payments}
@@ -678,7 +705,7 @@ export function Patients() {
               getDocumentUrl={getDocumentUrl}
               onClose={closeExpediente}
               onRecordPayment={openRecordPaymentModal}
-              onEdit={(p) => {
+              onEdit={(p: Row) => {
                 // Same episodic guard as openEditForPatient — see comment there.
                 const scheds = isEpisodic(p)
                   ? [{ day: "Lunes", time: "16:00", frequency: DEFAULT_RECURRENCE_FREQUENCY }]
@@ -987,7 +1014,7 @@ export function Patients() {
 
                     {isFinalizingPatient && (() => {
                       const cutoff = parseLocalDate(finishDate);
-                      const sessionsToRemove = upcomingSessions.filter(s =>
+                      const sessionsToRemove = upcomingSessions.filter((s: Row) =>
                         s.patient_id === selected.id && s.status === "scheduled" && new Date(shortDateToISO(s.date)) > cutoff
                       ).length;
                       return (
@@ -1105,7 +1132,7 @@ export function Patients() {
 
       {expediente && !isTabletSplit && createPortal(
         <PatientExpediente
-          patient={patients.find(p => p.id === expediente.id) || expediente}
+          patient={patients.find((p: Row) => p.id === expediente.id) || expediente}
           upcomingSessions={upcomingSessions}
           notes={notes}
           payments={payments}
@@ -1117,7 +1144,7 @@ export function Patients() {
           getDocumentUrl={getDocumentUrl}
           onClose={closeExpediente}
           onRecordPayment={openRecordPaymentModal}
-          onEdit={(p) => {
+          onEdit={(p: Row) => {
             // "Editar" jumps into the edit sheet in-place on Pacientes
             // — don't forward the user back to the origin (e.g. Home)
             // in that case, they need to stay here to finish editing.
@@ -1168,8 +1195,8 @@ export function Patients() {
           than nesting a SessionSheet inside the profile sheet). */}
       {potentialProfile && (
         <PotentialProfileSheet
-          patient={patients.find(p => p.id === potentialProfile.id) || potentialProfile}
-          interviewSession={upcomingSessions.find(s =>
+          patient={patients.find((p: Row) => p.id === potentialProfile.id) || potentialProfile}
+          interviewSession={upcomingSessions.find((s: Row) =>
             s.patient_id === potentialProfile.id
             && s.session_type === SESSION_TYPE.INTERVIEW
           )}
@@ -1198,7 +1225,7 @@ export function Patients() {
 
       {converting && (
         <ConvertPotentialSheet
-          potential={patients.find(p => p.id === converting.id) || converting}
+          potential={patients.find((p: Row) => p.id === converting.id) || converting}
           onClose={() => setConverting(null)}
           onSubmit={async (id, payload) => {
             const ok = await convertPotentialToActive?.(id, payload);

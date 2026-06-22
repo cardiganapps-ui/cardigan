@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
 import { IconX, IconGoogle, IconApple, IconSparkle, IconLink, IconFaceId } from "../components/Icons";
@@ -23,6 +23,10 @@ import { MONETIZATION_ENABLED } from "../config/monetization";
 // stays always-on.
 const GOOGLE_OAUTH_ENABLED = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true";
 
+type TFn = (key: string, vars?: Record<string, unknown>) => string;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- auth handlers resolve to loosely-typed result objects
+type AuthResult = any;
+
 /* ── Verification panel ──
    Shown inside the auth sheet when signUp returns pendingVerification
    (email verification is required) or when a signIn attempt is rejected
@@ -35,7 +39,12 @@ const GOOGLE_OAUTH_ENABLED = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true
    requests and burn their Supabase/Resend quota. */
 const RESEND_COOLDOWN_MS = 90_000;
 
-function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
+function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }: {
+  email: string;
+  onGoToLogin: () => void;
+  onCorrectEmail?: () => void;
+  t: TFn;
+}) {
   const [resending, setResending] = useState(false);
   const [resentAt, setResentAt] = useState(0);
   const [resendError, setResendError] = useState("");
@@ -47,13 +56,13 @@ function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
   // token is simply ignored by Supabase when present. The widget is
   // invisible on trusted browsers (managed → non-interactive mode +
   // appearance:"interaction-only").
-  const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // pendingResend defers a click while the invisible Turnstile
   // widget is still resolving on a cold render. Without it the
   // user gets the cryptic "Espera a que se complete la verificación
   // de seguridad" if they tap Reenviar before the token lands.
   const [pendingResend, setPendingResend] = useState(false);
-  const turnstileRef = useRef(null);
+  const turnstileRef = useRef<{ reset: () => void } | null>(null);
   // `now` ticks once per second while a cooldown is active so the
   // countdown rerenders. Using a state value (instead of reading
   // Date.now() inline) keeps the render pure — impure reads during
@@ -84,7 +93,7 @@ function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
       const r = await supabase.auth.resend({
         type: "signup",
         email,
-        options: { captchaToken: usedCaptchaToken },
+        options: { captchaToken: usedCaptchaToken ?? undefined },
       });
       err = r.error;
     } finally {
@@ -180,14 +189,25 @@ function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
 /* ── Auth form (reused inside sheet) ──
    The landing page is English; the auth form stays in Spanish to match
    the rest of the app, which is Spanish-only per CLAUDE.md. */
-function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, onPasskey, t }) {
+type AuthFormProps = {
+  mode: string;
+  setMode: (m: string) => void;
+  onSignIn?: (args: { email: string; password: string; captchaToken: string | null }) => Promise<AuthResult>;
+  onSignUp?: (args: { email: string; password: string; name: string; captchaToken: string | null }) => Promise<AuthResult>;
+  onProvider?: (provider: string) => Promise<AuthResult>;
+  onMagicLink?: (args: { email: string; captchaToken: string | null }) => Promise<AuthResult>;
+  onPasskey?: () => Promise<AuthResult>;
+  t: TFn;
+};
+
+function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, onPasskey, t }: AuthFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [consentChecked, setConsentChecked] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [providerBusy, setProviderBusy] = useState(null);
+  const [providerBusy, setProviderBusy] = useState<string | null>(null);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   // Passkey sign-in is offered only on the LOGIN tab, only when the
   // build flag + WebAuthn support both pass (passkeysAvailable() is
@@ -199,7 +219,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
   // stashed in sessionStorage. Surface a teal banner so the visitor
   // sees that the discount was registered — drives signup confidence.
   // Read once at mount; the value doesn't change during the session.
-  const [influencerCode] = useState(() => {
+  const [influencerCode] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     try { return sessionStorage.getItem("cardigan.influencerCodeFromUrl") || null; }
     catch { return null; }
@@ -208,7 +228,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
   // resolves; required for submit when TURNSTILE_ENABLED. Reset to
   // null after each attempt — Turnstile tokens are single-use, so a
   // failed attempt needs a fresh challenge before retry.
-  const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captchaRequired = TURNSTILE_ENABLED;
   // pendingSubmit defers the submit while the invisible Turnstile
   // widget is still resolving — fast users beat the ~1s background
@@ -221,24 +241,24 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
   // fresh challenge after each consumed token; without explicit
   // reset(), the widget holds its current token until natural
   // expiry (~5 min) and the next submit attempt has nothing fresh.
-  const turnstileRef = useRef(null);
+  const turnstileRef = useRef<{ reset: () => void } | null>(null);
   // When non-null, render the VerifyPendingPanel instead of the form.
   // Set by signUp (fresh signup waiting for verification) or by signIn
   // (tried to log in with an unverified account).
-  const [pendingEmail, setPendingEmail] = useState(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   // When non-null, the email the user just tried to sign up with is
   // already registered. Renders an inline recovery prompt so the user
   // can switch to login or password reset without retyping.
-  const [duplicateEmail, setDuplicateEmail] = useState(null);
+  const [duplicateEmail, setDuplicateEmail] = useState<string | null>(null);
   // When non-null, the user requested a magic link and we're waiting
   // for them to tap it. Replaces the form with a "check your inbox"
   // panel until they navigate away.
-  const [magicLinkSentTo, setMagicLinkSentTo] = useState(null);
+  const [magicLinkSentTo, setMagicLinkSentTo] = useState<string | null>(null);
   const [magicLinkBusy, setMagicLinkBusy] = useState(false);
 
-  const switchMode = (m) => { setMode(m); setError(""); setMessage(""); setPendingEmail(null); setDuplicateEmail(null); setMagicLinkSentTo(null); };
+  const switchMode = (m: string) => { setMode(m); setError(""); setMessage(""); setPendingEmail(null); setDuplicateEmail(null); setMagicLinkSentTo(null); };
 
-  const handleProvider = async (provider) => {
+  const handleProvider = async (provider: string) => {
     if (!onProvider || providerBusy) return;
     setError("");
     setProviderBusy(provider);
@@ -308,7 +328,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault?.();
     setError("");
     setMessage("");
@@ -335,15 +355,15 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
       if (mode === "reset") {
         if (!email.trim()) { setError(t("auth.enterEmail")); setSubmitting(false); return; }
         const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          captchaToken: usedCaptchaToken,
+          captchaToken: usedCaptchaToken ?? undefined,
         });
         requestErr = err;
       } else if (mode === "signup") {
         if (!name.trim()) { setError(t("auth.enterName")); setSubmitting(false); return; }
         if (!consentChecked) { setError(t("auth.consentRequired")); setSubmitting(false); return; }
-        result = await onSignUp({ email, password, name: name.trim(), captchaToken: usedCaptchaToken });
+        result = await onSignUp?.({ email, password, name: name.trim(), captchaToken: usedCaptchaToken });
       } else {
-        result = await onSignIn({ email, password, captchaToken: usedCaptchaToken });
+        result = await onSignIn?.({ email, password, captchaToken: usedCaptchaToken });
       }
     } finally {
       setSubmitting(false);
@@ -674,7 +694,17 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
    Thin shell: renders the marketing landing page, and wires the landing
    CTAs to either the auth sheet (signup / sign in) or demo mode (the
    "See how it works" secondary CTA). */
-export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onPasskey, onDemo, autoOpen }) {
+type AuthScreenProps = {
+  onSignIn?: AuthFormProps["onSignIn"];
+  onSignUp?: AuthFormProps["onSignUp"];
+  onProvider?: AuthFormProps["onProvider"];
+  onMagicLink?: AuthFormProps["onMagicLink"];
+  onPasskey?: AuthFormProps["onPasskey"];
+  onDemo?: () => void;
+  autoOpen?: string;
+};
+
+export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onPasskey, onDemo, autoOpen }: AuthScreenProps) {
   const { t } = useT();
   // Honor autoOpen on FIRST mount as well — not just on subsequent
   // changes. The previous adjust-during-render pattern initialized
@@ -689,9 +719,9 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onPass
   useEscape(showAuth ? () => setShowAuth(false) : null);
   const closeAuth = () => setShowAuth(false);
   const { scrollRef: authScrollRef, setPanelEl: setAuthPanelEl, panelHandlers: authPanelHandlers } = useSheetDrag(closeAuth, { isOpen: showAuth });
-  const setAuthPanel = (el) => { authScrollRef.current = el; setAuthPanelEl(el); };
+  const setAuthPanel = (el: HTMLDivElement | null) => { authScrollRef.current = el; setAuthPanelEl(el); };
 
-  const openAuth = (mode) => { setAuthMode(mode); setShowAuth(true); };
+  const openAuth = (mode: string) => { setAuthMode(mode); setShowAuth(true); };
 
   // For subsequent autoOpen changes (rare — would require parent to
   // remount us with a new prop), still react via adjust-during-render.
@@ -802,7 +832,15 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onPass
        iOS native uses the Capacitor plugin), magic link.
      - Footer: discreet "Probar demo" link so App Store reviewers
        still have a one-tap path into the seeded reviewer account. */
-function NativeAuthShell({ onSignIn, onSignUp, onProvider, onMagicLink, onPasskey, onDemo, t }) {
+function NativeAuthShell({ onSignIn, onSignUp, onProvider, onMagicLink, onPasskey, onDemo, t }: {
+  onSignIn?: AuthFormProps["onSignIn"];
+  onSignUp?: AuthFormProps["onSignUp"];
+  onProvider?: AuthFormProps["onProvider"];
+  onMagicLink?: AuthFormProps["onMagicLink"];
+  onPasskey?: AuthFormProps["onPasskey"];
+  onDemo?: () => void;
+  t: TFn;
+}) {
   const [mode, setMode] = useState("login");
   return (
     <div

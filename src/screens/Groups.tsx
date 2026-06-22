@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { IconSearch, IconPlus, IconChevronRight } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { EmptyState } from "../components/EmptyState";
@@ -10,6 +10,9 @@ import { activeMemberCount } from "../utils/groups";
 import { GROUP_STATUS } from "../data/constants";
 import { haptic } from "../utils/haptics";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- boundary: untyped domain/hook data
+type Row = any;
+
 /* Groups (Grupos) list screen — the 5th bottom-tab destination. Mirrors
    the Patients screen shell (search + .card list of .row-item rows), opens
    a GroupDetail overlay on tap. The FAB's "Grupo" quick action creates a
@@ -18,20 +21,20 @@ export function Groups() {
   const { t } = useT();
   const { groups, groupMembers, readOnly, requestFabAction } = useCardigan();
   const [search, setSearch] = useState("");
-  const [openId, setOpenId] = useState(null);
+  const [openId, setOpenId] = useState<Row>(null);
 
   // Active groups first, then ended; alpha within each band.
   const sorted = useMemo(() => {
     return [...(groups || [])]
-      .filter(g => g.name.toLowerCase().includes(search.toLowerCase()))
-      .sort((a, b) => {
+      .filter((g: Row) => g.name.toLowerCase().includes(search.toLowerCase()))
+      .sort((a: Row, b: Row) => {
         const ae = a.status === GROUP_STATUS.ENDED, be = b.status === GROUP_STATUS.ENDED;
         if (ae !== be) return ae ? 1 : -1;
         return (a.name || "").localeCompare(b.name || "");
       });
   }, [groups, search]);
 
-  const openGroup = groups.find(g => g.id === openId) || null;
+  const openGroup = groups.find((g: Row) => g.id === openId) || null;
 
   if ((groups || []).length === 0) {
     return (
@@ -65,7 +68,7 @@ export function Groups() {
           <EmptyState kind="patients" title={t("patients.noResults")} body="" />
         ) : (
           <div className="card">
-            {sorted.map((g, i) => {
+            {sorted.map((g: Row, i: number) => {
               const count = activeMemberCount(g, groupMembers);
               const ended = g.status === GROUP_STATUS.ENDED;
               const sub = [
@@ -74,7 +77,7 @@ export function Groups() {
               ].filter(Boolean).join(" · ");
               return (
                 <button key={g.id} className="row-item list-entry-stagger btn-tap"
-                  style={{ "--stagger-i": Math.min(i, 12), width:"100%", border:"none", background:"transparent", textAlign:"left", cursor:"pointer", opacity: ended ? 0.6 : 1 }}
+                  style={{ "--stagger-i": Math.min(i, 12), width:"100%", border:"none", background:"transparent", textAlign:"left", cursor:"pointer", opacity: ended ? 0.6 : 1 } as React.CSSProperties}
                   onClick={() => { haptic.tap(); setOpenId(g.id); }}>
                   <Avatar initials={(g.name || "?").slice(0, 2).toUpperCase()} color={getClientColor(g.colorIdx ?? g.color_idx ?? 0)} size="md" />
                   <div className="row-content">

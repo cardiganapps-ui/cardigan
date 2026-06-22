@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import { supabase } from "../supabaseClient";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- boundary: untyped domain/hook data
+type Row = any;
 import { openExternal } from "../lib/nativeBrowser";
 import { isNative, isIOS } from "../lib/platform";
 import { DiagnosticsSheet } from "../components/sheets/DiagnosticsSheet";
@@ -25,7 +28,7 @@ import { MONETIZATION_ENABLED } from "../config/monetization";
 // 23rd hour. Anything older than 30 days falls back to a calendar
 // date so the leaderboard doesn't read as a stale-feeling "hace 200
 // días" list.
-function relativeTime(iso) {
+function relativeTime(iso: string | null | undefined) {
   if (!iso) return "";
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return "";
@@ -70,7 +73,7 @@ import { formatMXNCents, formatDate } from "../utils/format";
 // reuse the exact same buttons and analytics taxonomy.
 import { ReferralShareBlock } from "../components/ReferralShareBlock";
 
-function notifErrorKey(code) {
+function notifErrorKey(code: string | undefined) {
   switch (code) {
     case "permission-denied": return "notifications.toastPermissionDenied";
     case "install-required":  return "notifications.toastInstallRequired";
@@ -81,7 +84,13 @@ function notifErrorKey(code) {
   }
 }
 
-export function Settings({ user, signOut, refreshUser }) {
+type SettingsProps = {
+  user?: Row;
+  signOut: (scope?: string) => void | Promise<void>;
+  refreshUser?: () => void;
+};
+
+export function Settings({ user, signOut, refreshUser }: SettingsProps) {
   const { t } = useT();
   const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession, setHideFab, subscription, requirePro, groups, groupsEnabled, setGroupsEnabled } = useCardigan();
   // Groups feature can only be turned OFF when there are no groups (turning
@@ -96,7 +105,7 @@ export function Settings({ user, signOut, refreshUser }) {
   // flag is off, so the whole row stays hidden there. Enrollment + delete
   // run their own WebAuthn ceremonies via the hook.
   const passkeys = usePasskeys();
-  const [passkeyRemoveId, setPasskeyRemoveId] = useState(null);
+  const [passkeyRemoveId, setPasskeyRemoveId] = useState<string | null>(null);
   // Captcha state for the password-reset flow. Supabase enforces a
   // captcha token on resetPasswordForEmail, so the in-app "Cambiar
   // contraseña" affordance has to render its own Turnstile widget.
@@ -106,18 +115,18 @@ export function Settings({ user, signOut, refreshUser }) {
   // Without this the user sees "Espera a que se complete la
   // verificación" if they tap before the widget settles (typical on
   // a cold sheet open).
-  const [passwordCaptchaToken, setPasswordCaptchaToken] = useState(null);
+  const [passwordCaptchaToken, setPasswordCaptchaToken] = useState<string | null>(null);
   const [passwordResetError, setPasswordResetError] = useState("");
   const [pendingPasswordSubmit, setPendingPasswordSubmit] = useState(false);
   // Imperative handle on the Turnstile widget so we can force a fresh
   // challenge after each consumed token. Without an explicit reset the
   // widget holds the issued token until natural expiry (~5 min) and
   // subsequent submits look stuck verifying.
-  const turnstileRef = useRef(null);
+  const turnstileRef = useRef<Row>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaUiError, setMfaUiError] = useState("");
-  const [mfaUnenrollId, setMfaUnenrollId] = useState(null);
+  const [mfaUnenrollId, setMfaUnenrollId] = useState<string | null>(null);
   const [mfaSecretCopied, setMfaSecretCopied] = useState(false);
   const copyMfaSecret = async () => {
     if (!mfa.enrollment?.secret) return;
@@ -202,7 +211,7 @@ export function Settings({ user, signOut, refreshUser }) {
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
 
-  const [activeSheet, setActiveSheet] = useState(null);
+  const [activeSheet, setActiveSheet] = useState<string | null>(null);
   const closeSheet = useCallback(() => setActiveSheet(null), []);
   useEscape(activeSheet ? closeSheet : null);
   // Bottom sheets cover only part of the screen, so the FAB ends up
@@ -231,8 +240,8 @@ export function Settings({ user, signOut, refreshUser }) {
   // window level since the dispatcher (Drawer) doesn't share React
   // ref space with this screen.
   useEffect(() => {
-    const handleOpenSheet = (e) => {
-      const sheet = e?.detail?.sheet;
+    const handleOpenSheet = (e: Event) => {
+      const sheet = (e as CustomEvent)?.detail?.sheet;
       if (typeof sheet === "string") {
         if (sheet === "plan" || sheet === "referral") {
           // Both the Suscripción and Invita sheets prefetch the
@@ -279,12 +288,12 @@ export function Settings({ user, signOut, refreshUser }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSheet, subscription?.subscribedActive]);
   const { scrollRef: sheetScrollRef, setPanelEl: setSheetPanelEl, panelHandlers: sheetPanelHandlers } = useSheetDrag(closeSheet, { isOpen: !!activeSheet });
-  const setSheetPanel = (el) => { sheetScrollRef.current = el; setSheetPanelEl(el); };
+  const setSheetPanel = (el: HTMLDivElement | null) => { sheetScrollRef.current = el; setSheetPanelEl(el); };
   const [editName, setEditName] = useState(userName);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [updateChecking, setUpdateChecking] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState(null); // { msg, tone: "ok" | "info" | "err" }
+  const [updateStatus, setUpdateStatus] = useState<{ msg: string; tone: "ok" | "info" | "err" } | null>(null);
 
   /* ── Manual update check ────────────────────────────────────────
      Escape hatch for when the automatic SW update flow has missed a
@@ -354,7 +363,7 @@ export function Settings({ user, signOut, refreshUser }) {
     }
   };
 
-  const resetPassword = useCallback(async (token) => {
+  const resetPassword = useCallback(async (token: string | null) => {
     setSaving(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
@@ -390,7 +399,7 @@ export function Settings({ user, signOut, refreshUser }) {
     resetPassword(passwordCaptchaToken);
   }, [pendingPasswordSubmit, passwordCaptchaToken, saving, resetPassword]);
 
-  const openSheet = (key) => {
+  const openSheet = (key: string) => {
     setMessage("");
     if (key === "profile") setEditName(userName);
     if (key === "plan" || key === "referral") {
@@ -430,7 +439,7 @@ export function Settings({ user, signOut, refreshUser }) {
   // through the whole confirm cycle even if the user re-types in the
   // Suscripción sheet underneath.
   const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
-  const [paymentSheetReferralCode, setPaymentSheetReferralCode] = useState(null);
+  const [paymentSheetReferralCode, setPaymentSheetReferralCode] = useState<string | null>(null);
   const [paymentSheetPlan, setPaymentSheetPlan] = useState("monthly");
   // Selected billing cycle in the Suscripción sheet — controls the
   // segmented toggle and the price displayed in the hero. Defaults to
@@ -556,20 +565,20 @@ export function Settings({ user, signOut, refreshUser }) {
   const [exporting, setExporting] = useState(false);
   const [exportPassword, setExportPassword] = useState("");
   const [exportError, setExportError] = useState("");
-  const [exportCaptchaToken, setExportCaptchaToken] = useState(null);
-  const exportTurnstileRef = useRef(null);
+  const [exportCaptchaToken, setExportCaptchaToken] = useState<string | null>(null);
+  const exportTurnstileRef = useRef<Row>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const [deleteCaptchaToken, setDeleteCaptchaToken] = useState(null);
-  const deleteTurnstileRef = useRef(null);
+  const [deleteCaptchaToken, setDeleteCaptchaToken] = useState<string | null>(null);
+  const deleteTurnstileRef = useRef<Row>(null);
   // Sign-out confirmation, mirroring the Drawer pattern.
   const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   /* Map server-side reauth codes → user-facing Spanish messages so
      the prompt knows what to say beyond a generic "wrong password". */
-  const reauthMessageFor = (code) => {
+  const reauthMessageFor = (code: string) => {
     if (code === "wrong_password") return t("settings.privacyReauthWrong");
     if (code === "password_required") return t("settings.privacyReauthRequired");
     if (code === "oauth_only") return t("settings.privacyReauthOauthOnly");
@@ -677,7 +686,7 @@ export function Settings({ user, signOut, refreshUser }) {
     } catch (err) {
       // Surface network / unexpected errors so the user knows something
       // happened (a silent failure looks like the button is broken).
-      setDeleteError(err?.message || t("settings.privacyDeleteError"));
+      setDeleteError((err as Error)?.message || t("settings.privacyDeleteError"));
     } finally {
       setDeleting(false);
     }
@@ -971,9 +980,10 @@ export function Settings({ user, signOut, refreshUser }) {
                           { k: 15, l: "15 min" },
                           { k: 30, l: "30 min" },
                           { k: 60, l: "1 hr" },
-                        ]}
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- numeric keys; control compares with ===
+                        ] as any}
                         value={notifications?.reminderMinutes}
-                        onChange={async (v) => {
+                        onChange={async (v: Row) => {
                           if (v === notifications?.reminderMinutes) return;
                           haptic.tap();
                           const res = await notifications?.setReminderMinutes(v);
@@ -1144,7 +1154,7 @@ export function Settings({ user, signOut, refreshUser }) {
           <StripePaymentSheet
             open={paymentSheetOpen}
             plan={paymentSheetPlan}
-            referralCode={paymentSheetReferralCode}
+            referralCode={paymentSheetReferralCode ?? undefined}
             daysLeftInTrial={subscription?.daysLeftInTrial}
             onClose={() => setPaymentSheetOpen(false)}
             onSuccess={() => {
@@ -1207,7 +1217,7 @@ export function Settings({ user, signOut, refreshUser }) {
                 // its hero copy below to match the real-Pro presentation.
                 const summary = billingSummary(s);
                 const tone = summary.tone || "teal";
-                const TONE_COLORS = {
+                const TONE_COLORS: Record<string, { color: string; bg: string }> = {
                   teal:  { color: "var(--teal-dark)", bg: "var(--teal-pale)" },
                   amber: { color: "var(--amber)",     bg: "var(--amber-bg)" },
                   green: { color: "var(--green)",     bg: "var(--green-bg)" },
@@ -1283,7 +1293,7 @@ export function Settings({ user, signOut, refreshUser }) {
                           glance separates "$149 every month" (positive)
                           from "Sin cobros futuros" (warning). */}
                       {summary.chipText && !isAdminAccess && (() => {
-                        const chipMap = {
+                        const chipMap: Record<string, { color: string; bg: string }> = {
                           positive: { color: "var(--green)",   bg: "var(--green-bg)" },
                           warning:  { color: "var(--amber)",   bg: "var(--amber-bg)" },
                           danger:   { color: "var(--red)",     bg: "var(--red-bg)" },
@@ -1486,7 +1496,7 @@ export function Settings({ user, signOut, refreshUser }) {
                           {t("subscription.invoiceHistoryTitle")}
                         </div>
                         <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                          {s.invoices.map((inv) => {
+                          {s.invoices.map((inv: Row) => {
                             const date = formatDate(inv.paid_at, "shortYear");
                             const amount = `${formatMXNCents(inv.amount_cents)}`;
                             const link = inv.hosted_invoice_url || inv.pdf_url;
@@ -1631,7 +1641,7 @@ export function Settings({ user, signOut, refreshUser }) {
                           {t("subscription.referralLeaderboardTitle")}
                         </div>
                         <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                          {subscription.referralLeaderboard.map((row, idx) => (
+                          {subscription.referralLeaderboard.map((row: Row, idx: number) => (
                             <div key={row.id} style={{
                               display:"flex", alignItems:"center", justifyContent:"space-between",
                               padding:"10px 12px",
@@ -2312,7 +2322,7 @@ export function Settings({ user, signOut, refreshUser }) {
         confirmLabel={t("settings.passkeyRemove")}
         destructive
         onConfirm={async () => {
-          const id = passkeyRemoveId;
+          const id = passkeyRemoveId!;
           setPasskeyRemoveId(null);
           await passkeys.remove(id);
         }}
