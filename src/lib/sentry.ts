@@ -3,9 +3,20 @@
    on the cold-start critical path. captureException + setSentryTag
    buffer events when called before init, then flush as soon as the
    SDK finishes loading. */
-let sentryInstance = null;
-const pendingEvents = [];
-const pendingTags = [];
+import type * as SentryReact from "@sentry/react";
+
+declare const __SENTRY_DSN__: string | undefined;
+declare const __SENTRY_RELEASE__: string | undefined;
+
+/* Sentry's per-method context/hint param types differ across methods and
+   SDK versions; these wrappers pass the bag straight through to the SDK,
+   so it's typed loosely at this external boundary. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SentryContext = any;
+
+let sentryInstance: typeof SentryReact | null = null;
+const pendingEvents: Array<{ error: unknown; context?: SentryContext }> = [];
+const pendingTags: Array<{ key: string; value: string }> = [];
 
 /* PII / secret fields scrubbed from every Sentry event, breadcrumb,
    and context. Add new sensitive fields here whenever the schema or
@@ -67,10 +78,10 @@ const PII_FIELDS = new Set([
 // not intended for direct use elsewhere — call sites should always go
 // through Sentry's beforeSend wired up by initSentry.
 export { PII_FIELDS };
-export function scrubPII(obj) {
+export function scrubPII(obj: unknown): unknown {
   if (!obj || typeof obj !== "object") return obj;
   if (Array.isArray(obj)) return obj.map(scrubPII);
-  const out = {};
+  const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (PII_FIELDS.has(k)) { out[k] = "[redacted]"; continue; }
     if (v && typeof v === "object") { out[k] = scrubPII(v); continue; }
@@ -106,12 +117,12 @@ export async function initSentry() {
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0,
     beforeSend(event) {
-      if (event.extra) event.extra = scrubPII(event.extra);
-      if (event.contexts) event.contexts = scrubPII(event.contexts);
+      if (event.extra) event.extra = scrubPII(event.extra) as typeof event.extra;
+      if (event.contexts) event.contexts = scrubPII(event.contexts) as typeof event.contexts;
       if (event.breadcrumbs) {
         event.breadcrumbs = event.breadcrumbs.map((b) => ({
           ...b,
-          data: scrubPII(b.data),
+          data: scrubPII(b.data) as typeof b.data,
         }));
       }
       return event;
@@ -131,7 +142,7 @@ export async function initSentry() {
    call before initSentry resolves. Buffered events flush during
    initSentry; if init never runs (no DSN, dev mode) the buffer just
    stays in memory and gets garbage-collected on reload. */
-export function captureException(error, context) {
+export function captureException(error: unknown, context?: SentryContext) {
   if (sentryInstance) {
     sentryInstance.captureException(error, context);
   } else {
@@ -144,7 +155,7 @@ export function captureException(error, context) {
    with recent breadcrumbs so we can see what input events actually
    fired during a reported bug, without needing the user to also
    hit a render-time crash. */
-export function captureMessage(message, context) {
+export function captureMessage(message: string, context?: SentryContext) {
   if (sentryInstance) {
     sentryInstance.captureMessage(message, context);
   } else {
@@ -157,7 +168,7 @@ export function captureMessage(message, context) {
    later captureException/Message carries the full event trail. The
    breadcrumb scrubber in initSentry's beforeBreadcrumb strips PII
    data fields before they leave the client. */
-export function addBreadcrumb(crumb) {
+export function addBreadcrumb(crumb: SentryReact.Breadcrumb) {
   if (sentryInstance) sentryInstance.addBreadcrumb(crumb);
   // Pre-init crumbs are dropped; Sentry's own ring buffer is what we
   // care about, and it only matters once init runs.
@@ -167,7 +178,7 @@ export function addBreadcrumb(crumb) {
 // flag. Call from AppShell after the profile resolves so issues that
 // only affect (say) nutritionist users are filterable in the Sentry UI.
 // Profession is non-PII — it's the same enum we'd put in a feature flag.
-export function setSentryProfession(profession, { demo = false } = {}) {
+export function setSentryProfession(profession?: string, { demo = false }: { demo?: boolean } = {}) {
   const tags = [
     { key: "profession", value: profession || "unknown" },
     { key: "demo", value: demo ? "1" : "0" },

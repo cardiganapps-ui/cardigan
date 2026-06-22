@@ -12,11 +12,24 @@
 
 import { jsPDF } from "jspdf";
 
+// PDF rows carry many dynamically-shaped fields (date/amount/status/
+// patient/amountDue); typed loosely at this rendering boundary.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+interface SummaryArgs {
+  payments?: Row[];
+  sessions?: Row[];
+  patients?: Row[];
+  now?: Date;
+  therapistName?: string;
+  clientLabel?: string;
+}
+
 const SHORT_MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const FULL_MONTHS_ES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
 // "8-Abr" / "8 Abr" → { day, monthIdx } | null
-function parseShort(s) {
+function parseShort(s?: string | null) {
   if (!s || typeof s !== "string") return null;
   const m = s.match(/^(\d{1,2})[\s-]([A-Za-zÁÉÍÓÚáéíóú]{3})/);
   if (!m) return null;
@@ -25,7 +38,7 @@ function parseShort(s) {
   return { day: parseInt(m[1], 10), monthIdx };
 }
 
-function formatMxn(n) {
+function formatMxn(n?: number | null) {
   return `$${Number(n || 0).toLocaleString("es-MX")}`;
 }
 
@@ -34,7 +47,7 @@ function formatMxn(n) {
    only — so we treat the input arrays as already-this-year. The
    caller passes only the relevant rows. (For year-end summaries
    we'd need a different strategy.) */
-function rowsInMonth(rows, monthIdx) {
+function rowsInMonth(rows: Row[] | null | undefined, monthIdx: number) {
   return (rows || []).filter((r) => {
     const p = parseShort(r.date);
     return p && p.monthIdx === monthIdx;
@@ -53,7 +66,7 @@ export function buildMonthlySummaryPdf({
   // passes `cap(vocab.client.s)` ("Paciente" / "Alumno" / "Cliente").
   // Falls back to "paciente" for the legacy default.
   clientLabel = "paciente",
-}) {
+}: SummaryArgs) {
   const monthIdx = now.getMonth();
   const monthLabel = FULL_MONTHS_ES[monthIdx];
   const year = now.getFullYear();
@@ -68,7 +81,7 @@ export function buildMonthlySummaryPdf({
   const scheduledCount = monthSessions.filter(s => s.status === "scheduled").length;
 
   // Group payments by patient → display ordered by amount descending.
-  const byPatient = new Map();
+  const byPatient = new Map<string, number>();
   for (const p of monthPayments) {
     const key = p.patientName || p.patient || "—";
     byPatient.set(key, (byPatient.get(key) || 0) + Number(p.amount || 0));
@@ -203,7 +216,7 @@ export function buildMonthlySummaryPdf({
   return doc;
 }
 
-export function downloadMonthlySummaryPdf(args) {
+export function downloadMonthlySummaryPdf(args: SummaryArgs) {
   const doc = buildMonthlySummaryPdf(args);
   const m = SHORT_MONTHS_ES[(args.now || new Date()).getMonth()];
   const y = (args.now || new Date()).getFullYear();

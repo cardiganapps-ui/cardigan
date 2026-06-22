@@ -31,6 +31,20 @@
 import { jsPDF } from "jspdf";
 import { tokenizeLine } from "../components/notes/markdownModel";
 
+type RGB = [number, number, number];
+interface Segment { text?: string; kind?: string }
+interface ResolvedImage { dataUrl: string; mime?: string; width?: number | null; height?: number | null }
+interface Attachment { id: string; mime?: string; width?: number | null; height?: number | null; [key: string]: unknown }
+interface BuildNotePdfArgs {
+  note?: { title?: string; content?: string; updated_at?: string } | null;
+  attachments?: Attachment[];
+  patient?: { name?: string } | null;
+  session?: { date?: string; time?: string } | null;
+  therapistName?: string;
+  imageResolver?: ((a: Attachment) => Promise<string | null>) | null;
+  now?: Date;
+}
+
 const MAX_INLINE_IMAGES = 10;
 
 // Page geometry — US Letter in mm matches monthlySummaryPdf.js so
@@ -39,11 +53,11 @@ const PAGE = {
   format: "letter",
   unit: "mm",
   margin: 18,
-};
+} as const;
 
 // Colour palette mirrors the design tokens: charcoal text, lighter
 // charcoal for meta, teal accents. jsPDF takes 0–255 RGB.
-const COLORS = {
+const COLORS: Record<string, RGB> = {
   charcoal:    [46, 46, 46],
   charcoalMd:  [110, 110, 110],
   charcoalXl:  [160, 160, 160],
@@ -53,7 +67,7 @@ const COLORS = {
   strikeRule:  [180, 180, 180],
 };
 
-function setColor(doc, [r, g, b]) {
+function setColor(doc: jsPDF, [r, g, b]: RGB) {
   doc.setTextColor(r, g, b);
 }
 
@@ -62,12 +76,12 @@ function setColor(doc, [r, g, b]) {
 // Returns the y position after rendering. We do the wrap ourselves
 // (rather than jsPDF.splitTextToSize) because we need to preserve
 // inline style boundaries across wraps.
-function renderInlineSegments(doc, segments, x, y, maxWidth, lineHeight) {
+function renderInlineSegments(doc: jsPDF, segments: Segment[], x: number, y: number, maxWidth: number, lineHeight: number): number {
   // segments: [{ text, kind: "text" | "strong" | "em" | "strike" | "code" }]
   let cursorX = x;
   // jsPDF measures width using the currently-set font; we'll set
   // it per segment as we lay out.
-  const setStyle = (kind) => {
+  const setStyle = (kind?: string) => {
     if (kind === "strong") doc.setFont("helvetica", "bold");
     else if (kind === "em") doc.setFont("helvetica", "italic");
     else if (kind === "code") doc.setFont("courier", "normal");
@@ -76,7 +90,7 @@ function renderInlineSegments(doc, segments, x, y, maxWidth, lineHeight) {
 
   // Walk word-by-word so we can break cleanly. Pre-tokenise each
   // segment into words but keep the segment style attached.
-  const words = [];
+  const words: Array<{ text: string; kind?: string }> = [];
   for (const seg of segments) {
     if (!seg.text) continue;
     const parts = seg.text.split(/(\s+)/); // keep whitespace
@@ -120,7 +134,7 @@ function renderInlineSegments(doc, segments, x, y, maxWidth, lineHeight) {
   return y;
 }
 
-function tokenInlineToSegments(tokenInline) {
+function tokenInlineToSegments(tokenInline: Array<{ text?: string; kind?: string }>): Segment[] {
   // The markdown model's inline kinds are: text | strong | em | strike | code.
   // We map directly — the renderer cares about font style.
   return tokenInline.map(tok => ({
@@ -134,9 +148,9 @@ function tokenInlineToSegments(tokenInline) {
 // inline text + image would need a real layout pass we don't
 // need yet, but at least we stop silently dropping the 2nd+
 // reference).
-function extractAttachmentRefs(line) {
+function extractAttachmentRefs(line?: string): Array<{ id: string; full: string; index: number }> {
   if (!line) return [];
-  const out = [];
+  const out: Array<{ id: string; full: string; index: number }> = [];
   const re = /!\[[^\]]*\]\(attachment:([0-9a-f-]+)\)/gi;
   let m;
   while ((m = re.exec(line)) !== null) {
@@ -145,7 +159,7 @@ function extractAttachmentRefs(line) {
   return out;
 }
 
-function addPageBreakIfNeeded(doc, y, neededHeight) {
+function addPageBreakIfNeeded(doc: jsPDF, y: number, neededHeight: number): number {
   const pageHeight = doc.internal.pageSize.getHeight();
   const footerReserve = 16;
   if (y + neededHeight > pageHeight - footerReserve) {
@@ -155,7 +169,7 @@ function addPageBreakIfNeeded(doc, y, neededHeight) {
   return y;
 }
 
-function drawHeader(doc, { therapistName }) {
+function drawHeader(doc: jsPDF, { therapistName }: { therapistName?: string }): number {
   const pageWidth = doc.internal.pageSize.getWidth();
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
@@ -173,7 +187,7 @@ function drawHeader(doc, { therapistName }) {
   return PAGE.margin + 16;
 }
 
-function drawTitle(doc, title, y) {
+function drawTitle(doc: jsPDF, title: string | undefined, y: number): number {
   const pageWidth = doc.internal.pageSize.getWidth();
   const maxWidth = pageWidth - PAGE.margin * 2;
   doc.setFont("helvetica", "bold");
@@ -188,8 +202,8 @@ function drawTitle(doc, title, y) {
   return y + 2;
 }
 
-function drawMetadata(doc, { patient, session, updatedAt }, y) {
-  const bits = [];
+function drawMetadata(doc: jsPDF, { patient, session, updatedAt }: { patient?: { name?: string } | null; session?: { date?: string; time?: string } | null; updatedAt?: string | null }, y: number): number {
+  const bits: string[] = [];
   if (patient?.name) bits.push(`Paciente: ${patient.name}`);
   if (session?.date && session?.time) bits.push(`Sesión: ${session.date} · ${session.time}`);
   if (updatedAt) {
@@ -213,7 +227,7 @@ function drawMetadata(doc, { patient, session, updatedAt }, y) {
   return y + 4;
 }
 
-function drawPlaceholder(doc, message, y) {
+function drawPlaceholder(doc: jsPDF, message: string, y: number): number {
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
   setColor(doc, COLORS.charcoalXl);
@@ -222,7 +236,7 @@ function drawPlaceholder(doc, message, y) {
   return y + 6;
 }
 
-async function drawImage(doc, image, y) {
+async function drawImage(doc: jsPDF, image: ResolvedImage, y: number): Promise<number> {
   const pageWidth = doc.internal.pageSize.getWidth();
   const maxWidth = pageWidth - PAGE.margin * 2;
   const { dataUrl, mime, width: storedW, height: storedH } = image;
@@ -241,7 +255,7 @@ async function drawImage(doc, image, y) {
   let probeW = storedW;
   let probeH = storedH;
   if (!probeW || !probeH) {
-    const probe = await new Promise((resolve) => {
+    const probe = await new Promise<{ w: number; h: number } | null>((resolve) => {
       const img = new Image();
       img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
       img.onerror = () => resolve(null);
@@ -273,7 +287,7 @@ async function drawImage(doc, image, y) {
   return y + heightMm + 4;
 }
 
-async function drawBody(doc, lines, y, { resolvedImages }) {
+async function drawBody(doc: jsPDF, lines: string[], y: number, { resolvedImages }: { resolvedImages: Map<string, ResolvedImage> }): Promise<number> {
   const pageWidth = doc.internal.pageSize.getWidth();
   const maxWidth = pageWidth - PAGE.margin * 2;
   let imagesRendered = 0;
@@ -371,10 +385,10 @@ async function drawBody(doc, lines, y, { resolvedImages }) {
   return y;
 }
 
-function drawFooter(doc, { therapistName, now }) {
+function drawFooter(doc: jsPDF, { therapistName, now }: { therapistName?: string; now: Date }) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const total = doc.internal.getNumberOfPages();
+  const total = doc.getNumberOfPages();
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   setColor(doc, COLORS.charcoalXl);
@@ -398,7 +412,7 @@ export async function buildNotePdf({
   therapistName = "",
   imageResolver = null,
   now = new Date(),
-}) {
+}: BuildNotePdfArgs) {
   if (!note) throw new Error("buildNotePdf: note is required");
 
   // Resolve images up-front so the renderer is purely synchronous.
@@ -410,8 +424,8 @@ export async function buildNotePdf({
   const resolvedImages = new Map();
   if (imageResolver) {
     const lines = (note.content || "").split("\n");
-    const orderedIds = [];
-    const seen = new Set();
+    const orderedIds: string[] = [];
+    const seen = new Set<string>();
     for (const line of lines) {
       for (const ref of extractAttachmentRefs(line)) {
         if (seen.has(ref.id)) continue;
@@ -419,11 +433,11 @@ export async function buildNotePdf({
         orderedIds.push(ref.id);
       }
     }
-    const attachmentsById = new Map((attachments || []).map(a => [a.id, a]));
+    const attachmentsById = new Map((attachments || []).map(a => [a.id, a] as [string, Attachment]));
     const eligible = orderedIds
       .slice(0, MAX_INLINE_IMAGES)
       .map(id => attachmentsById.get(id))
-      .filter(Boolean);
+      .filter((a): a is Attachment => Boolean(a));
     await Promise.all(eligible.map(async (a) => {
       try {
         const dataUrl = await imageResolver(a);
@@ -451,7 +465,7 @@ export async function buildNotePdf({
   return doc;
 }
 
-function slugifyForFilename(s) {
+function slugifyForFilename(s?: string | null): string {
   return String(s || "nota")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -464,7 +478,7 @@ function slugifyForFilename(s) {
 /* Convenience downloader — builds + .save()s in one call with a
    slugged filename. Returns the jsPDF instance in case the caller
    wants to keep working with it. */
-export async function downloadNotePdf(args) {
+export async function downloadNotePdf(args: BuildNotePdfArgs) {
   const doc = await buildNotePdf(args);
   const slug = slugifyForFilename(args.note?.title);
   doc.save(`Cardigan-${slug}.pdf`);
