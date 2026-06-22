@@ -1,9 +1,10 @@
 import { useRef, useState, useCallback } from "react";
+import type { ReactNode } from "react";
 import { LogoIcon } from "./LogoMark";
 
-export function PullToRefresh({ onRefresh, children }) {
-  const wrapRef = useRef(null);
-  const touchRef = useRef(null);
+export function PullToRefresh({ onRefresh, children }: { onRefresh: () => void | Promise<void>; children?: ReactNode }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const touchRef = useRef<{ y: number; active: boolean } | null>(null);
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [releasing, setReleasing] = useState(false);
@@ -34,14 +35,14 @@ export function PullToRefresh({ onRefresh, children }) {
       ".expediente-open, .sheet-overlay, .doc-viewer-backdrop, .note-editor-desktop"
     );
 
-  const onTouchStart = useCallback((e) => {
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
     if (refreshing || releasing) return;
     if (overlayOpen()) return;
     if (!isAtTop()) return;
     touchRef.current = { y: e.touches[0].clientY, active: false };
   }, [refreshing, releasing]);
 
-  const onTouchMove = useCallback((e) => {
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
     if (!touchRef.current || refreshing || releasing) return;
     if (overlayOpen()) { touchRef.current = null; return; }
     const dy = e.touches[0].clientY - touchRef.current.y;

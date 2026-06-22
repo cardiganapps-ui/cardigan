@@ -19,15 +19,15 @@ import { AuthSplash } from "./AuthSplash";
    OR after a successful challenge. `onSignOut` is the escape hatch
    so the user isn't trapped if their authenticator is unavailable. */
 
-export default function MfaChallengeGate({ onResolved, onSignOut }) {
+export default function MfaChallengeGate({ onResolved, onSignOut }: { onResolved?: () => void; onSignOut?: () => void }) {
   const { t } = useT();
-  const [phase, setPhase] = useState("loading"); // loading | challenge | done
+  const [phase, setPhase] = useState<"loading" | "challenge" | "done">("loading");
   const [factorId, setFactorId] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +69,7 @@ export default function MfaChallengeGate({ onResolved, onSignOut }) {
     if (phase === "challenge") inputRef.current?.focus();
   }, [phase]);
 
-  const submit = async (e) => {
+  const submit = async (e?: React.FormEvent) => {
     e?.preventDefault?.();
     if (busy) return;
     if (!/^\d{6}$/.test(code)) { setError(t("mfa.codeFormat")); return; }

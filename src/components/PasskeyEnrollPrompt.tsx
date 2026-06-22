@@ -10,7 +10,7 @@ import { haptic } from "../utils/haptics";
    the parent (App.jsx), which also owns the WebAuthn ceremony via
    usePasskeys.register(). `creating` drives the button's pending state;
    `onCreate` should resolve when the ceremony finishes. */
-export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismiss }) {
+export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismiss }: { open?: boolean; creating?: boolean; onCreate: () => void; onDismiss?: () => void }) {
   const { t } = useT();
   const [mounted, setMounted] = useState(false);
 

@@ -1,4 +1,5 @@
 import { Component } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import { captureException } from "../lib/sentry";
 
 /* Detect "the lazy chunk URL changed under us" errors. After a
@@ -11,7 +12,7 @@ import { captureException } from "../lib/sentry";
      - Webpack-built sites: "Loading chunk N failed"
    Recovery is a hard reload (with cache-busting): the new index.html
    pulls in the fresh chunk hashes and everything works again. */
-function isChunkLoadError(err) {
+function isChunkLoadError(err?: { name?: string; message?: string } | null) {
   if (!err) return false;
   const name = err.name || "";
   const msg = err.message || "";
@@ -81,8 +82,8 @@ function clearCorruptCaches() {
   }
 }
 
-export default class ErrorBoundary extends Component {
-  constructor(props) {
+export default class ErrorBoundary extends Component<{ children?: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children?: ReactNode }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -91,7 +92,7 @@ export default class ErrorBoundary extends Component {
     return { hasError: true };
   }
 
-  componentDidCatch(error, info) {
+  componentDidCatch(error: Error, info: ErrorInfo) {
     // Stale-deploy auto-recovery. Browser still holds the old
     // index.html in memory; a lazy import resolves to a chunk URL
     // that 404s. One reload (with the new index.html) fixes it.
