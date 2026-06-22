@@ -251,7 +251,7 @@ export function tokenizeLine(raw?: string | null): LineToken {
    DOM Range. Decorators that don't exist in the raw text use
    `data-nocount="1"` (or a DOM element with zero text) so the walker
    skips them. */
-export function renderLineHTML(token: LineToken, { readOnly = false, lineIdx = 0 }: { readOnly?: boolean; lineIdx?: number } = {}) {
+export function renderLineHTML(token: LineToken, { readOnly = false, lineIdx = 0 }: { readOnly?: boolean; lineIdx?: number; hasCaret?: boolean } = {}) {
   let html = "";
 
   // Image block — emit the raw markdown span AND a sibling <img>

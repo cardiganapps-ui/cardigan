@@ -20,6 +20,36 @@ import {
 import { haptic } from "../../utils/haptics";
 import { addBreadcrumb } from "../../lib/sentry";
 
+interface Caret { line: number; col: number; endLine: number; endCol: number }
+interface ModelResult { lines: string[]; caret: { line: number; col: number } }
+interface EditorSelection { startLine: number; startCol: number; endLine: number; endCol: number }
+interface Snapshot { lines: string[]; caret: Caret }
+interface History { past: Snapshot[]; future: Snapshot[]; lastTs: number }
+interface SlashMenuState { line: number; anchorRect: DOMRect }
+interface FenceInfo { type: "marker" | "body" | "out"; pos: "top" | "bottom" | "only" | null }
+type SlashCommandLike = { prefix: string };
+
+export interface MarkdownEditorHandle {
+  focus(): void;
+  applyInlineFormat(kind: string): void;
+  applyBlockFormat(block: string): void;
+  setContent(content?: string): void;
+  insertText(text?: string): void;
+  getActiveFormats(): Set<string>;
+  jumpTo(target: { line?: number | null; startCol?: number | null; endCol?: number | null }): void;
+}
+
+interface MarkdownEditorProps {
+  initialContent?: string;
+  readOnly?: boolean;
+  onContentChange?: (content: string) => void;
+  onSelectionChange?: (sel: { line: number; col: number; endLine: number; endCol: number; active: Set<string> }) => void;
+  onRequestFind?: () => void;
+  autoFocus?: boolean;
+  placeholder?: string;
+  attachmentTiles?: Record<string, { url?: string; failed?: true }> | null;
+}
+
 /* Multi-line code-fence layout pre-pass. Walks `lines` once and
    returns an array of { type, pos } per line:
      • type: "marker"   — the line is a ``` (open or close)
@@ -31,8 +61,8 @@ import { addBreadcrumb } from "../../lib/sentry";
             null        — middle of a multi-line run
    The CSS uses `data-fence-pos` to round corners + pad the run's
    first / last lines while keeping the middle uniform. */
-function computeFenceLayout(lines) {
-  const out = new Array(lines.length);
+function computeFenceLayout(lines: string[]): FenceInfo[] {
+  const out: FenceInfo[] = new Array(lines.length);
   let insideFence = false;
   let runStart = -1;
   for (let i = 0; i < lines.length; i++) {
@@ -94,16 +124,16 @@ function isMac() {
   if (typeof navigator === "undefined") return false;
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || "");
 }
-const MOD = isMac() ? "metaKey" : "ctrlKey";
+const MOD: "metaKey" | "ctrlKey" = isMac() ? "metaKey" : "ctrlKey";
 
 /* ── DOM ↔ model translation ────────────────────────────────────────
    These helpers walk the DOM of a single line div. Text-bearing
    nodes contribute characters to the column count; anything marked
    with data-nocount doesn't. Scan order is document order. */
-function walkColRecursive(lineDiv, container, offset) {
-  let found = null;
+function walkColRecursive(lineDiv: Node, container: Node, offset: number) {
+  let found: number | null = null;
   let count = 0;
-  function visit(n) {
+  function visit(n: Node) {
     if (found != null) return;
     if (isSkipped(n)) return;
     if (n === container) {
@@ -114,40 +144,41 @@ function walkColRecursive(lineDiv, container, offset) {
       found = count;
       return;
     }
-    if (n.nodeType === 3) { count += n.textContent.length; return; }
-    for (const c of n.childNodes) visit(c);
+    if (n.nodeType === 3) { count += (n.textContent || "").length; return; }
+    for (const c of Array.from(n.childNodes)) visit(c);
   }
   visit(lineDiv);
   return found != null ? found : count;
 }
 
-function charsInSubtree(node) {
+function charsInSubtree(node: Node): number {
   if (isSkipped(node)) return 0;
-  if (node.nodeType === 3) return node.textContent.length;
+  if (node.nodeType === 3) return (node.textContent || "").length;
   let total = 0;
-  for (const c of node.childNodes) total += charsInSubtree(c);
+  for (const c of Array.from(node.childNodes)) total += charsInSubtree(c);
   return total;
 }
 
-function isSkipped(node) {
+function isSkipped(node?: Node | null) {
   if (!node || node.nodeType !== 1) return false;
-  return node.dataset && node.dataset.nocount === "1";
+  const el = node as HTMLElement;
+  return !!el.dataset && el.dataset.nocount === "1";
 }
 
 /* Place caret at (lineDiv, col). Walks forward in document order,
    counting chars, and builds a Range at the first position where
    the cumulative count reaches col. */
-function placeCaret(lineDiv, col) {
+function placeCaret(lineDiv: Node | null | undefined, col: number) {
   if (!lineDiv) return;
   let remaining = col;
-  let target = null;
+  let target: Node | null = null;
   let targetOffset = 0;
 
-  function visit(n) {
+  function visit(n: Node) {
     if (target != null) return;
     if (isSkipped(n)) return;
     if (n.nodeType === 3) {
-      const len = n.textContent.length;
+      const len = (n.textContent || "").length;
       if (remaining <= len) {
         target = n;
         targetOffset = remaining;
@@ -157,7 +188,7 @@ function placeCaret(lineDiv, col) {
       remaining -= len;
       return;
     }
-    for (const c of n.childNodes) {
+    for (const c of Array.from(n.childNodes)) {
       visit(c);
       if (target != null) return;
     }
@@ -180,24 +211,24 @@ function placeCaret(lineDiv, col) {
   sel.addRange(range);
 }
 
-function placeSelection(lineDivs, startLine, startCol, endLine, endCol) {
+function placeSelection(lineDivs: Element[], startLine: number, startCol: number, endLine: number, endCol: number) {
   const startDiv = lineDivs[startLine];
   const endDiv = lineDivs[endLine];
   if (!startDiv || !endDiv) return;
   // Build ranges at each endpoint, combine.
-  const makePoint = (div, col) => {
+  const makePoint = (div: Node, col: number) => {
     let remaining = col;
-    let targetNode = null, targetOffset = 0;
-    function visit(n) {
+    let targetNode: Node | null = null, targetOffset = 0;
+    function visit(n: Node) {
       if (targetNode != null) return;
       if (isSkipped(n)) return;
       if (n.nodeType === 3) {
-        const len = n.textContent.length;
+        const len = (n.textContent || "").length;
         if (remaining <= len) { targetNode = n; targetOffset = remaining; remaining = 0; return; }
         remaining -= len;
         return;
       }
-      for (const c of n.childNodes) { visit(c); if (targetNode != null) return; }
+      for (const c of Array.from(n.childNodes)) { visit(c); if (targetNode != null) return; }
     }
     visit(div);
     if (!targetNode) {
@@ -215,6 +246,7 @@ function placeSelection(lineDivs, startLine, startCol, endLine, endCol) {
   range.setStart(start.node, start.offset);
   range.setEnd(end.node, end.offset);
   const sel = document.getSelection();
+  if (!sel) return;
   sel.removeAllRanges();
   sel.addRange(range);
 }
@@ -223,7 +255,7 @@ function placeSelection(lineDivs, startLine, startCol, endLine, endCol) {
    Pure functions over the `lines` array. Each returns the next
    `lines` plus the caret/selection to restore. */
 
-function replaceRange(lines, startLine, startCol, endLine, endCol, replacement) {
+function replaceRange(lines: string[], startLine: number, startCol: number, endLine: number, endCol: number, replacement?: string): ModelResult {
   const before = lines[startLine].slice(0, startCol);
   const after = lines[endLine].slice(endCol);
   const inserted = (replacement || "").split("\n");
@@ -245,7 +277,7 @@ function replaceRange(lines, startLine, startCol, endLine, endCol, replacement) 
   };
 }
 
-function deleteBackward(lines, startLine, startCol, endLine, endCol) {
+function deleteBackward(lines: string[], startLine: number, startCol: number, endLine: number, endCol: number): ModelResult | null {
   if (startLine !== endLine || startCol !== endCol) {
     return replaceRange(lines, startLine, startCol, endLine, endCol, "");
   }
@@ -259,7 +291,7 @@ function deleteBackward(lines, startLine, startCol, endLine, endCol) {
   return null;
 }
 
-function deleteForward(lines, startLine, startCol, endLine, endCol) {
+function deleteForward(lines: string[], startLine: number, startCol: number, endLine: number, endCol: number): ModelResult | null {
   if (startLine !== endLine || startCol !== endCol) {
     return replaceRange(lines, startLine, startCol, endLine, endCol, "");
   }
@@ -272,7 +304,7 @@ function deleteForward(lines, startLine, startCol, endLine, endCol) {
   return null;
 }
 
-function deleteWordBackward(lines, line, col) {
+function deleteWordBackward(lines: string[], line: number, col: number): ModelResult | null {
   if (col === 0) return deleteBackward(lines, line, col, line, col);
   const text = lines[line].slice(0, col);
   // Strip trailing whitespace, then trailing non-whitespace.
@@ -283,7 +315,7 @@ function deleteWordBackward(lines, line, col) {
 }
 
 /* ── Component ─────────────────────────────────────────────────────── */
-export const MarkdownEditor = forwardRef(function MarkdownEditor({
+export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(function MarkdownEditor({
   initialContent = "",
   readOnly = false,
   onContentChange,
@@ -301,8 +333,8 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   // side.
   attachmentTiles = null,
 }, ref) {
-  const rootRef = useRef(null);
-  const [lines, setLines] = useState(() => (initialContent || "").split("\n"));
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [lines, setLines] = useState<string[]>(() => (initialContent || "").split("\n"));
   const [caretVersion, setCaretVersion] = useState(0);
   // Synchronous mirror of `lines`. setLines is async — between
   // rapid keystrokes (or delete-then-type) React hasn't re-rendered
@@ -312,10 +344,12 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   // neighbour instead of replacing it, resurrecting the deleted
   // char. linesRef.current is the truth; applyModel updates it
   // synchronously before scheduling the React state update.
-  const linesRef = useRef(null);
-  if (linesRef.current === null) linesRef.current = lines;
-  const caretRef = useRef({ line: 0, col: 0, endLine: 0, endCol: 0 });
-  const prevLinesRef = useRef(null);
+  // Synchronous mirror of `lines`, always non-null (initialized from the
+  // same initial split as the state) so input handlers never read stale
+  // closure content. See the long-form note that follows.
+  const linesRef = useRef<string[]>((initialContent || "").split("\n"));
+  const caretRef = useRef<Caret>({ line: 0, col: 0, endLine: 0, endCol: 0 });
+  const prevLinesRef = useRef<string[] | null>(null);
   const prevCaretLineRef = useRef(-1);
   const composingRef = useRef(false);
   // Timestamp of the most recent user-initiated deletion. Used by
@@ -325,14 +359,14 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   // compositionend path would otherwise do, and force a re-render
   // from linesRef (our model). See onCompositionEnd for full detail.
   const lastDeleteAtRef = useRef(0);
-  const historyRef = useRef({ past: [], future: [], lastTs: 0 });
+  const historyRef = useRef<History>({ past: [], future: [], lastTs: 0 });
   const pendingFocusRef = useRef(autoFocus);
-  const lineDivsRef = useRef([]);
+  const lineDivsRef = useRef<Element[]>([]);
   // Slash command menu — open when the user types "/" at the start
   // of an otherwise-empty line. State holds the line index it
   // opened on + the anchor rect so the portal can position the
   // popover near the caret. null when closed.
-  const [slashMenu, setSlashMenu] = useState(null);
+  const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   // rAF handle for a pending slash-trigger open. Tracked so a fast
   // typist who lands a char between "/" and the rAF can cancel the
   // pending open (so the menu doesn't pop on a line that's no
@@ -437,7 +471,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     if (!lines.some(l => l && l.includes("attachment:"))) return;
     const root = rootRef.current;
     if (!root) return;
-    const imgs = root.querySelectorAll("img[data-mde-attachment]");
+    const imgs = root.querySelectorAll<HTMLImageElement>("img[data-mde-attachment]");
     imgs.forEach((img) => {
       const id = img.dataset.mdeAttachment;
       const tile = id ? attachmentTiles[id] : null;
@@ -487,7 +521,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         placeCaret(lineDivsRef.current[c.line] || lineDivsRef.current[0], c.col);
       }
     },
-    applyInlineFormat(kind) {
+    applyInlineFormat(kind: string) {
       if (readOnly) return;
       const c = caretRef.current;
       if (c.line !== c.endLine) return; // cross-line wrap not supported v1
@@ -503,7 +537,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       setLines(nextLines);
       haptic.tap();
     },
-    applyBlockFormat(block) {
+    applyBlockFormat(block: string) {
       if (readOnly) return;
       const c = caretRef.current;
       const curLines = linesRef.current;
@@ -517,7 +551,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       setLines(nextLines);
       haptic.tap();
     },
-    setContent(content) {
+    setContent(content?: string) {
       const nextLines = (content || "").split("\n");
       linesRef.current = nextLines;
       setLines(nextLines);
@@ -529,7 +563,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
        without going through the DOM input event pipeline. Pushes
        history first so the user can undo the whole dictation pass
        chunk by chunk. */
-    insertText(text) {
+    insertText(text?: string) {
       if (readOnly || !text) return;
       const c = caretRef.current;
       const curLines = linesRef.current;
@@ -552,7 +586,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     },
     /* Jump to a range in the document: select it and scroll into
        view. Used by find-in-note and the outline drawer. */
-    jumpTo({ line, startCol, endCol }) {
+    jumpTo({ line, startCol, endCol }: { line?: number | null; startCol?: number | null; endCol?: number | null }) {
       const curLines = linesRef.current;
       if (line == null || line >= curLines.length) return;
       const targetLine = Math.max(0, Math.min(line, curLines.length - 1));
@@ -583,7 +617,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   }), [readOnly]);
 
   /* ── Event handlers ─────────────────────────────────────────────── */
-  const applyModel = (result, opts = {}) => {
+  const applyModel = (result: ModelResult | null, opts: { skipHistory?: boolean } = {}) => {
     if (!result) return;
     if (!opts.skipHistory) pushHistory(historyRef.current, linesRef.current, caretRef.current);
     caretRef.current = {
@@ -608,7 +642,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   // re-attaches in one cheap DOM op (see useEffect below). Suppress at
   // the source rather than contort the editor's function ordering.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const onBeforeInput = (e) => {
+  const onBeforeInput = (e: InputEvent) => {
     // Attached via a native addEventListener (see useEffect below),
     // NOT via React's onBeforeInput prop. React polyfills
     // onBeforeInput via the legacy DOM3 `textInput` event in some
@@ -681,8 +715,8 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     // case symmetrically.
     const rawSel = currentModelSelection(rootRef.current, lineDivsRef.current);
     if (!rawSel) return;
-    const clampLine = (l) => Math.max(0, Math.min(l, lines.length - 1));
-    const clampCol = (l, col) => Math.max(0, Math.min(col, (lines[l] || "").length));
+    const clampLine = (l: number) => Math.max(0, Math.min(l, lines.length - 1));
+    const clampCol = (l: number, col: number) => Math.max(0, Math.min(col, (lines[l] || "").length));
     const startLine = clampLine(rawSel.startLine);
     const endLine = clampLine(rawSel.endLine);
     const sel = {
@@ -858,7 +892,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       }
     }
   };
-  const handleEnter = (sel) => {
+  const handleEnter = (sel: EditorSelection) => {
     // Read from the ref so rapid Enter-after-edit doesn't operate
     // on stale closure state. Same rationale as onBeforeInput.
     const lines = linesRef.current;
@@ -885,7 +919,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, "\n"));
   };
 
-  const onKeyDown = (e) => {
+  const onKeyDown = (e: React.KeyboardEvent) => {
     if (readOnly) return;
     // Shortcuts
     if (e[MOD]) {
@@ -912,7 +946,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     }
   };
 
-  const applyInline = (kind) => {
+  const applyInline = (kind: string) => {
     const c = caretRef.current;
     if (c.line !== c.endLine) return;
     const curLines = linesRef.current;
@@ -928,7 +962,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     haptic.tap();
   };
 
-  const applyBlockAt = (block) => {
+  const applyBlockAt = (block: string) => {
     const c = caretRef.current;
     const curLines = linesRef.current;
     const line = curLines[c.line] || "";
@@ -942,7 +976,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     haptic.tap();
   };
 
-  const handleTab = (shift) => {
+  const handleTab = (shift: boolean) => {
     const c = caretRef.current;
     const curLines = linesRef.current;
     const line = curLines[c.line] || "";
@@ -976,6 +1010,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     const h = historyRef.current;
     if (!h.past.length) return;
     const snap = h.past.pop();
+    if (!snap) return;
     h.future.push({ lines: linesRef.current, caret: { ...caretRef.current } });
     caretRef.current = { ...snap.caret };
     linesRef.current = snap.lines;
@@ -987,6 +1022,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     const h = historyRef.current;
     if (!h.future.length) return;
     const snap = h.future.pop();
+    if (!snap) return;
     h.past.push({ lines: linesRef.current, caret: { ...caretRef.current } });
     caretRef.current = { ...snap.caret };
     linesRef.current = snap.lines;
@@ -1007,10 +1043,11 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     // counts, so PII never leaves the client even pre-scrubber.
     const breadRoot = rootRef.current;
     if (breadRoot) {
-      const domLens = [];
-      for (const div of breadRoot.children) {
-        if (!div.dataset || div.dataset.line == null) continue;
-        domLens.push(div.textContent.replace(/\u200B/g, "").length);
+      const domLens: number[] = [];
+      for (const div of Array.from(breadRoot.children)) {
+        const el = div as HTMLElement;
+        if (!el.dataset || el.dataset.line == null) continue;
+        domLens.push((el.textContent || "").replace(/\u200B/g, "").length);
       }
       const modelLens = linesRef.current.map(l => (l || "").length);
       addBreadcrumb({
@@ -1056,14 +1093,14 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     const root = rootRef.current;
     if (!root) return;
     // Walk current DOM and rebuild lines from text of each .mde-line.
-    const nextLines = [];
-    for (const div of root.children) {
-      if (!div.dataset || div.dataset.line == null) continue;
+    const nextLines: string[] = [];
+    for (const el of Array.from(root.children) as HTMLElement[]) {
+      if (!el.dataset || el.dataset.line == null) continue;
       // textContent gives raw text from all text nodes — decorator
       // ::before content is not included; data-nocount children (like
       // checkbox buttons) contribute 0 chars because they have no
       // text content.
-      nextLines.push(div.textContent.replace(/\u200B/g, ""));
+      nextLines.push((el.textContent || "").replace(/\u200B/g, ""));
     }
     if (nextLines.length === 0) nextLines.push("");
     // Infer caret from current selection
@@ -1083,7 +1120,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     setLines(nextLines);
   };
 
-  const onPaste = (e) => {
+  const onPaste = (e: React.ClipboardEvent) => {
     if (readOnly) { e.preventDefault(); return; }
     e.preventDefault();
     const text = e.clipboardData?.getData("text/plain") || "";
@@ -1118,15 +1155,15 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, text));
   };
 
-  const onDrop = (e) => { e.preventDefault(); };
+  const onDrop = (e: React.DragEvent) => { e.preventDefault(); };
 
-  const onClick = (e) => {
-    const target = e.target.closest("[data-mde-checkbox]");
+  const onClick = (e: React.MouseEvent) => {
+    const target = (e.target as HTMLElement).closest("[data-mde-checkbox]") as HTMLElement | null;
     if (!target) return;
     e.preventDefault();
     e.stopPropagation();
     if (readOnly) { haptic.warn(); return; }
-    const lineIdx = parseInt(target.dataset.line, 10);
+    const lineIdx = parseInt(target.dataset.line || "", 10);
     if (isNaN(lineIdx)) return;
     const line = lines[lineIdx];
     const { line: nextLine } = toggleTaskOnLine(line);
@@ -1140,7 +1177,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   // the chosen command's block prefix, position the caret after it.
   // The trigger line is always the line stored when the menu opened
   // (not the current caret line — selection may have moved).
-  const handleSlashSelect = useCallback((cmd) => {
+  const handleSlashSelect = useCallback((cmd: SlashCommandLike) => {
     if (!slashMenu) return;
     const lineIdx = slashMenu.line;
     const curLines = linesRef.current;
@@ -1241,14 +1278,14 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
 });
 
 /* ── helpers external to component ─────────────────────────────────── */
-function findLineIdx(container, lineDivs) {
+function findLineIdx(container: Node, lineDivs: Element[]): number | null {
   for (let i = 0; i < lineDivs.length; i++) {
     if (lineDivs[i].contains(container) || lineDivs[i] === container) return i;
   }
   return null;
 }
 
-function currentModelSelection(root, lineDivs) {
+function currentModelSelection(root: HTMLElement | null, lineDivs: Element[]): EditorSelection | null {
   if (!root) return null;
   const sel = document.getSelection();
   if (!sel || !sel.rangeCount) return null;
@@ -1265,7 +1302,7 @@ function currentModelSelection(root, lineDivs) {
   return { startLine: endLine, startCol: endCol, endLine: startLine, endCol: startCol };
 }
 
-function pushHistory(h, lines, caret) {
+function pushHistory(h: History, lines: string[], caret: Caret) {
   const now = Date.now();
   const coalesce = now - h.lastTs < 400 && h.past.length > 0;
   if (!coalesce) {
