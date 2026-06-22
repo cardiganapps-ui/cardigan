@@ -75,6 +75,28 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm test
 
+  # JS ↔ SQL accounting-predicate parity. Protects the Prime Directive:
+  # the in-app/audit JS predicate and the trigger's SQL predicate MUST
+  # agree or users see one balance and the DB stores another. Runs the
+  # real SQL function via the Supabase Management API with synthetic
+  # inputs (no patient data read). The test self-skips when the secrets
+  # are absent (forks / outside PRs), so this job is a no-op there.
+  parity:
+    name: Accounting predicate parity (JS↔SQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:parity
+        env:
+          SUPABASE_PAT: ${{ secrets.SUPABASE_PAT }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
   e2e:
     name: E2E smoke (playwright)
     runs-on: ubuntu-latest
