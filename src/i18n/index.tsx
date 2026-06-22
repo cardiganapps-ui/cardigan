@@ -1,22 +1,41 @@
 import { createContext, useContext, useCallback, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import es from "./es";
 import { getVocab } from "./vocabulary";
 import { DEFAULT_PROFESSION } from "../data/constants";
 import { resolveTemplate, lookupKey } from "./resolve";
 
-const I18nContext = createContext(null);
+/* t resolves to a string for the vast majority of keys, or a string[]
+   for the handful of list-valued keys (help-tip bullet lists). Typed
+   loosely — the approach mainstream i18n libraries (i18next) take — so
+   call sites can use the result as ReactNode, an aria-label string, or
+   an array without a cast at every call. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TFunction = (key: string, vars?: Record<string, unknown>) => any;
 
-export function I18nProvider({ children }) {
+interface I18nValue {
+  lang: string;
+  switchLang: () => void;
+  t: TFunction;
+  strings: typeof es;
+  profession: string;
+  setProfession: (profession: string) => void;
+  vocab: ReturnType<typeof getVocab>;
+}
+
+const I18nContext = createContext<I18nValue | null>(null);
+
+export function I18nProvider({ children }: { children?: ReactNode }) {
   const strings = es;
   // The active profession lives inside I18nProvider so t()'s vocab
   // substitution stays purely a function of (key, vars, profession).
   // AppShell calls setProfession() once useUserProfile resolves; until
   // then we render with the psychologist defaults — matching every
   // existing user post-backfill.
-  const [profession, setProfession] = useState(DEFAULT_PROFESSION);
+  const [profession, setProfession] = useState<string>(DEFAULT_PROFESSION);
   const vocab = useMemo(() => getVocab(profession), [profession]);
 
-  const t = useCallback((key, vars) => {
+  const t = useCallback((key: string, vars?: Record<string, unknown>) => {
     const val = lookupKey(strings, key);
     // Arrays (e.g. help-tip bullet lists) get each string element resolved
     // too — otherwise vocab placeholders like {client.s} render raw.

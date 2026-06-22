@@ -35,7 +35,7 @@ export function BottomTabs() {
       <nav
         className="bottom-tabs"
         aria-label={t("nav.menu")}
-        style={{ "--active-i": activeIndex, "--tab-count": tabs.length }}>
+        style={{ "--active-i": activeIndex, "--tab-count": tabs.length } as React.CSSProperties}>
         {/* Sliding "active" capsule. One absolutely-positioned element
             that translates between tab slots with --ease-spring —
             visibly smoother than the previous per-tab class swap,

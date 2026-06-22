@@ -1,4 +1,4 @@
-export function LogoIcon({ size = 24, color = "currentColor" }: { size?: number; color?: string }) {
+export function LogoIcon({ size = 24, color = "currentColor" }: { size?: number | string; color?: string }) {
   return (
     /* `flexShrink: 0` keeps the SVG at its requested size when it
        lands inside a flex container that's running short on cross-

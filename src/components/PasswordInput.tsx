@@ -16,17 +16,17 @@ import { useT } from "../i18n/index";
    The wrapper preserves the .input class on the inner <input> so
    layouts that target .input (form rows in AuthScreen / Settings) keep
    working without churn. */
-export function PasswordInput({ value, onChange, className = "input", style, ...props }) {
+export function PasswordInput({ value, onChange, className = "input", style, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & { onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void }) {
   const { t } = useT();
   const [revealed, setRevealed] = useState(false);
   const [peeking, setPeeking] = useState(false);
-  const peekTimer = useRef(null);
+  const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
     if (peekTimer.current) clearTimeout(peekTimer.current);
   }, []);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange?.(e);
     if (revealed) return;
     setPeeking(true);

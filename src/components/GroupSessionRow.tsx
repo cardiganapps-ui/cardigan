@@ -9,7 +9,16 @@ import { SESSION_STATUS } from "../data/constants";
    avatar with the GROUP initials, the group name (with the group glyph),
    time window, and member count. Reuses the .session-row shell +
    rail-{status} accent. Tap opens the occurrence sheet. */
-export function GroupSessionRow({ occ, onClick }) {
+export function GroupSessionRow({ occ, onClick }: {
+  occ: {
+    group?: { name?: string; colorIdx?: number | null; color_idx?: number | null } | null;
+    status?: string;
+    time?: string;
+    duration?: number;
+    count?: number;
+  };
+  onClick?: () => void;
+}) {
   const { t } = useT();
   const g = occ.group;
   const colorIdx = g?.colorIdx ?? g?.color_idx ?? 0;
