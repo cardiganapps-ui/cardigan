@@ -12,7 +12,7 @@ import { useT } from "../i18n/index";
    user's mental model aligned with the feature they're trying to
    open. */
 
-export function CardiConsentGate({ onAccept, onCancel, submitting, error }) {
+export function CardiConsentGate({ onAccept, onCancel, submitting, error }: { onAccept?: () => void; onCancel?: () => void; submitting?: boolean; error?: React.ReactNode }) {
   const { t, strings } = useT();
   const seesItems = strings?.cardi?.consent?.seesItems || [];
   const doesNotSeeItems = strings?.cardi?.consent?.doesNotSeeItems || [];
@@ -136,7 +136,7 @@ export function CardiConsentGate({ onAccept, onCancel, submitting, error }) {
   );
 }
 
-function ConsentSection({ label, items, tone }) {
+function ConsentSection({ label, items = [], tone }: { label?: React.ReactNode; items?: string[]; tone?: string }) {
   const isPositive = tone === "positive";
   const Icon = isPositive ? IconCheck : IconX;
   const accent = isPositive ? "var(--teal-dark)" : "var(--red)";

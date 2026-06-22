@@ -50,17 +50,23 @@ const PEEK_RATIO = 0.4;         // drag past this fraction of trayWidth → sett
 const COMMIT_RATIO = 0.7;       // drag past this fraction of viewport → fire primary
 const OWNER_ID = "swipe-reveal-row";
 
-export function SwipeRevealRow({ actions = [], children, onClick, disabled = false, className = "" }) {
+export function SwipeRevealRow({ actions = [], children, onClick, disabled = false, className = "" }: {
+  actions?: Array<{ key?: string; icon?: React.ReactNode; label?: string; color?: string; onAction?: () => void }>;
+  children?: React.ReactNode;
+  onClick?: (e: React.MouseEvent) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
   const id = useId();
   const [dx, setDx] = useState(0);
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
 
-  const startRef = useRef(null);
+  const startRef = useRef<{ x: number; y: number; baseDx: number } | null>(null);
   const engagedRef = useRef(false);
   const armedRef = useRef(false);
   const openRef = useRef(false);
-  const wrapRef = useRef(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const trayWidth = Math.max(actions.length, 1) * ACTION_WIDTH;
   const peekPx = trayWidth * PEEK_RATIO;
@@ -78,9 +84,9 @@ export function SwipeRevealRow({ actions = [], children, onClick, disabled = fal
   // avoid the listener fan-out cost across many idle rows.
   useEffect(() => {
     if (!open) return;
-    const onDocPointer = (e) => {
+    const onDocPointer = (e: Event) => {
       if (!wrapRef.current) return;
-      if (wrapRef.current.contains(e.target)) return;
+      if (wrapRef.current.contains(e.target as Node)) return;
       closeRow();
     };
     document.addEventListener("touchstart", onDocPointer, { passive: true });
@@ -98,8 +104,8 @@ export function SwipeRevealRow({ actions = [], children, onClick, disabled = fal
   // would still fire its setTimeout, calling setOpen/setDx on a
   // dead component and running the action against stale closure
   // values.
-  const commitTimerRef = useRef(null);
-  const actionTimerRef = useRef(null);
+  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelPendingTimers = useCallback(() => {
     if (commitTimerRef.current) { clearTimeout(commitTimerRef.current); commitTimerRef.current = null; }
     if (actionTimerRef.current) { clearTimeout(actionTimerRef.current); actionTimerRef.current = null; }
@@ -113,7 +119,7 @@ export function SwipeRevealRow({ actions = [], children, onClick, disabled = fal
     releaseReveal(id);
   }, [id, cancelPendingTimers]);
 
-  const onTouchStart = useCallback((e) => {
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
     if (disabled) return;
     const t = e.touches[0];
     if (!t) return;
@@ -126,7 +132,7 @@ export function SwipeRevealRow({ actions = [], children, onClick, disabled = fal
     engagedRef.current = false;
   }, [disabled, trayWidth]);
 
-  const onTouchMove = useCallback((e) => {
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
     if (!startRef.current) return;
     const t = e.touches[0];
     if (!t) return;
@@ -222,7 +228,7 @@ export function SwipeRevealRow({ actions = [], children, onClick, disabled = fal
   // When closed, forward the foreground click to caller's onClick.
   // When open, swallow the click and close the row instead — exactly
   // matches iOS Mail: tapping the partially-uncovered row closes it.
-  const safeClick = useCallback((e) => {
+  const safeClick = useCallback((e: React.MouseEvent) => {
     if (open || dx !== 0) {
       e.stopPropagation();
       e.preventDefault();
