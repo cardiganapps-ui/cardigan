@@ -23,9 +23,9 @@
 
 const CANONICAL = "https://cardigan.mx";
 
-function isAllowedOrigin(originHeader) {
+function isAllowedOrigin(originHeader: unknown): boolean {
   if (!originHeader || typeof originHeader !== "string") return false;
-  let url;
+  let url: URL;
   try {
     url = new URL(originHeader);
   } catch {
@@ -58,7 +58,10 @@ function isAllowedOrigin(originHeader) {
    Pass `req` and we'll inspect Origin first, then Referer, then fall
    back to the canonical domain. The returned string never has a
    trailing slash — callers append paths directly. */
-export function safeAppOrigin(req) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
+export function safeAppOrigin(req: Row): string {
   const candidates = [req?.headers?.origin, req?.headers?.referer];
   for (const c of candidates) {
     if (!c) continue;

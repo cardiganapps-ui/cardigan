@@ -144,8 +144,11 @@ export default defineConfig([
   {
     /* api/ files are Vercel serverless functions — Node runtime, not
        browser. Expose Node globals (process, Buffer, etc.) so legitimate
-       uses of process.env aren't flagged as no-undef. */
-    files: ['api/**/*.js'],
+       uses of process.env aren't flagged as no-undef. Covers both the
+       remaining .js functions and the migrated .ts ones — the base
+       **\/*.{ts,tsx} block sets browser globals, so api .ts needs this
+       override to restore Node globals. */
+    files: ['api/**/*.{js,ts}'],
     languageOptions: {
       globals: { ...globals.node },
     },
