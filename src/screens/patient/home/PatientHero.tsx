@@ -3,6 +3,9 @@ import { shortDateToISO } from "../../../utils/dates";
 import { IconCalendar } from "../../../components/Icons";
 import { formatCountdown } from "./constants";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session / journey / profession-theme rows
+type Row = any;
+
 /* ── PatientHero ──────────────────────────────────────────────────
    Profession-tinted gradient banner replacing the old plain "Hola,
    Diego" text greeting. Picks its accent from PROFESSION_THEME so
@@ -10,7 +13,16 @@ import { formatCountdown } from "./constants";
    space" depending on the linked professional. Hides the journey
    line in the first-experience case (no sessions yet) and replaces
    it with a warm welcome message. */
-export function PatientHero({ firstName, theme, nextSession, journey, therapistName, professionWord, isFirstExperience, t }) {
+export function PatientHero({ firstName, theme, nextSession, journey, therapistName, professionWord, isFirstExperience, t }: {
+  firstName?: string;
+  theme: Row;
+  nextSession?: Row;
+  journey?: Row;
+  therapistName: string;
+  professionWord: string;
+  isFirstExperience?: boolean;
+  t: (key: string, vars?: Record<string, unknown>) => string;
+}) {
   const countdown = useMemo(() => {
     if (!nextSession) return null;
     const iso = shortDateToISO(nextSession.date);

@@ -3,15 +3,21 @@ import { shortDateToISO, formatShortDateWithYear } from "../../../utils/dates";
 import { IconUsers } from "../../../components/Icons";
 import { MODALITY_LABEL, MODALITY_ICON, MODALITY_COLOR, STATUS_LABEL, dayName } from "./constants";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session / profession-theme rows
+type Row = any;
+
 /* ── SessionTimeline ──────────────────────────────────────────────
    Vertical timeline rendering of past sessions. Each row has a
    status dot connected by a soft dashed line; the dot color matches
    the session status (green completed, amber charged, red cancelled,
    teal scheduled). Reads as a journey, not a flat log. */
-export const SessionTimeline = memo(function SessionTimeline({ sessions, theme }) {
+export const SessionTimeline = memo(function SessionTimeline({ sessions, theme }: {
+  sessions: Row[];
+  theme: Row;
+}) {
   return (
     <div style={{ position: "relative" }}>
-      {sessions.map((session, idx) => {
+      {sessions.map((session: Row, idx: number) => {
         const isLast = idx === sessions.length - 1;
         // Auto-complete display rule mirrors the therapist app: a past
         // `scheduled` row reads as "Asistió" since the slot has passed
@@ -25,8 +31,8 @@ export const SessionTimeline = memo(function SessionTimeline({ sessions, theme }
         const iso = shortDateToISO(session.date);
         const dateLabel = formatShortDateWithYear(new Date(iso + "T12:00:00"));
         const day = dayName(iso);
-        const ModalityIcon = MODALITY_ICON[session.modality] || IconUsers;
-        const modalityColor = MODALITY_COLOR[session.modality] || "var(--charcoal-xl)";
+        const ModalityIcon = MODALITY_ICON[session.modality as keyof typeof MODALITY_ICON] || IconUsers;
+        const modalityColor = MODALITY_COLOR[session.modality as keyof typeof MODALITY_COLOR] || "var(--charcoal-xl)";
         return (
           <div
             key={session.id}
@@ -38,7 +44,7 @@ export const SessionTimeline = memo(function SessionTimeline({ sessions, theme }
               alignItems: "flex-start",
               paddingBottom: isLast ? 0 : 14,
               position: "relative",
-            }}
+            } as React.CSSProperties}
           >
             {/* Dot + connector column */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: 2 }}>
@@ -83,7 +89,7 @@ export const SessionTimeline = memo(function SessionTimeline({ sessions, theme }
                 {session.modality && (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: modalityColor, fontWeight: 700 }}>
                     <ModalityIcon size={11} />
-                    {MODALITY_LABEL[session.modality] || ""}
+                    {MODALITY_LABEL[session.modality as keyof typeof MODALITY_LABEL] || ""}
                   </span>
                 )}
                 <span
@@ -96,7 +102,7 @@ export const SessionTimeline = memo(function SessionTimeline({ sessions, theme }
                     marginLeft: "auto",
                   }}
                 >
-                  {STATUS_LABEL[displayStatus] || ""}
+                  {STATUS_LABEL[displayStatus as keyof typeof STATUS_LABEL] || ""}
                 </span>
               </div>
             </div>

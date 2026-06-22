@@ -1,11 +1,18 @@
 import { memo } from "react";
 import { IconSparkle } from "../../../components/Icons";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed journey-stats / profession-theme rows
+type Row = any;
+
 /* ── JourneyTile ──────────────────────────────────────────────────
    "Camino contigo" relationship-stat tile. Displays a soft sparkle
    icon, the start-date copy, the months/weeks-with phrase, and a
    counter of completed sessions. Reads as warmth, not numbers. */
-export const JourneyTile = memo(function JourneyTile({ journey, therapistName, theme }) {
+export const JourneyTile = memo(function JourneyTile({ journey, therapistName, theme }: {
+  journey: Row;
+  therapistName: string;
+  theme: Row;
+}) {
   return (
     <div
       style={{

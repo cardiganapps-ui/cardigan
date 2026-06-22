@@ -3,16 +3,23 @@ import { shortDateToISO, formatShortDateWithYear } from "../../../utils/dates";
 import { IconUsers } from "../../../components/Icons";
 import { MODALITY_LABEL, MODALITY_ICON, MODALITY_COLOR, dayName, formatCountdown } from "./constants";
 
-export function NextSessionCard({ session, onRequestCancel, onRequestReschedule }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session rows
+type Row = any;
+
+export function NextSessionCard({ session, onRequestCancel, onRequestReschedule }: {
+  session: Row;
+  onRequestCancel?: (s: Row) => void;
+  onRequestReschedule?: (s: Row) => void;
+}) {
   const { t } = useT();
   const iso = shortDateToISO(session.date);
   const dateLabel = formatShortDateWithYear(new Date(iso + "T12:00:00"));
   const day = dayName(iso);
   const time = session.time || "—";
-  const modality = MODALITY_LABEL[session.modality] || MODALITY_LABEL.presencial;
+  const modality = MODALITY_LABEL[session.modality as keyof typeof MODALITY_LABEL] || MODALITY_LABEL.presencial;
   const duration = session.duration ? `${session.duration} min` : null;
-  const ModalityIcon = MODALITY_ICON[session.modality] || IconUsers;
-  const modalityColor = MODALITY_COLOR[session.modality] || "var(--teal-dark)";
+  const ModalityIcon = MODALITY_ICON[session.modality as keyof typeof MODALITY_ICON] || IconUsers;
+  const modalityColor = MODALITY_COLOR[session.modality as keyof typeof MODALITY_COLOR] || "var(--teal-dark)";
   const countdown = formatCountdown(iso, session.time);
 
   return (

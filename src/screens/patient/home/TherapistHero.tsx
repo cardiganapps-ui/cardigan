@@ -3,11 +3,21 @@ import { IconMail, IconPhone } from "../../../components/Icons";
 import { isNative } from "../../../lib/platform";
 import { launchUrl } from "../../../lib/nativeBrowser";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed profession-theme row
+type Row = any;
+
 /* ── TherapistHero ────────────────────────────────────────────────
    Lifted-up version of the contact card that used to sit at the
    bottom of the page. Avatar + name + profession + contact pills.
    Pulls profession color so the avatar circle echoes the hero tint. */
-export const TherapistHero = memo(function TherapistHero({ theme, name, professionWord, email, phone, t }) {
+export const TherapistHero = memo(function TherapistHero({ theme, name, professionWord, email, phone, t }: {
+  theme: Row;
+  name?: string;
+  professionWord: string;
+  email?: string;
+  phone?: string;
+  t: (key: string, vars?: Record<string, unknown>) => string;
+}) {
   const initials = (name || "")
     .split(/\s+/)
     .filter(Boolean)
@@ -17,7 +27,7 @@ export const TherapistHero = memo(function TherapistHero({ theme, name, professi
     .toUpperCase() || "—";
 
   return (
-    <div className="card list-entry-stagger" style={{ padding: 16, background: "var(--white)", "--stagger-i": 3 }}>
+    <div className="card list-entry-stagger" style={{ padding: 16, background: "var(--white)", "--stagger-i": 3 } as React.CSSProperties}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: email || phone ? 14 : 0 }}>
         <div
           style={{

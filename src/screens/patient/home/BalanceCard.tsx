@@ -4,7 +4,17 @@ import { formatMXN } from "../../../utils/format";
 import { IconDollar, IconCheck, IconCreditCard } from "../../../components/Icons";
 import { AnimatedNumber } from "../../../components/AnimatedNumber";
 
-export const BalanceCard = memo(function BalanceCard({ amountDue, credit, rate, paid, onPay, theme }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed profession-theme row
+type Row = any;
+
+export const BalanceCard = memo(function BalanceCard({ amountDue, credit, rate, paid, onPay, theme }: {
+  amountDue: number;
+  credit: number;
+  rate?: number;
+  paid?: number;
+  onPay?: () => void;
+  theme?: Row;
+}) {
   const { t } = useT();
   // Three states. Mutually exclusive by construction (the
   // accounting helper only ever sets one of amountDue / credit
@@ -46,7 +56,7 @@ export const BalanceCard = memo(function BalanceCard({ amountDue, credit, rate, 
   const paidPct = totalConsumed > 0 ? Math.round(((paid || 0) / totalConsumed) * 100) : 0;
 
   return (
-    <div className="card list-entry-stagger" style={{ padding: 16, background: "var(--white)", "--stagger-i": 4 }}>
+    <div className="card list-entry-stagger" style={{ padding: 16, background: "var(--white)", "--stagger-i": 4 } as React.CSSProperties}>
       <div
         style={{
           fontSize: 11,
@@ -128,7 +138,7 @@ export const BalanceCard = memo(function BalanceCard({ amountDue, credit, rate, 
           </div>
         </div>
       )}
-      {rate > 0 && (
+      {(rate ?? 0) > 0 && (
         <div
           style={{
             marginTop: 12,
@@ -138,7 +148,7 @@ export const BalanceCard = memo(function BalanceCard({ amountDue, credit, rate, 
             color: "var(--charcoal-xl)",
           }}
         >
-          {t("patientHome.ratePerSession", { rate: formatMXN(rate) })}
+          {t("patientHome.ratePerSession", { rate: formatMXN(rate as number) })}
         </div>
       )}
       {onPay && (

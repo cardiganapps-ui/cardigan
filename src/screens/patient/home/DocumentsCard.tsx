@@ -3,6 +3,9 @@ import { useT } from "../../../i18n/index";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { IconUpload, IconDocument, IconTrash } from "../../../components/Icons";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed document rows
+type Row = any;
+
 /* ── DocumentsCard ────────────────────────────────────────────────
    Patient's "Mis archivos" surface. Shows up to 3 most-recent
    uploads with an upload button; "Ver todos" expands when there
@@ -12,13 +15,19 @@ import { IconUpload, IconDocument, IconTrash } from "../../../components/Icons";
    the parent (PatientHome) only has to wire callbacks. The
    <input type="file"> is hidden behind the button — all major
    browsers accept the synthetic click on a hidden input. */
-export function DocumentsCard({ documents, uploading, onUpload, onOpen, onRemove }) {
+export function DocumentsCard({ documents, uploading, onUpload, onOpen, onRemove }: {
+  documents: Row[];
+  uploading?: boolean;
+  onUpload: (file: File) => void;
+  onOpen: (doc: Row) => void;
+  onRemove: (doc: Row) => void;
+}) {
   const { t } = useT();
-  const fileRef = useRef(null);
-  const [confirmRemove, setConfirmRemove] = useState(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [confirmRemove, setConfirmRemove] = useState<Row | null>(null);
   const [showAll, setShowAll] = useState(false);
 
-  const handlePick = (e) => {
+  const handlePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     // Reset the input so the SAME file can be picked twice in a row
     // (common iOS pattern when a user re-shoots a photo and tries
@@ -84,7 +93,7 @@ export function DocumentsCard({ documents, uploading, onUpload, onOpen, onRemove
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-          {visible.map((doc) => (
+          {visible.map((doc: Row) => (
             <DocumentRow
               key={doc.id}
               document={doc}
@@ -138,7 +147,11 @@ export function DocumentsCard({ documents, uploading, onUpload, onOpen, onRemove
   );
 }
 
-function DocumentRow({ document: doc, onOpen, onRemove }) {
+function DocumentRow({ document: doc, onOpen, onRemove }: {
+  document: Row;
+  onOpen: () => void;
+  onRemove: () => void;
+}) {
   const { t } = useT();
   const sizeLabel = formatBytes(doc.file_size);
   return (
@@ -233,7 +246,7 @@ function DocumentRow({ document: doc, onOpen, onRemove }) {
   );
 }
 
-function formatBytes(bytes) {
+function formatBytes(bytes: number | null | undefined) {
   // Render "—" for missing data (null/undefined/non-numeric); show
   // "0 B" for actual empty files (rare but valid — empty .txt etc).
   if (bytes == null || !Number.isFinite(Number(bytes)) || bytes < 0) return "—";
