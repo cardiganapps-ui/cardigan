@@ -5,6 +5,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { IconX, IconTrash } from "../Icons";
 import { haptic } from "../../utils/haptics";
+import type { TileState } from "./useAttachmentSrc";
 
 /* ── AttachmentStrip ──────────────────────────────────────────────
    Phase 5 of the Notes premium roadmap. Horizontal strip of image
@@ -21,7 +22,14 @@ import { haptic } from "../../utils/haptics";
    Each tile shows the thumb + a delete chip; tapping the thumb
    opens a fullscreen lightbox for inspection. */
 
-export function AttachmentStrip({ tiles, retryTile, rows }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed attachment rows
+type Row = any;
+
+export function AttachmentStrip({ tiles, retryTile, rows }: {
+  tiles?: Record<string, TileState>;
+  retryTile: (id: string) => void;
+  rows?: Row[];
+}) {
   const { t } = useT();
   const { deleteNoteAttachment, showToast } = useCardigan();
 
@@ -31,9 +39,9 @@ export function AttachmentStrip({ tiles, retryTile, rows }) {
   const safeRows = rows || [];
   const safeTiles = tiles || {};
 
-  const [lightboxId, setLightboxId] = useState(null);
+  const [lightboxId, setLightboxId] = useState<string | null>(null);
 
-  const handleDelete = useCallback(async (id) => {
+  const handleDelete = useCallback(async (id: string) => {
     haptic.warn();
     const ok = await deleteNoteAttachment(id);
     if (!ok) showToast?.(t("notes.attachments.deleteFailed"), "error");
@@ -53,7 +61,7 @@ export function AttachmentStrip({ tiles, retryTile, rows }) {
   // another surface, note swap). Adjust state during render rather
   // than in an effect — matches the pattern used elsewhere for
   // derived-state corrections (see CommandPalette + Notes.jsx).
-  if (lightboxId && !safeRows.some(r => r.id === lightboxId)) {
+  if (lightboxId && !safeRows.some((r: Row) => r.id === lightboxId)) {
     setLightboxId(null);
   }
 
@@ -62,7 +70,7 @@ export function AttachmentStrip({ tiles, retryTile, rows }) {
   return (
     <>
       <div className="mde-attach-strip" aria-label={t("notes.attachments.label")}>
-        {safeRows.map(row => {
+        {safeRows.map((row: Row) => {
           const tile = safeTiles[row.id];
           return (
             <div key={row.id} className="mde-attach-tile">
@@ -106,7 +114,7 @@ export function AttachmentStrip({ tiles, retryTile, rows }) {
         if (!tile?.url) return null;
         return (
           <div
-            ref={lightboxRef}
+            ref={lightboxRef as React.RefObject<HTMLDivElement>}
             className="mde-attach-lightbox"
             onClick={closeLightbox}
             role="dialog"

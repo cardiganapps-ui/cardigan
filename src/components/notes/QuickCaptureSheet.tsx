@@ -24,13 +24,20 @@ import { haptic } from "../../utils/haptics";
    44×44 hit targets, sheet pattern with focus trap + escape +
    swipe-to-close. */
 
-export function QuickCaptureSheet({ open, onClose, onSaved }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- created note row is loosely typed
+type Row = any;
+
+export function QuickCaptureSheet({ open, onClose, onSaved }: {
+  open?: boolean;
+  onClose?: () => void;
+  onSaved?: (note: Row, opts: { openInEditor: boolean }) => void;
+}) {
   const { t } = useT();
   const { createNote, showToast } = useCardigan();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);
-  const textareaRef = useRef(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // The component unmounts on close (see `if (!open) return null` below),
   // so useState defaults reset the form on every reopen automatically.
@@ -53,19 +60,19 @@ export function QuickCaptureSheet({ open, onClose, onSaved }) {
 
   const isEmpty = !title.trim() && !content.trim();
 
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   const safeClose = busy ? null : onClose;
   const safeAnimatedClose = busy ? null : animatedClose;
   useEscape(open ? safeAnimatedClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: open });
-  const setPanel = useCallback((el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose || (() => {}), { isOpen: !!open });
+  const setPanel = useCallback((el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   }, [panelRef, scrollRef, setPanelEl]);
 
-  const save = useCallback(async ({ openInEditor } = {}) => {
+  const save = useCallback(async ({ openInEditor }: { openInEditor?: boolean } = {}) => {
     if (busy) return;
     if (isEmpty && !openInEditor) {
       // Closing on empty is just a dismiss — no row written.
@@ -98,7 +105,7 @@ export function QuickCaptureSheet({ open, onClose, onSaved }) {
 
   // ⌘/Ctrl+Enter saves. Most therapists are typing on phone, but on
   // desktop tablet/laptop they expect this shortcut.
-  const handleKeyDown = useCallback((e) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
       save();

@@ -6,6 +6,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { IconX, IconCheck } from "../Icons";
 import { haptic } from "../../utils/haptics";
+import type { TileState } from "./useAttachmentSrc";
 
 /* ── CoverPickerSheet ─────────────────────────────────────────────
    Phase E.2 of the Notes premium polish roadmap. Lets the user
@@ -20,23 +21,35 @@ import { haptic } from "../../utils/haptics";
    escape, swipe-to-close. Tapping a thumb is the implicit confirm;
    no separate "Save" button. */
 
-export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, currentCoverId, onPick, onClear, onRequestAttach }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed attachment rows
+type Row = any;
+
+export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, currentCoverId, onPick, onClear, onRequestAttach }: {
+  open?: boolean;
+  onClose?: () => void;
+  attachmentRows?: Row[];
+  tiles?: Record<string, TileState>;
+  currentCoverId?: string | null;
+  onPick?: (id: string) => void | Promise<unknown>;
+  onClear?: () => void | Promise<unknown>;
+  onRequestAttach?: () => void;
+}) {
   const { t } = useT();
   const [busy, setBusy] = useState(false);
 
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   const safeClose = busy ? null : onClose;
   const safeAnimatedClose = busy ? null : animatedClose;
   useEscape(open ? safeAnimatedClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: open });
-  const setPanel = useCallback((el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose || (() => {}), { isOpen: !!open });
+  const setPanel = useCallback((el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   }, [panelRef, scrollRef, setPanelEl]);
 
-  const pick = useCallback(async (attachmentId) => {
+  const pick = useCallback(async (attachmentId: string) => {
     if (busy) return;
     setBusy(true);
     try {
@@ -119,7 +132,7 @@ export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, current
                 gap: 10,
                 marginBottom: 14,
               }}>
-                {attachmentRows.map(row => {
+                {(attachmentRows || []).map((row: Row) => {
                   const tile = tiles?.[row.id];
                   const isCurrent = row.id === currentCoverId;
                   return (

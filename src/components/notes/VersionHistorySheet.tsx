@@ -35,18 +35,38 @@ import { haptic } from "../../utils/haptics";
    content is captured as a fresh version too. Net result: every
    restore is itself reversible from the history. */
 
-export function VersionHistorySheet({ open, onClose, note, onRestore }) {
+interface Version {
+  id: string;
+  version_no: number;
+  created_at?: string;
+  title_ciphertext?: string;
+  content_ciphertext?: string;
+  encrypted?: boolean;
+  title?: string;
+  content?: string;
+  _decryptFailed?: boolean;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed note row
+type Row = any;
+
+export function VersionHistorySheet({ open, onClose, note, onRestore }: {
+  open?: boolean;
+  onClose?: () => void;
+  note?: Row;
+  onRestore?: (snapshot: { title?: string; content?: string }) => void | Promise<unknown>;
+}) {
   const { t } = useT();
   const { noteCrypto, showToast, setHideFab } = useCardigan();
-  const [versions, setVersions] = useState([]);
+  const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedId, setExpandedId] = useState(null);
-  const [restoringId, setRestoringId] = useState(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   // Pending-confirm version. Restore is a destructive-ish action
   // (overwrites the live note) so we route it through ConfirmDialog
   // — a mis-tap on the row's "Restaurar" button shouldn't silently
   // replace the user's current state.
-  const [pendingRestore, setPendingRestore] = useState(null);
+  const [pendingRestore, setPendingRestore] = useState<Version | null>(null);
   // Whether the current vault state allows a safe restore. An
   // encrypted note + locked vault would flip the row to plaintext;
   // we surface a disabled state with explainer copy instead.
@@ -73,7 +93,7 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
         setLoading(false);
         return;
       }
-      const decrypted = await Promise.all((data || []).map(async (v) => {
+      const decrypted: Version[] = await Promise.all((data || []).map(async (v: Row): Promise<Version> => {
         if (!v.encrypted) {
           return { ...v, title: v.title_ciphertext || "", content: v.content_ciphertext || "" };
         }
@@ -102,17 +122,17 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
     return () => setHideFab?.(false);
   }, [open, setHideFab]);
 
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = useCallback((el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: !!open });
+  const setPanel = useCallback((el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   }, [panelRef, scrollRef, setPanelEl]);
 
-  const restore = useCallback(async (version) => {
+  const restore = useCallback(async (version: Version) => {
     if (restoringId) return;
     setRestoringId(version.id);
     try {
@@ -125,7 +145,7 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
       animatedClose();
     } catch (err) {
       haptic.warn();
-      const key = err?.message === "locked"
+      const key = (err as Error)?.message === "locked"
         ? "notes.historyLockedToRestore"
         : "notes.saveFailed";
       showToast?.(t(key), "error");
@@ -135,7 +155,7 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
     }
   }, [restoringId, onRestore, animatedClose, showToast, t]);
 
-  const requestRestore = useCallback((version) => {
+  const requestRestore = useCallback((version: Version) => {
     if (restoreBlockedByLock) {
       showToast?.(t("notes.historyLockedToRestore"), "error");
       return;
@@ -305,7 +325,7 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
    so a 20-line unchanged block reads as one rectangle, not 20
    thin slivers. Teal-mist for added, red-bg for removed (with
    strikethrough), transparent for unchanged. */
-function VersionDiff({ before, after, hasPrev }) {
+function VersionDiff({ before, after, hasPrev }: { before?: string; after?: string; hasPrev?: boolean }) {
   const { t } = useT();
   const chunks = useMemo(() => {
     if (!hasPrev) {

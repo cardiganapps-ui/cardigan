@@ -40,7 +40,7 @@ import { useCardigan } from "../../context/CardiganContext";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration bridge for loosely-typed rows
 type Row = any;
 
-interface TileState { url?: string; failed?: true }
+export interface TileState { url?: string; failed?: true }
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
