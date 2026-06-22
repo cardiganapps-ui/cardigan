@@ -44,6 +44,7 @@ function makeBuilder(table: string, state: State): Row {
     is(col: Row, val: Row) { ops.push({ op: "is", col, val }); return builder; },
     not(col: Row, op: Row, val: Row) { ops.push({ op: "not", col, matcher: op, val }); return builder; },
     order(col: Row, opts: Row) { ops.push({ op: "order", col, opts }); return builder; },
+    range(from: Row, to: Row) { ops.push({ op: "range", from, to }); return builder; },
     limit(n: Row) { ops.push({ op: "limit", n }); return builder; },
     then(resolve: Row, reject: Row) {
       state.calls.push({ table, ops: [...ops] });
