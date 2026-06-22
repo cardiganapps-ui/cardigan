@@ -13,7 +13,7 @@ import { useSheetExit } from "../hooks/useSheetExit";
    drawer menu, so this component just owns the sheet + submission
    state. Open/close is driven by props from App.jsx. */
 
-export function BugReportSheet({ open, onClose, user, screen }) {
+export function BugReportSheet({ open, onClose, user, screen }: { open?: boolean; onClose?: () => void; user?: { id?: string; email?: string } | null; screen?: string }) {
   const { t } = useT();
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
@@ -22,7 +22,7 @@ export function BugReportSheet({ open, onClose, user, screen }) {
   // Tracked so the post-success auto-close timer can be cancelled if
   // the user closes the sheet manually within the 1200ms window.
   // Without this, the timer fires onClose() against a closed sheet.
-  const successTimerRef = useRef(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
   }, []);
@@ -36,12 +36,12 @@ export function BugReportSheet({ open, onClose, user, screen }) {
     setDescription("");
     onClose?.();
   };
-  const { exiting, animatedClose } = useSheetExit(open, rawClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, rawClose);
   useEscape(open ? animatedClose : null);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(rawClose, { isOpen: open });
-  const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(rawClose, { isOpen: !!open });
+  const setPanel = (el: HTMLElement | null) => { scrollRef.current = el; setPanelEl(el); };
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
     setSubmitError("");
@@ -65,7 +65,7 @@ export function BugReportSheet({ open, onClose, user, screen }) {
     } catch (err) {
       // Without this, an insert failure (RLS, network, schema mismatch)
       // would leave the button stuck on "Guardando…" forever.
-      setSubmitError(err?.message || t("bugReport.submitFailed"));
+      setSubmitError((err as Error)?.message || t("bugReport.submitFailed"));
     } finally {
       setSending(false);
     }

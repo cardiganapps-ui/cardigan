@@ -7,7 +7,7 @@ import { useT } from "../i18n/index";
    job is purely instructional: explain what to do, and get out of the
    way. */
 
-function IconShare({ size = 16 }) {
+function IconShare({ size = 16 }: { size?: number }) {
   // Minimal iOS share-sheet glyph (up arrow out of a tray).
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -20,7 +20,7 @@ function IconShare({ size = 16 }) {
   );
 }
 
-function IconPlusSquare({ size = 16 }) {
+function IconPlusSquare({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -30,7 +30,7 @@ function IconPlusSquare({ size = 16 }) {
   );
 }
 
-function IconHome({ size = 16 }) {
+function IconHome({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

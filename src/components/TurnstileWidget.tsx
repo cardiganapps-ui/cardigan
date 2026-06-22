@@ -1,6 +1,13 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef } from "react";
 import { isNative } from "../lib/platform";
 
+interface TurnstileApi {
+  render: (el: HTMLElement, opts: Record<string, unknown>) => unknown;
+  reset?: (id: unknown) => void;
+  remove?: (id: unknown) => void;
+}
+const tsWindow = () => window as unknown as { turnstile?: TurnstileApi };
+
 /* ── Cloudflare Turnstile widget ──
    Renders a Turnstile challenge that produces a single-use token,
    then hands it to the parent via `onToken`. The token is consumed by
@@ -20,26 +27,26 @@ import { isNative } from "../lib/platform";
 
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
 
-let scriptPromise = null;
+let scriptPromise: Promise<TurnstileApi | undefined> | null = null;
 function loadScript() {
   if (scriptPromise) return scriptPromise;
   scriptPromise = new Promise((resolve, reject) => {
     if (typeof window === "undefined") { reject(new Error("no window")); return; }
-    if (window.turnstile) { resolve(window.turnstile); return; }
+    if (tsWindow().turnstile) { resolve(tsWindow().turnstile); return; }
     const s = document.createElement("script");
     s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
     s.async = true;
     s.defer = true;
-    s.onload = () => resolve(window.turnstile);
+    s.onload = () => resolve(tsWindow().turnstile);
     s.onerror = () => reject(new Error("Turnstile script failed to load"));
     document.head.appendChild(s);
   });
   return scriptPromise;
 }
 
-export const TurnstileWidget = forwardRef(function TurnstileWidget({ onToken, theme = "auto" }, ref) {
-  const containerRef = useRef(null);
-  const widgetIdRef = useRef(null);
+export const TurnstileWidget = forwardRef<{ reset: () => void }, { onToken?: (token: string | null) => void; theme?: string }>(function TurnstileWidget({ onToken, theme = "auto" }, ref) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<unknown>(null);
   const onTokenRef = useRef(onToken);
   const containerId = useId();
   // Keep the latest onToken in a ref so the script-load effect doesn't
@@ -54,8 +61,8 @@ export const TurnstileWidget = forwardRef(function TurnstileWidget({ onToken, th
   useImperativeHandle(ref, () => ({
     reset() {
       const wid = widgetIdRef.current;
-      if (wid != null && window.turnstile?.reset) {
-        try { window.turnstile.reset(wid); } catch { /* widget already gone */ }
+      if (wid != null && tsWindow().turnstile?.reset) {
+        try { tsWindow().turnstile!.reset!(wid); } catch { /* widget already gone */ }
       }
     },
   }), []);
@@ -64,7 +71,7 @@ export const TurnstileWidget = forwardRef(function TurnstileWidget({ onToken, th
     if (!SITE_KEY) return; // env not wired — render nothing
     let cancelled = false;
     loadScript().then((turnstile) => {
-      if (cancelled || !containerRef.current) return;
+      if (cancelled || !containerRef.current || !turnstile) return;
       widgetIdRef.current = turnstile.render(containerRef.current, {
         sitekey: SITE_KEY,
         theme,
@@ -75,7 +82,7 @@ export const TurnstileWidget = forwardRef(function TurnstileWidget({ onToken, th
         // removes the iframe from the layout (so iOS Safari's keyboard
         // doesn't have to reflow around it on every focus change).
         appearance: "interaction-only",
-        callback: (token) => onTokenRef.current?.(token),
+        callback: (token: string) => onTokenRef.current?.(token),
         "error-callback": () => onTokenRef.current?.(null),
         "expired-callback": () => onTokenRef.current?.(null),
         // "timeout-callback" — Turnstile auto-refreshes on timeout, but
@@ -90,8 +97,8 @@ export const TurnstileWidget = forwardRef(function TurnstileWidget({ onToken, th
     return () => {
       cancelled = true;
       const wid = widgetIdRef.current;
-      if (wid != null && window.turnstile?.remove) {
-        try { window.turnstile.remove(wid); } catch { /* widget already gone */ }
+      if (wid != null && tsWindow().turnstile?.remove) {
+        try { tsWindow().turnstile!.remove!(wid); } catch { /* widget already gone */ }
       }
       widgetIdRef.current = null;
     };

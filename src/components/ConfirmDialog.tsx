@@ -53,9 +53,22 @@ export function ConfirmDialog({
   onCancel,
   dismissOnOverlay = true,
   typeToConfirm,
+}: {
+  open?: boolean;
+  title?: React.ReactNode;
+  body?: React.ReactNode;
+  bodyExtra?: React.ReactNode;
+  confirmLabel?: React.ReactNode;
+  cancelLabel?: React.ReactNode;
+  destructive?: boolean;
+  busy?: boolean;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+  dismissOnOverlay?: boolean;
+  typeToConfirm?: { value?: string; label?: React.ReactNode; placeholder?: string };
 }) {
   const { t } = useT();
-  const containerRef = useFocusTrap(open);
+  const containerRef = useFocusTrap(!!open);
   useEscape(open && !busy ? onCancel : null);
   const [typed, setTyped] = useState("");
   // Exit animation — keep the dialog mounted briefly after `open` flips
@@ -135,7 +148,7 @@ export function ConfirmDialog({
       onClick={handleOverlayClick}
       role="presentation">
       <div
-        ref={containerRef}
+        ref={containerRef as React.RefObject<HTMLDivElement>}
         className={`confirm-dialog ${destructive ? "confirm-dialog--destructive" : ""}${leaving ? " is-leaving" : ""}`}
         role="alertdialog"
         aria-modal="true"

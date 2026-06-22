@@ -7,9 +7,9 @@ import { useT } from "../i18n/index";
    live even before one fires. Renders a real upcoming session when
    one exists; falls back to a muted "Ejemplo" badge. */
 
-function pad(n) { return String(n).padStart(2, "0"); }
+function pad(n: number) { return String(n).padStart(2, "0"); }
 
-export function NotificationPreview({ upcoming, reminderMinutes }) {
+export function NotificationPreview({ upcoming, reminderMinutes }: { upcoming?: { patient?: string; time?: string } | null; reminderMinutes?: number }) {
   const { t } = useT();
   const isExample = !upcoming;
   const now = new Date();
