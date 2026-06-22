@@ -11,7 +11,10 @@ import { useCardigan } from "../../context/CardiganContext";
    077) newest-first, lets the user read (tap → mark read + jump to the
    linked screen), delete individual rows, mark all read, and clear all.
    Read-only modes (admin view-as-user, demo) hide the mutating actions. */
-export function InboxSheet({ onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed notification rows
+type Row = any;
+
+export function InboxSheet({ onClose }: { onClose: () => void }) {
   const { t } = useT();
   const {
     inbox = [],
@@ -29,13 +32,13 @@ export function InboxSheet({ onClose }) {
   useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   };
 
-  const rel = (iso) => {
+  const rel = (iso: string) => {
     const diff = new Date().getTime() - new Date(iso).getTime();
     const m = Math.floor(diff / 60000);
     if (m < 1) return t("inbox.justNow");
@@ -45,7 +48,7 @@ export function InboxSheet({ onClose }) {
     return t("inbox.daysAgo", { count: Math.floor(h / 24) });
   };
 
-  const open = (n) => {
+  const open = (n: Row) => {
     if (!readOnly && !n.read) markNotificationRead(n.id);
     const hash = (n.url || "").split("#")[1];
     animatedClose();
@@ -108,7 +111,7 @@ export function InboxSheet({ onClose }) {
               <div className="empty-state-body">{t("inbox.emptyBody")}</div>
             </div>
           ) : (
-            inbox.map((n) => (
+            inbox.map((n: Row) => (
               <div
                 key={n.id}
                 className="btn-tap"

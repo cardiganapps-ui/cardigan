@@ -6,13 +6,13 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { CalendarLinkPanel } from "../CalendarLinkPanel";
 
-export function CalendarLinkSheet({ onClose, readOnly = false }) {
+export function CalendarLinkSheet({ onClose, readOnly = false }: { onClose: () => void; readOnly?: boolean }) {
   const { t } = useT();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);

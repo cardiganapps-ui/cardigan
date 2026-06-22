@@ -24,7 +24,14 @@ const STATUS_OPTS = [
 /* One group occurrence: per-member attendance toggles (each wired to the
    ordinary updateSessionStatus on that member's session row) + a whole-group
    "Cancelar toda la sesión" action with sin-cargo / con-cargo choice. */
-export function GroupOccurrenceSheet({ group, occurrence, onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed group/session rows
+type Row = any;
+
+export function GroupOccurrenceSheet({ group, occurrence, onClose }: {
+  group: Row;
+  occurrence: { date?: string; time?: string };
+  onClose: () => void;
+}) {
   const { t } = useT();
   const { upcomingSessions, patients, updateSessionStatus, cancelGroupOccurrence, mutating } = useCardigan();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
@@ -32,25 +39,25 @@ export function GroupOccurrenceSheet({ group, occurrence, onClose }) {
   useLayer("group-occurrence", animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
 
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [reason, setReason] = useState("");
 
   // Live attendee rows for this (group, date, time) — read from the
   // enriched session list so status edits reflect immediately.
-  const attendees = upcomingSessions.filter(s =>
+  const attendees = upcomingSessions.filter((s: Row) =>
     s.group_id === group.id && s.date === occurrence.date && s.time === occurrence.time);
-  const patientsById = new Map(patients.map(p => [p.id, p]));
+  const patientsById = new Map<string, Row>(patients.map((p: Row): [string, Row] => [p.id, p]));
 
   // `attendees` come from the enriched session list, where a past
   // still-scheduled row is auto-displayed as "completed" (_autoCompleted).
   // Those DB rows are genuinely still 'scheduled' and cancellable, so the
   // whole-group cancel must offer for them too — cancelGroupOccurrence
   // filters the RAW 'scheduled' rows in the hook regardless.
-  const anyScheduled = attendees.some(a => a.status === SESSION_STATUS.SCHEDULED || a._autoCompleted);
+  const anyScheduled = attendees.some((a: Row) => a.status === SESSION_STATUS.SCHEDULED || a._autoCompleted);
 
-  const doGroupCancel = async (status) => {
+  const doGroupCancel = async (status: string) => {
     await cancelGroupOccurrence(group.id, occurrence.date, occurrence.time, { status, reason: reason.trim() || null });
     animatedClose();
   };
@@ -70,7 +77,7 @@ export function GroupOccurrenceSheet({ group, occurrence, onClose }) {
 
           <div className="section-sub" style={{ marginBottom:8, textTransform:"uppercase", letterSpacing:"0.06em" }}>{t("groups.attendance")}</div>
           <div className="card" style={{ marginBottom:18 }}>
-            {attendees.map((s) => {
+            {attendees.map((s: Row) => {
               const p = patientsById.get(s.patient_id);
               const idx = p?.colorIdx ?? 0;
               return (

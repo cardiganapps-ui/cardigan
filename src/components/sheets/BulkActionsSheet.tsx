@@ -10,16 +10,24 @@ import { useLayer } from "../../hooks/useLayer";
    spacious action list (icon-in-tinted-circle + label) instead of a cramped
    bottom slab, so it scales and reads on-brand. Each row applies the action
    to the whole selection and closes. */
-export function BulkActionsSheet({ count, busy, onClose, onComplete, onCancelNoCharge, onCancelCharge, onDelete }) {
+export function BulkActionsSheet({ count, busy, onClose, onComplete, onCancelNoCharge, onCancelCharge, onDelete }: {
+  count?: number;
+  busy?: boolean;
+  onClose: () => void;
+  onComplete?: () => void | Promise<unknown>;
+  onCancelNoCharge?: () => void | Promise<unknown>;
+  onCancelCharge?: () => void | Promise<unknown>;
+  onDelete?: () => void | Promise<unknown>;
+}) {
   const { t } = useT();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(busy ? () => {} : animatedClose);
   useLayer("bulk-actions", animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(busy ? () => {} : onClose);
-  const setPanel = (el) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
 
-  const run = (fn) => async () => { await fn?.(); animatedClose(); };
+  const run = (fn?: () => void | Promise<unknown>) => async () => { await fn?.(); animatedClose(); };
 
   const actions = [
     { key: "complete", label: t("agenda.bulkComplete"),       Icon: IconCheck,  tint: "var(--green-bg)", color: "var(--green)",       onClick: run(onComplete) },

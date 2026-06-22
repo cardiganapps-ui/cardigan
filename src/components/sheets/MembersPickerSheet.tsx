@@ -13,7 +13,14 @@ import { getClientColor } from "../../data/seedData";
 /* Multi-select existing active patients to add to a group. Already-active
    members are excluded from the list. "Agregar" batches addMembers, which
    backfills future occurrences for the new members. */
-export function MembersPickerSheet({ groupId, existingPatientIds, onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient rows
+type Row = any;
+
+export function MembersPickerSheet({ groupId, existingPatientIds, onClose }: {
+  groupId?: string;
+  existingPatientIds?: string[];
+  onClose: () => void;
+}) {
   const { t } = useT();
   const { patients, addMembers, mutating } = useCardigan();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
@@ -21,17 +28,17 @@ export function MembersPickerSheet({ groupId, existingPatientIds, onClose }) {
   useLayer("members-picker", animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
 
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(() => new Set());
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const existing = useMemo(() => new Set(existingPatientIds || []), [existingPatientIds]);
 
   const candidates = patients
-    .filter(p => p.status === "active" && !existing.has(p.id))
-    .filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+    .filter((p: Row) => p.status === "active" && !existing.has(p.id))
+    .filter((p: Row) => p.name.toLowerCase().includes(search.toLowerCase()));
 
-  const toggle = (id) => setSelected(prev => {
+  const toggle = (id: string) => setSelected(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
@@ -61,7 +68,7 @@ export function MembersPickerSheet({ groupId, existingPatientIds, onClose }) {
             <div className="input-help" style={{ padding:"12px 0" }}>{t("patients.noResults")}</div>
           ) : (
             <div className="card" style={{ maxHeight:"50lvh", overflowY:"auto" }}>
-              {candidates.map((p, i) => {
+              {candidates.map((p: Row, i: number) => {
                 const on = selected.has(p.id);
                 return (
                   <button key={p.id} type="button" className="row-item btn-tap" onClick={() => toggle(p.id)}

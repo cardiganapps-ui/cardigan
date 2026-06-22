@@ -22,7 +22,10 @@ const FREQ_OPTS = [
    future scheduled occurrences are regenerated at the new slot/rate; past
    rows are untouched (financial history). Mirrors the patient schedule
    change flow. */
-export function GroupScheduleSheet({ group, onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed group row
+type Row = any;
+
+export function GroupScheduleSheet({ group, onClose }: { group: Row; onClose: () => void }) {
   const { t } = useT();
   const { profession, applyGroupScheduleChange, mutating } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
@@ -31,7 +34,7 @@ export function GroupScheduleSheet({ group, onClose }) {
   useLayer("group-schedule", animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(mutating ? () => {} : onClose);
-  const setPanel = (el) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
 
   const [day, setDay] = useState(group.day || "Sábado");
   const [time, setTime] = useState(group.time || "10:00");
@@ -41,7 +44,7 @@ export function GroupScheduleSheet({ group, onClose }) {
   const [rate, setRate] = useState(group.rate == null ? "" : String(group.rate));
   const [effectiveDate, setEffectiveDate] = useState(todayISO());
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const ok = await applyGroupScheduleChange(group.id, {
       day, time, duration: Number(duration) || 60, modality, frequency,
