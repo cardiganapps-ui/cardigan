@@ -719,12 +719,20 @@ end $$;
 create policy "Users insert own bug reports" on bug_reports for insert with check (auth.uid() is not null);
 create policy "Users read own bug reports" on bug_reports for select using (auth.uid() = user_id);
 
--- Admin read-only access (can view all users' data)
-create or replace function is_admin() returns boolean as $$
+-- Admin read-only access (can view all users' data).
+-- SECURITY DEFINER with a pinned empty search_path (migration 081): the
+-- body only calls fully-qualified auth.jwt(), and pinning removes the
+-- mutable-search_path audit finding. Keep the email in sync with
+-- ADMIN_EMAIL (data/constants.ts).
+create or replace function is_admin() returns boolean
+  language plpgsql
+  security definer
+  set search_path = ''
+as $$
 begin
   return auth.jwt() ->> 'email' = 'gaxioladiego@gmail.com';
 end;
-$$ language plpgsql security definer;
+$$;
 
 create policy "Admin reads all patients" on patients for select using (is_admin());
 create policy "Admin reads all sessions" on sessions for select using (is_admin());
@@ -834,6 +842,14 @@ create table if not exists admin_audit_log (
   ua text,
   created_at timestamptz not null default now()
 );
+-- RLS (migration 045): admin-only SELECT; writes are service-role only
+-- (no INSERT policy). Mirrored here so a fresh bootstrap from schema.sql
+-- doesn't create the audit table with RLS OFF.
+alter table admin_audit_log enable row level security;
+drop policy if exists "Admin reads audit log" on admin_audit_log;
+create policy "Admin reads audit log"
+  on admin_audit_log for select
+  using (is_admin());
 
 -- Revenue overview RPC (migration 046). Single-snapshot JSON for the
 -- /admin/revenue page. is_admin() gated. Mirrors useSubscription.js
