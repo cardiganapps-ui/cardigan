@@ -582,7 +582,7 @@ button:focus-visible, a:focus-visible, select:focus-visible {
   outline: 2px solid var(--teal);
   outline-offset: 2px;
 }
-.input:focus-visible { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(91,155,175,0.2); }
+.input:focus-visible { outline: none; border-color: var(--teal); box-shadow: var(--focus-ring); }
 
 /* ── TOUCH TARGETS ── */
 button, a, select { min-height: 44px; }

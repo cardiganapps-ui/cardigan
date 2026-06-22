@@ -1015,7 +1015,7 @@ button.kpi-card:active {
      150ms feels instant while still being visible. */
   transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
-.input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(91,155,175,0.13); }
+.input:focus { border-color: var(--teal); box-shadow: var(--focus-ring); }
 .input:hover:not(:focus):not(:disabled) { border-color: var(--charcoal-xl); }
 .input::placeholder { color: var(--charcoal-xl); transition: opacity var(--dur-fast) ease; }
 .input:focus::placeholder { opacity: 0.55; }

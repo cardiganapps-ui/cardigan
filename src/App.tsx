@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { isNative, isIOS } from "./lib/platform";
 import { supabase } from "./supabaseClient";
 import { passkeysAvailable, passkeyPlatformAuthenticatorAvailable } from "./config/passkeys";
@@ -2473,9 +2474,16 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
                   data-loading path uses, so a chunk-fetch flash and
                   a data-fetch flash look identical to the user. */}
               <Suspense fallback={<LoadingSkeleton screen={screen} />}>
-                {/* Groups disabled → a deep-link / stale hash to #groups
-                    falls back to Home so the feature is fully inert. */}
-                {screenMap[(screen === "groups" && !groupsEnabled) ? "home" : screen]}
+                {/* Per-screen error boundary — a crash in one screen
+                    (e.g. Notes) renders a contained "Reintentar" card
+                    instead of blanking the whole app via the root
+                    boundary. Keyed on `screen` so navigating away
+                    auto-resets it; the contained retry re-mounts in
+                    place. Groups disabled → a deep-link / stale hash to
+                    #groups falls back to Home so the feature is inert. */}
+                <ErrorBoundary inline name={`screen:${screen}`} key={screen}>
+                  {screenMap[(screen === "groups" && !groupsEnabled) ? "home" : screen]}
+                </ErrorBoundary>
               </Suspense>
             </SkeletonCrossfade>
           </div>

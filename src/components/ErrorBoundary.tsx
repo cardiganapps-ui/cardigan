@@ -82,8 +82,23 @@ function clearCorruptCaches() {
   }
 }
 
-export default class ErrorBoundary extends Component<{ children?: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children?: ReactNode }) {
+/* Props:
+   - children: the subtree to guard.
+   - name: a stable label attached to the Sentry event so a per-screen
+     boundary tells us WHICH screen crashed (e.g. "screen:finances").
+   - inline: render a CONTAINED fallback (a card with "Reintentar")
+     instead of the full-viewport one. Used when wrapping a single
+     screen so the app shell (tabs, drawer) stays usable and one
+     screen's crash doesn't blank the whole app. The retry resets the
+     boundary in place rather than reloading. */
+type ErrorBoundaryProps = {
+  children?: ReactNode;
+  name?: string;
+  inline?: boolean;
+};
+
+export default class ErrorBoundary extends Component<ErrorBoundaryProps, { hasError: boolean }> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
@@ -119,7 +134,9 @@ export default class ErrorBoundary extends Component<{ children?: ReactNode }, {
     // main.tsx). If a crash happens during the first ~100ms before
     // init, the event sits in the in-memory queue and flushes the
     // moment the SDK chunk lands.
-    captureException(error, { extra: { componentStack: info?.componentStack } });
+    captureException(error, {
+      extra: { componentStack: info?.componentStack, boundary: this.props.name || "root" },
+    });
     // Clear the SWR cache as a defensive measure for non-chunk
     // crashes too — if cached data is malformed we don't want the
     // user trapped in a reload loop.
@@ -153,8 +170,43 @@ export default class ErrorBoundary extends Component<{ children?: ReactNode }, {
     activateWaitingSWThenReload();
   };
 
+  // In-place recovery for a contained (per-screen) boundary — clears
+  // the error so the guarded subtree re-mounts. Cheaper and less
+  // jarring than a full reload when only one screen failed.
+  handleRetry = () => {
+    this.setState({ hasError: false });
+  };
+
   render() {
     if (!this.state.hasError) return this.props.children;
+
+    // Contained fallback — keeps the surrounding app shell alive.
+    if (this.props.inline) {
+      return (
+        <div role="alert" style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+          textAlign: "center",
+          gap: 12,
+          minHeight: 240,
+        }}>
+          <p style={{ maxWidth: 320, lineHeight: 1.5, margin: 0, color: "var(--charcoal-md, #555)" }}>
+            No se pudo mostrar esta sección. Intenta de nuevo.
+          </p>
+          <button
+            type="button"
+            onClick={this.handleRetry}
+            className="btn btn-primary-teal"
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div role="alert" style={{
         display: "flex",

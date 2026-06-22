@@ -37,6 +37,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { getAuthUser, getServiceClient } from "./_admin.js";
+import { rateLimit } from "./_ratelimit.js";
 import { sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
 import { sendRescheduleRequestEmails } from "./_sessionEmail.js";
 import { withSentry } from "./_sentry.js";
@@ -71,6 +72,21 @@ async function handler(req: Row, res: Row) {
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-patient limiter — each request inserts a row and fans out
+  // two emails + a push. 10 in 5 minutes covers legitimate retries
+  // (correcting a date/time) while capping email/row flooding by a
+  // token holder.
+  const rl = await rateLimit({
+    endpoint: "patient-reschedule-session",
+    bucket: user.id,
+    max: 10,
+    windowSec: 300,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Demasiados intentos. Espera unos minutos." });
+  }
 
   const { session_id, new_date, new_time, note } = req.body || {};
   if (typeof session_id !== "string" || !session_id) {

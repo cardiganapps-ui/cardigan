@@ -24,6 +24,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { getAuthUser } from "./_admin.js";
+import { rateLimit } from "./_ratelimit.js";
 import { withSentry } from "./_sentry.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,6 +43,20 @@ async function handler(req: Row, res: Row) {
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-patient limiter — confirms a document row after an R2
+  // upload. 30 in 60s covers a batch upload while capping row
+  // flooding by a token holder.
+  const rl = await rateLimit({
+    endpoint: "patient-document-confirm",
+    bucket: user.id,
+    max: 30,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Demasiados intentos. Espera un minuto." });
+  }
 
   const { patient_id, file_path, name, file_type, file_size } = req.body || {};
   if (typeof patient_id !== "string" || !patient_id) {

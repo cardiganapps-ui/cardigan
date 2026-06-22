@@ -18,6 +18,7 @@
    linked to a minor in a future iteration). */
 
 import { getAuthUser, getServiceClient } from "./_admin.js";
+import { rateLimit } from "./_ratelimit.js";
 import { withSentry } from "./_sentry.js";
 import { fetchPartiesForRequest } from "./_rescheduleRequest.js";
 import { sendRescheduleWithdrawnEmails } from "./_sessionEmail.js";
@@ -30,6 +31,20 @@ async function handler(req: Row, res: Row) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-patient limiter — withdrawal mutates a request row and may
+  // fan out emails/push. 20 in 5 minutes is generous for legitimate
+  // use while capping abuse.
+  const rl = await rateLimit({
+    endpoint: "patient-withdraw-reschedule",
+    bucket: user.id,
+    max: 20,
+    windowSec: 300,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Demasiados intentos. Espera unos minutos." });
+  }
 
   const { request_id } = req.body || {};
   if (typeof request_id !== "string" || !request_id) {

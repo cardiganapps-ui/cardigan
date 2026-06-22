@@ -371,7 +371,7 @@
 }
 .admin-search-input:focus {
   border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(91,155,175,0.13);
+  box-shadow: var(--focus-ring);
 }
 .admin-filter-pill {
   display: inline-flex;

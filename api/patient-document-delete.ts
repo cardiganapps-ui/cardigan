@@ -27,6 +27,7 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { createClient } from "@supabase/supabase-js";
 import { getR2, BUCKET } from "./_r2.js";
 import { getAuthUser, getServiceClient } from "./_admin.js";
+import { rateLimit } from "./_ratelimit.js";
 import { withSentry } from "./_sentry.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +38,19 @@ async function handler(req: Row, res: Row) {
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-patient limiter — deletes a document row + R2 object. 30 in
+  // 60s covers a cleanup batch while capping abuse by a token holder.
+  const rl = await rateLimit({
+    endpoint: "patient-document-delete",
+    bucket: user.id,
+    max: 30,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Demasiados intentos. Espera un minuto." });
+  }
 
   const body = req.body || {};
 

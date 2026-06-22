@@ -109,7 +109,19 @@ function makeUserClient(sessionRow: Row, error = null) {
 
 function makeServiceClient({ updateResult, pushSubs = [] }: Row) {
   return {
-    from: (table: Row) => ({
+    from: (table: Row) => {
+      if (table === "rate_limits") {
+        // Per-endpoint limiter: count query resolves to 0 hits (under
+        // cap), insert is a no-op.
+        return {
+          select: () => ({
+            eq() { return this; },
+            gte() { return Promise.resolve({ count: 0, error: null }); },
+          }),
+          insert() { return Promise.resolve({ error: null }); },
+        };
+      }
+      return {
       select: () => {
         if (table === "push_subscriptions") {
           return {
@@ -122,7 +134,8 @@ function makeServiceClient({ updateResult, pushSubs = [] }: Row) {
       },
       update: () => makeUpdateBuilder(updateResult),
       delete: () => makeDeleteBuilder(),
-    }),
+      };
+    },
   };
 }
 
@@ -131,6 +144,10 @@ beforeEach(() => {
   getServiceClient.mockReset();
   createClient.mockReset();
   sendPush.mockReset();
+  // Default service client so the per-endpoint rate limiter (runs
+  // right after auth, before validation) always has a working
+  // `rate_limits` branch. DB-path tests override this below.
+  getServiceClient.mockReturnValue(makeServiceClient({}));
 });
 
 describe("POST /api/patient-cancel-session", () => {

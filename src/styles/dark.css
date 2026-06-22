@@ -62,6 +62,9 @@ html[data-theme="dark"] {
   --shadow-lg:   0 8px 28px rgba(0,0,0,0.5);
   --shadow-overlay:  0 16px 48px rgba(0,0,0,0.6);
   --shadow-sheet-up: 0 -10px 40px rgba(0,0,0,0.6);
+  /* Brighter teal + higher alpha so the focus ring stays visible on
+     dark inputs (the light-mode value washed out against #1A1A1A). */
+  --focus-ring: 0 0 0 3px rgba(74,155,176,0.45);
 }
 
 /* ── Buttons: invert primary in dark mode ── */
