@@ -37,6 +37,7 @@ export interface RecSession {
   recurrence_frequency?: string | null;
   session_type?: string | null;
   initials?: string | null;
+  created_at?: string | null;
 }
 export interface AutoExtendArgs {
   patient: RecPatient | null | undefined;
@@ -172,7 +173,17 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
     // function correct under any (defensive) regression where an
     // interview row gets is_recurring=true by mistake.
     if (isInterviewSession(s)) return false;
-    if (shortDateToISO(s.date) < todayISOStr) return false;
+    // Anchor the (yearless) date's year inference on created_at, not today.
+    // With today-anchoring a scheduled row >~6 months old infers to a
+    // FUTURE year, bypasses this past-row guard, and — with ≥2 such rows on
+    // a slot the patient already abandoned — resurrects it as phantom future
+    // sessions (rule #8). created_at sits within the recurrence window of
+    // the true date, so old rows correctly resolve to the past and drop out.
+    // Mirrors the created_at anchor in utils/accounting.ts::sessionEndMoment.
+    // Falls back to today-anchoring when created_at is absent.
+    const createdAnchor = s.created_at ? new Date(s.created_at) : null;
+    const dateAnchor = createdAnchor && !isNaN(createdAnchor.getTime()) ? createdAnchor : undefined;
+    if (shortDateToISO(s.date, dateAnchor) < todayISOStr) return false;
     // is_recurring is the explicit "this row was created as part of
     // a recurring schedule" flag. Manual one-offs from
     // NewSessionSheet set it to false. Historical rows (pre-

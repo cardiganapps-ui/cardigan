@@ -189,6 +189,44 @@ describe("computeAutoExtendRows — accounting safety", () => {
     }
   });
 
+  it("BUG REGRESSION (C1): old abandoned-slot rows that misinfer INTO the extend window don't resurrect", () => {
+    // today = 2026-04-20. The patient abandoned Lunes ~11 months ago (the
+    // rows are genuinely May 2025) and now runs Miércoles. The old Lunes
+    // dates ("4-May"…) are yearless: today-anchored they infer to May 2026
+    // — squarely inside the 15-week extend window — so they sail past the
+    // past-row guard, hit slotCount≥2, and the extender mints phantom
+    // future Lunes sessions (the exact rule-#8 failure, just triggered by
+    // year-misinference rather than a missing filter). created_at carries
+    // the true year (2025), so anchoring the inference on it resolves them
+    // to the past and drops them. Without the recurrence.ts created_at
+    // anchor, `rows` contains Lunes entries and this fails.
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    const oldLunes = ["4-May", "11-May", "18-May", "25-May"].map((dateStr, i) => ({
+      id: `old-${i}`, patient_id: "p1", status: SESSION_STATUS.SCHEDULED,
+      initials: "AN", day: "Lunes", time: "10:00",
+      duration: 60, rate: 700, modality: "presencial",
+      date: dateStr,
+      created_at: "2025-05-01T10:00:00.000Z", // genuinely last year
+    }));
+    const newMiercoles = ["22-Abr", "29-Abr", "6-May"].map((dateStr, i) => ({
+      id: `w-${i}`, patient_id: "p1", status: SESSION_STATUS.SCHEDULED,
+      initials: "AN", day: "Miércoles", time: "15:00",
+      duration: 60, rate: 700, modality: "presencial",
+      date: dateStr,
+      created_at: "2026-04-10T10:00:00.000Z", // genuinely current
+    }));
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [...oldLunes, ...newMiercoles],
+    });
+    // The active Miércoles slot still extends; the abandoned Lunes slot must not.
+    for (const r of rows) {
+      expect(r.day).toBe("Miércoles");
+    }
+    expect(rows.some((r: Row) => r.day === "Lunes")).toBe(false);
+  });
+
   it("BUG REGRESSION: schedule change is honoured even when past rows match the OLD slot only", () => {
     // Same Lunes→Miércoles change but the original test variant —
     // past sessions explicitly marked COMPLETED. This catches the
