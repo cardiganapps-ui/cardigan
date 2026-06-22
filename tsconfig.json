@@ -1,12 +1,12 @@
 {
-  // ── TypeScript migration scaffold (Phase 4) ──
-  // Plain-JS today; migrating in dependency order, leaves first. `allowJs`
-  // lets .ts and .js coexist during the migration; `checkJs:false` means
-  // only files that have actually been converted to .ts/.tsx are
-  // type-checked, so `tsc --noEmit` is a real gate from day one without
-  // boiling the ocean. Vite owns transpilation/emit — this config is
-  // type-checking only (`noEmit`). Tighten by migrating more files, then
-  // eventually flip `allowJs` off once everything is .ts.
+  // ── TypeScript config (frontend / src) ──
+  // The migration is complete: every file under src/ is .ts/.tsx, so
+  // `allowJs` is off — a stray .js under src/ now fails the typecheck
+  // instead of slipping through unchecked. The service worker (src/sw.ts,
+  // WebWorker scope) has its own src/sw-tsconfig.json and is excluded
+  // below; the api/ functions have api/tsconfig.json (Node + NodeNext).
+  // Vite owns transpilation/emit — this config is type-checking only
+  // (`noEmit`).
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -14,8 +14,7 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": true,
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "noEmit": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
