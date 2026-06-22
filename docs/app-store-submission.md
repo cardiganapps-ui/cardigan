@@ -70,7 +70,7 @@ Empieza con 30 días gratis, sin tarjeta. Después, Cardigan Pro está disponibl
 > - **In-App Purchase (3.1.1 / 3.1.3a):** Stripe is gated OFF iOS. `ProUpgradeSheet`
 >   shows no pricing, no subscribe button, no external link on native iOS
 >   (reader-app pattern). ✅
-> - **Sign in with Apple (4.8):** implemented for native iOS (`useAuth.js`). ✅
+> - **Sign in with Apple (4.8):** implemented for native iOS (`useAuth.ts`). ✅
 > - **Account deletion (5.1.1 v):** Ajustes → Zona peligrosa → Eliminar mi cuenta. ✅
 > - **Permission usage strings:** camera + photo library set in Info.plist. ✅
 > - **Admin** is web-only on native; **encryption export flag** is set. ✅
@@ -153,7 +153,7 @@ search history, sensitive demographic data, advertising data.
 > Supabase (DB/auth), Cloudflare R2 (documents), Vercel (hosting + analytics),
 > Resend (transactional email), Sentry (diagnostics), Stripe (payments),
 > Anthropic (the optional "Cardi" assistant + receipt OCR — Pro only),
-> Apple/Google (push delivery). All enumerated in `src/data/privacy.js` §6.
+> Apple/Google (push delivery). All enumerated in `src/data/privacy.ts` §6.
 
 ---
 
@@ -165,7 +165,7 @@ each build skips the export-docs upload. Assessment of whether that's correct:
 - **Transport:** HTTPS/TLS only — exempt.
 - **At rest (opt-in note encryption):** implemented with **standard WebCrypto
   algorithms only** — AES-256-GCM, PBKDF2-SHA256, RSA-OAEP-2048
-  (`src/lib/cryptoNotes.js`). No proprietary crypto.
+  (`src/lib/cryptoNotes.ts`). No proprietary crypto.
 
 Because the app's encryption is limited to **standard algorithms used to
 protect user data**, the `= NO` answer is the commonly-accepted classification
@@ -191,7 +191,7 @@ but keep `= NO` for the App Store answer.
       confirm the responsive layout holds on iPad or set iPhone-only (see "iPad
       readiness" task) to avoid iPad-UI rejections.
 - [ ] **Legal review** — LFPDPPP counsel pass (esp. nutrition/trainer health data
-      per the TODO in `privacy.js`) before public marketing.
+      per the TODO in `privacy.ts`) before public marketing.
 
 ---
 
