@@ -24,17 +24,20 @@ export const QUICK_ACTIONS = [
 ];
 const ACTIONS = QUICK_ACTIONS;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed note row
+type Row = any;
+
 export function QuickActions() {
   const { t } = useT();
   const { patients, upcomingSessions, openRecordPaymentModal, openRecordExpenseModal, createPatient, createPotential, createSession, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro, groupsEnabled } = useCardigan();
   const isPro = !!subscription?.isPro;
   const actions = ACTIONS.filter(a => a.key !== "group" || groupsEnabled !== false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSheet, setActiveSheet] = useState(null);
-  const [quickNote, setQuickNote] = useState(null);
+  const [activeSheet, setActiveSheet] = useState<string | null>(null);
+  const [quickNote, setQuickNote] = useState<Row | null>(null);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
 
-  const handleAction = async (key) => {
+  const handleAction = async (key: string) => {
     setMenuOpen(false);
     // Document upload is Pro-gated. Intercept here so non-Pro users
     // tapping the FAB option get the upgrade prompt instead of the

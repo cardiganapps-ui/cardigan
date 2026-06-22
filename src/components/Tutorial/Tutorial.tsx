@@ -11,7 +11,7 @@ import { TutorialCarousel } from "./TutorialCarousel";
 // dumped straight into a 6-slide tour. "Ahora no" is the cheap escape that
 // marks the tutorial done. Bypassed on Settings replay (reset() goes
 // straight to the running state).
-function TutorialWelcome({ onAccept, onDecline }) {
+function TutorialWelcome({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
   const { t } = useT();
   const trapRef = useFocusTrap(true);
   return (
@@ -20,7 +20,7 @@ function TutorialWelcome({ onAccept, onDecline }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="tut-welcome-title"
-      ref={trapRef}
+      ref={trapRef as React.RefObject<HTMLDivElement>}
     >
       <div className="tut-carousel-card tut-carousel-card--welcome">
         <div className="tut-carousel-hero" aria-hidden="true">
@@ -75,10 +75,10 @@ export function Tutorial() {
 
 // Focus trap lives on a wrapper so the carousel component itself stays a
 // pure presentational pager.
-function CarouselWithTrap({ onSkip, onFinish }) {
+function CarouselWithTrap({ onSkip, onFinish }: { onSkip: () => void; onFinish: () => void }) {
   const trapRef = useFocusTrap(true);
   return (
-    <div ref={trapRef}>
+    <div ref={trapRef as React.RefObject<HTMLDivElement>}>
       <TutorialCarousel onSkip={onSkip} onFinish={onFinish} />
     </div>
   );

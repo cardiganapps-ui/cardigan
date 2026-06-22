@@ -14,7 +14,7 @@ import { TUTORIAL_SLIDES } from "./tutorialSlides";
 
 // ── Hero icon registry ──
 // One soft teal-tinted badge per slide. Adding a slide icon = one case.
-function HeroIcon({ name }) {
+function HeroIcon({ name }: { name?: string }) {
   const size = 30;
   switch (name) {
     case "logo":     return <LogoIcon size={size} color="currentColor" />;
@@ -41,9 +41,9 @@ const prefersReducedMotion = () =>
  * DOM. The component only reads `scrollLeft` to keep the dot pager + button
  * labels in sync.
  */
-export function TutorialCarousel({ onSkip, onFinish }) {
+export function TutorialCarousel({ onSkip, onFinish }: { onSkip: () => void; onFinish: () => void }) {
   const { t } = useT();
-  const trackRef = useRef(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(0);
   const currentRef = useRef(0);
   useEffect(() => { currentRef.current = current; }, [current]);
@@ -69,7 +69,7 @@ export function TutorialCarousel({ onSkip, onFinish }) {
 
   useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
-  const scrollTo = useCallback((idx) => {
+  const scrollTo = useCallback((idx: number) => {
     const el = trackRef.current;
     if (!el) return;
     const clamped = Math.max(0, Math.min(idx, total - 1));
