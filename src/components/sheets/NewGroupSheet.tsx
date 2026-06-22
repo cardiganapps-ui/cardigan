@@ -30,7 +30,10 @@ const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes
       ANY patient can be added (a patient may belong to several groups; the DB
       only forbids the same patient being active twice in the SAME group).
    On submit createGroup fans out the initial window of member sessions. */
-export function NewGroupSheet({ onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient rows
+type Row = any;
+
+export function NewGroupSheet({ onClose }: { onClose: () => void }) {
   const { t } = useT();
   const { profession, patients, createGroup, mutating } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
@@ -38,7 +41,7 @@ export function NewGroupSheet({ onClose }) {
   useEscape(mutating ? () => {} : animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(mutating ? () => {} : onClose);
-  const setPanel = (el) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
 
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
@@ -50,22 +53,22 @@ export function NewGroupSheet({ onClose }) {
   const [modality, setModality] = useState("presencial");
   const [frequency, setFrequency] = useState("weekly");
   const [rate, setRate] = useState("");
-  const [selected, setSelected] = useState(() => new Set());
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("active"); // active | all
   const [err, setErr] = useState("");
 
   // Real patients only (exclude interview-stage potentials/discarded).
-  const eligible = useMemo(() => patients.filter(p => !isPotentialOrDiscarded(p)), [patients]);
+  const eligible = useMemo(() => patients.filter((p: Row) => !isPotentialOrDiscarded(p)), [patients]);
   const listed = useMemo(() => {
     const q = search.trim().toLowerCase();
     return eligible
-      .filter(p => statusFilter === "all" ? true : p.status === PATIENT_STATUS.ACTIVE)
-      .filter(p => !q || p.name.toLowerCase().includes(q) || (p.initials || "").toLowerCase().includes(q))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .filter((p: Row) => statusFilter === "all" ? true : p.status === PATIENT_STATUS.ACTIVE)
+      .filter((p: Row) => !q || p.name.toLowerCase().includes(q) || (p.initials || "").toLowerCase().includes(q))
+      .sort((a: Row, b: Row) => a.name.localeCompare(b.name));
   }, [eligible, search, statusFilter]);
 
-  const toggle = (id) => setSelected(prev => {
+  const toggle = (id: string) => setSelected(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
@@ -77,7 +80,7 @@ export function NewGroupSheet({ onClose }) {
     setStep(2);
   };
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr("");
     // A one-off group still needs a (day, time) slot so the single
@@ -100,7 +103,7 @@ export function NewGroupSheet({ onClose }) {
       const res = await createGroup(payload);
       if (res) animatedClose();
       else setErr("No se pudo crear el grupo. Intenta de nuevo.");
-    } catch (ex) { setErr(ex?.message || "Error"); }
+    } catch (ex) { setErr((ex as Error)?.message || "Error"); }
   };
 
   return (
@@ -213,7 +216,7 @@ export function NewGroupSheet({ onClose }) {
               {listed.length === 0 ? (
                 <div className="input-help" style={{ padding:"16px" }}>{t("patients.noResults")}</div>
               ) : (
-                listed.map((p, i) => {
+                listed.map((p: Row, i: number) => {
                   const on = selected.has(p.id);
                   const ended = p.status !== PATIENT_STATUS.ACTIVE;
                   return (

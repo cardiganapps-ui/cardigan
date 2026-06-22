@@ -30,14 +30,21 @@ import { haptic } from "../../utils/haptics";
    skip dates that already have a session via the existing
    uniq_sessions_patient_date_time guard. */
 
-export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient row
+type Row = any;
+
+export function SetWeeklySlotSheet({ patient, onClose, onSwitched }: {
+  patient?: Row;
+  onClose: () => void;
+  onSwitched?: () => void;
+}) {
   const { t } = useT();
   const { profession, updatePatient, generateRecurringSessions, showSuccess } = useCardigan();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: true });
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -52,7 +59,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
   const [duration, setDuration] = useState("60");
   const [modality, setModality] = useState(modalities[0] || "presencial");
   const [startDate, setStartDate] = useState(todayISO());
-  const [frequency, setFrequency] = useState(DEFAULT_RECURRENCE_FREQUENCY);
+  const [frequency, setFrequency] = useState<string>(DEFAULT_RECURRENCE_FREQUENCY);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -107,7 +114,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
       onSwitched?.();
       animatedClose();
     } catch (ex) {
-      setError(ex?.message || t("scheduling.errors.writeFailed"));
+      setError((ex as Error)?.message || t("scheduling.errors.writeFailed"));
       setSubmitting(false);
     }
   };

@@ -36,7 +36,10 @@ const QUICK_PICKS = [
   { id: "in3mo", days: 90 },
 ];
 
-function isoOffsetDays(days) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session rows
+type Row = any;
+
+function isoOffsetDays(days: number) {
   const d = new Date();
   d.setHours(12, 0, 0, 0);
   d.setDate(d.getDate() + days);
@@ -53,7 +56,11 @@ function isoOffsetDays(days) {
    react-hooks/set-state-in-effect lint). The `open` prop is left in
    the signature for API symmetry with the other sheets, but doesn't
    gate rendering here. */
-export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
+export function QuickScheduleSheet({ patient, onClose, onScheduled }: {
+  patient?: Row;
+  onClose: () => void;
+  onScheduled?: (info: { date: string; time: string }) => void;
+}) {
   const { t } = useT();
   const { upcomingSessions, createSession, profession, showSuccess } = useCardigan();
   // Animated close — see useSheetExit / SessionSheet for the pattern.
@@ -61,7 +68,7 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
   useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: true });
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -73,9 +80,9 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
   const lastSession = useMemo(() => {
     if (!patient?.id) return null;
     const mine = (upcomingSessions || [])
-      .filter((s) => s.patient_id === patient.id)
+      .filter((s: Row) => s.patient_id === patient.id)
       .slice()
-      .sort((a, b) => {
+      .sort((a: Row, b: Row) => {
         // Sort by parsed date desc, then created_at as tiebreaker.
         const aD = parseShortDate(a.date)?.getTime() || 0;
         const bD = parseShortDate(b.date)?.getTime() || 0;
@@ -138,7 +145,7 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
         setSubmitting(false);
       }
     } catch (ex) {
-      setError(ex?.message || t("scheduling.errors.writeFailed"));
+      setError((ex as Error)?.message || t("scheduling.errors.writeFailed"));
       setSubmitting(false);
     }
   };
