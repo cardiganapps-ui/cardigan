@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { IconX, IconSparkle, IconCheck } from "./Icons";
 import { useT } from "../i18n/index";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { haptic } from "../utils/haptics";
 
 /* ── TrialReminderPrompt ──────────────────────────────────────────────
@@ -35,6 +36,7 @@ export default function TrialReminderPrompt({
 }) {
   const { t } = useT();
   const [mounted, setMounted] = useState(false);
+  const panelRef = useFocusTrap(!!open);
 
   useEffect(() => {
     if (!open) {
@@ -78,6 +80,7 @@ export default function TrialReminderPrompt({
       }}
     >
       <div
+        ref={(el) => { panelRef.current = el; }}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--white)",

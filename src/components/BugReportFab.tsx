@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 import { getLogs } from "../utils/logBuffer";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useSheetExit } from "../hooks/useSheetExit";
 
@@ -38,8 +39,9 @@ export function BugReportSheet({ open, onClose, user, screen }: { open?: boolean
   };
   const { exiting, animatedClose } = useSheetExit(!!open, rawClose);
   useEscape(open ? animatedClose : null);
+  const panelRef = useFocusTrap(!!open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(rawClose, { isOpen: !!open });
-  const setPanel = (el: HTMLElement | null) => { scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

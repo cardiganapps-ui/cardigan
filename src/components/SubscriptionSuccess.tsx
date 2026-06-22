@@ -3,6 +3,7 @@ import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 import { IconCheck, IconDocument, IconLock, IconCalendar, IconX } from "./Icons";
 import { useSheetExit } from "../hooks/useSheetExit";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 /* ── SubscriptionSuccess ──────────────────────────────────────────────
    Celebration modal that fires once per user on the very first
@@ -21,6 +22,7 @@ export function SubscriptionSuccess({ open, onClose }: { open?: boolean; onClose
   const { t } = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { exiting, animatedClose } = useSheetExit(!!open, onClose);
+  const panelRef = useFocusTrap(!!open);
 
   // Track the open prop to drive the entrance animation. We update
   // `mounted` in a one-shot rAF on open (so the initial styles paint
@@ -121,6 +123,7 @@ export function SubscriptionSuccess({ open, onClose }: { open?: boolean; onClose
         }}
       />
       <div
+        ref={(el) => { panelRef.current = el; }}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"

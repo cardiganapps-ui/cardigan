@@ -3,6 +3,7 @@ import { IconX, IconSparkle, IconLock, IconCalendar, IconDocument } from "./Icon
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 import { useCardigan } from "../context/CardiganContext";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { isNative, isIOS } from "../lib/platform";
 
 const StripePaymentSheet = lazy(() => import("./StripePaymentSheet"));
@@ -34,6 +35,7 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
   const { t } = useT();
   const { subscription } = useCardigan();
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const panelRef = useFocusTrap(!!open);
 
   // Tracks the entrance animation so the sheet glides in instead of
   // popping. Same pattern as SubscriptionWelcome.
@@ -75,6 +77,7 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
         onClick={() => onClose?.()}
       >
         <div
+          ref={(el) => { panelRef.current = el; }}
           onClick={(e) => e.stopPropagation()}
           style={{
             background: "var(--white)",

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useEscape } from "../../hooks/useEscape";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { isNative, getPlatform } from "../../lib/platform";
 import { haptic } from "../../utils/haptics";
@@ -41,6 +42,7 @@ export function DiagnosticsSheet({ open, onClose, notifications }: {
 
   const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
+  const panelRef = useFocusTrap(!!open);
 
   useEffect(() => {
     if (!open) return;
@@ -175,6 +177,7 @@ export function DiagnosticsSheet({ open, onClose, notifications }: {
   return (
     <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
       <div
+        ref={(el) => { panelRef.current = el; }}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"

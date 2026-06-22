@@ -59,6 +59,7 @@ import { Expando } from "../components/Expando";
 import { PushInstallCard } from "../components/PushInstallCard";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { isClinicalProfession } from "../data/constants";
@@ -288,7 +289,11 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSheet, subscription?.subscribedActive]);
   const { scrollRef: sheetScrollRef, setPanelEl: setSheetPanelEl, panelHandlers: sheetPanelHandlers } = useSheetDrag(closeSheet, { isOpen: !!activeSheet });
-  const setSheetPanel = (el: HTMLDivElement | null) => { sheetScrollRef.current = el; setSheetPanelEl(el); };
+  // All Settings sheets share this one ref + handlers and exactly one
+  // renders at a time (gated on `activeSheet`), so a single focus trap
+  // keyed on `!!activeSheet` covers whichever sheet is mounted.
+  const sheetPanelRef = useFocusTrap(!!activeSheet);
+  const setSheetPanel = (el: HTMLDivElement | null) => { sheetPanelRef.current = el; sheetScrollRef.current = el; setSheetPanelEl(el); };
   const [editName, setEditName] = useState(userName);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");

@@ -4,6 +4,7 @@ import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useSheetExit } from "../hooks/useSheetExit";
 import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
 import { haptic } from "../utils/haptics";
@@ -61,8 +62,11 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }: {
   const { showSuccess, showToast } = useCardigan() || {};
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
+  // Conditionally MOUNTED by the parent — visible for its whole
+  // lifetime, so trap focus while it exists.
+  const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el: HTMLElement | null) => { scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
 
   // Working state. Kind is either "uploaded-file" (new local file,
   // not yet uploaded), "uploaded" (current saved image), "remove"

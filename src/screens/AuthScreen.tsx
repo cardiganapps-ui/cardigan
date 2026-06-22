@@ -9,6 +9,7 @@ import { TurnstileWidget, TURNSTILE_ENABLED } from "../components/TurnstileWidge
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { isNative } from "../lib/platform";
 import { MONETIZATION_ENABLED } from "../config/monetization";
 
@@ -719,7 +720,11 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onPass
   useEscape(showAuth ? () => setShowAuth(false) : null);
   const closeAuth = () => setShowAuth(false);
   const { scrollRef: authScrollRef, setPanelEl: setAuthPanelEl, panelHandlers: authPanelHandlers } = useSheetDrag(closeAuth, { isOpen: showAuth });
-  const setAuthPanel = (el: HTMLDivElement | null) => { authScrollRef.current = el; setAuthPanelEl(el); };
+  // Called unconditionally (before the isNative() early return below) to
+  // satisfy the rules of hooks. Only the web auth sheet wires this ref;
+  // on native the trap stays inert since showAuth gates the web sheet.
+  const authPanelRef = useFocusTrap(showAuth);
+  const setAuthPanel = (el: HTMLDivElement | null) => { authPanelRef.current = el; authScrollRef.current = el; setAuthPanelEl(el); };
 
   const openAuth = (mode: string) => { setAuthMode(mode); setShowAuth(true); };
 

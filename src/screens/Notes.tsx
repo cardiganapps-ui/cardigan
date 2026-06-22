@@ -10,6 +10,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useViewport } from "../hooks/useViewport";
 import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { groupNotesByRecency } from "../utils/noteGrouping";
@@ -79,7 +80,11 @@ export function Notes() {
   useEscape(confirmDeleteProps ? () => setConfirmDeleteProps(false) : (propsNote ? () => setPropsNote(null) : null));
   const closePropsNote = useCallback(() => setPropsNote(null), []);
   const { scrollRef: propsScrollRef, setPanelEl: setPropsPanelEl, panelHandlers: propsPanelHandlers } = useSheetDrag(closePropsNote);
-  const setPropsPanel = (el: HTMLElement | null) => { propsScrollRef.current = el; setPropsPanelEl(el); };
+  const propsPanelRef = useFocusTrap(!!propsNote);
+  const setPropsPanel = (el: HTMLElement | null) => { propsPanelRef.current = el; propsScrollRef.current = el; setPropsPanelEl(el); };
+  // Delete-confirmation modal stacks on top of the props sheet; trap it
+  // separately (it's mounted whenever both flags are set).
+  const confirmDeletePropsRef = useFocusTrap(!!(confirmDeleteProps && propsNote));
   const longPressRef = useRef<ReturnType<typeof setTimeout> | "fired" | null>(null);
 
   const patientsWithNotes = useMemo(() => {
@@ -455,7 +460,7 @@ export function Notes() {
       {/* Delete confirmation modal (long-press sheet) */}
       {confirmDeleteProps && propsNote && (
         <div className="sheet-overlay" onClick={() => setConfirmDeleteProps(false)} style={{ alignItems:"center" }}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
+          <div ref={(el) => { confirmDeletePropsRef.current = el; }} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
             style={{ maxWidth:340, borderRadius:"var(--radius-lg)", margin:"0 20px", animation:"slideUp 0.5s ease" }}>
             <div style={{ padding:"28px 24px 22px", textAlign:"center" }}>
               <div style={{ width:56, height:56, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>

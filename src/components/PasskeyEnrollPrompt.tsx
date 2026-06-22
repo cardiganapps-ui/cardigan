@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { IconX, IconKey } from "./Icons";
 import { useT } from "../i18n/index";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { haptic } from "../utils/haptics";
 
 /* ── PasskeyEnrollPrompt ──────────────────────────────────────────────
@@ -13,6 +14,7 @@ import { haptic } from "../utils/haptics";
 export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismiss }: { open?: boolean; creating?: boolean; onCreate: () => void; onDismiss?: () => void }) {
   const { t } = useT();
   const [mounted, setMounted] = useState(false);
+  const panelRef = useFocusTrap(!!open);
 
   useEffect(() => {
     if (!open) {
@@ -44,6 +46,7 @@ export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismis
       }}
     >
       <div
+        ref={(el) => { panelRef.current = el; }}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--white)",

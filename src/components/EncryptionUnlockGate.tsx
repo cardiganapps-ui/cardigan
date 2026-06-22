@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PasswordInput } from "./PasswordInput";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 /* ── EncryptionUnlockGate ────────────────────────────────────────────
    Blocking modal shown when the user has note encryption enabled but
@@ -17,8 +18,11 @@ export default function EncryptionUnlockGate({ noteCrypto, onSkip }: {
 }) {
   const [passphrase, setPassphrase] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Same condition that gates the modal's mount below.
+  const isLocked = !!noteCrypto && noteCrypto.status === "locked";
+  const panelRef = useFocusTrap(isLocked);
 
-  if (!noteCrypto || noteCrypto.status !== "locked") return null;
+  if (!isLocked) return null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +51,7 @@ export default function EncryptionUnlockGate({ noteCrypto, onSkip }: {
       }}
     >
       <form
+        ref={(el) => { panelRef.current = el; }}
         onSubmit={submit}
         style={{
           background: "var(--white)",

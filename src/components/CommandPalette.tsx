@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { IconSearch, IconX, IconUsers, IconCalendar, IconDollar, IconClipboard, IconDocument, IconHome, IconUserPlus, IconCalendarPlus, IconShield, IconBarChart, IconTrendingUp, IconTag, IconBug, IconActivity } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useViewport } from "../hooks/useViewport";
 import { useT } from "../i18n/index";
 import { fetchAllAccounts } from "../hooks/useCardiganData";
@@ -103,6 +104,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const panelRef = useFocusTrap(!!open);
 
   useEscape(open ? onClose : null);
 
@@ -321,7 +323,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
 
   return (
     <div className="cmdp-overlay" onClick={onClose}>
-      <div className="cmdp-panel" role="dialog" aria-modal="true" aria-label="Command palette" onClick={(e) => e.stopPropagation()}>
+      <div ref={(el) => { panelRef.current = el; }} className="cmdp-panel" role="dialog" aria-modal="true" aria-label="Command palette" onClick={(e) => e.stopPropagation()}>
         <div className="cmdp-search">
           <IconSearch size={16} />
           <input

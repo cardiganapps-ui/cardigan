@@ -9,6 +9,7 @@ import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { todayISO, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
 import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useViewport } from "../hooks/useViewport";
 import { Toggle } from "../components/Toggle";
@@ -193,7 +194,8 @@ export function Patients() {
   const closeSheet = useCallback(() => { setSelected(null); setEditing(false); setConfirmDelete(false); setDeleteConfirmText(""); setOpenContact(false); setOpenDates(false); }, []);
   useEscape(selected ? closeSheet : null);
   const { scrollRef: editScrollRef, setPanelEl: setEditPanelEl, panelHandlers: editPanelHandlers } = useSheetDrag(closeSheet);
-  const setEditPanel = (el: HTMLElement | null) => { editScrollRef.current = el; setEditPanelEl(el); };
+  const editPanelRef = useFocusTrap(!!selected);
+  const setEditPanel = (el: HTMLElement | null) => { editPanelRef.current = el; editScrollRef.current = el; setEditPanelEl(el); };
   const [expediente, setExpediente] = useState<Row | null>(null);
   // When Patients is opened via openExpediente() from another screen
   // (e.g. tapping a patient on Home), remember that origin so closing

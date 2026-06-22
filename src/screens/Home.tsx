@@ -5,6 +5,7 @@ import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass, statusLabel, railClass } from "../utils/sessions";
 import { ActivationChecklist } from "../components/ActivationChecklist";
 import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { SessionSheet } from "../components/SessionSheet";
@@ -205,7 +206,8 @@ export function Home({ setScreen, userName }: HomeProps) {
   const closeSelected = useCallback(() => setSelected(null), [setSelected]);
   useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : tutorBooking ? () => setTutorBooking(null) : editingNote ? () => setEditingNote(null) : null);
   const { scrollRef: selectedScrollRef, setPanelEl: setSelectedPanelEl, panelHandlers: selectedPanelHandlers } = useSheetDrag(closeSelected);
-  const setSelectedPanel = (el: HTMLDivElement | null) => { selectedScrollRef.current = el; setSelectedPanelEl(el); };
+  const selectedPanelRef = useFocusTrap(!!selected);
+  const setSelectedPanel = (el: HTMLDivElement | null) => { selectedPanelRef.current = el; selectedScrollRef.current = el; setSelectedPanelEl(el); };
 
   // Mirrors Notes.jsx so the NoteEditor's handleClose always sees a stable
   // save/delete pair and always reaches its onClose() cleanup — critical in

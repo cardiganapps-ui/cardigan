@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { IconSparkle, IconCheck, IconX } from "./Icons";
 import { useT } from "../i18n/index";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { haptic } from "../utils/haptics";
 
 /* ── SubscriptionWelcome ──────────────────────────────────────────────
@@ -31,6 +32,10 @@ export default function SubscriptionWelcome({
 }) {
   const { t } = useT();
   const [submitting, setSubmitting] = useState(false);
+  // This component is conditionally MOUNTED by the parent (App.jsx only
+  // renders it while the welcome prompt should show), so the modal is
+  // visible for its entire lifetime — trap focus the whole time.
+  const panelRef = useFocusTrap(true);
 
   // Honor reduce-motion: skip the slide-in animation. Mounted-flag
   // pattern matches how Toast and the Tutorial overlay handle entrance.
@@ -77,6 +82,7 @@ export default function SubscriptionWelcome({
       }}
     >
       <div
+        ref={(el) => { panelRef.current = el; }}
         style={{
           background: "var(--white)",
           borderRadius: "var(--radius-lg, 16px)",

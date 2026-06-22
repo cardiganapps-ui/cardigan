@@ -6,6 +6,7 @@ import { DocumentViewer } from "../components/DocumentViewer";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed document/patient/session rows
 type Row = any;
@@ -24,7 +25,8 @@ export function Documents() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const closePending = () => setPendingFiles(null);
   const { scrollRef: pendingScrollRef, setPanelEl: setPendingPanelEl, panelHandlers: pendingPanelHandlers } = useSheetDrag(closePending, { isOpen: !!pendingFiles });
-  const setPendingPanel = (el: HTMLElement | null) => { pendingScrollRef.current = el; setPendingPanelEl(el); };
+  const pendingPanelRef = useFocusTrap(!!pendingFiles);
+  const setPendingPanel = (el: HTMLElement | null) => { pendingPanelRef.current = el; pendingScrollRef.current = el; setPendingPanelEl(el); };
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 

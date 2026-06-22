@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { POLICY_VERSION } from "../data/privacy";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 const LS_KEY = "cardigan.consent.v";
 
@@ -28,6 +29,9 @@ export default function ConsentBanner({ user, onAccepted }: {
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState("");
   const [visible, setVisible] = useState(false);
+  // Blocking consent modal — trap focus while it's shown (same flag
+  // that gates its mount below).
+  const panelRef = useFocusTrap(visible);
 
   useEffect(() => {
     if (!user) { setVisible(false); return; }
@@ -147,6 +151,7 @@ export default function ConsentBanner({ user, onAccepted }: {
       }}
     >
       <div
+        ref={(el) => { panelRef.current = el; }}
         style={{
           background: "var(--white)",
           borderRadius: "var(--radius-lg, 16px)",
