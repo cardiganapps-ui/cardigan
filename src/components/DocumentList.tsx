@@ -17,7 +17,7 @@ export function DocumentList({
   patients?: Array<{ id: string; name?: string; [key: string]: unknown }>;
   onOpen: (doc: { id: string; [key: string]: unknown }) => void;
   onRename: (id: string, name: string) => void | Promise<void>;
-  onTag: (docId: string, sessionId: string | null) => void | Promise<void>;
+  onTag?: (docId: string, sessionId: string | null) => void | Promise<void>;
   onDelete: (id: string) => void | Promise<void>;
   emptyMessage?: React.ReactNode;
   showPatientName?: boolean;
@@ -39,7 +39,7 @@ export function DocumentList({
   };
 
   const handleTag = async (docId: string, sessionId: string | null) => {
-    await onTag(docId, sessionId);
+    await onTag?.(docId, sessionId);
     setTaggingDoc(null);
   };
 

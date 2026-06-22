@@ -7,6 +7,9 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed document/patient/session rows
+type Row = any;
+
 export function Documents() {
   const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, openExpediente, showToast, subscription, requirePro } = useCardigan();
   const isPro = !!subscription?.isPro;
@@ -16,60 +19,60 @@ export function Documents() {
   const [filterPatient, setFilterPatient] = useState("all");
   const [filterType, setFilterType] = useState("all"); // all | image | pdf | doc
   const [uploading, setUploading] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState(null);
-  const [viewingDoc, setViewingDoc] = useState(null);
-  const fileInputRef = useRef(null);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<{ doc: Row; url: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const closePending = () => setPendingFiles(null);
   const { scrollRef: pendingScrollRef, setPanelEl: setPendingPanelEl, panelHandlers: pendingPanelHandlers } = useSheetDrag(closePending, { isOpen: !!pendingFiles });
-  const setPendingPanel = (el) => { pendingScrollRef.current = el; setPendingPanelEl(el); };
+  const setPendingPanel = (el: HTMLElement | null) => { pendingScrollRef.current = el; setPendingPanelEl(el); };
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
   // Patients with documents or active (for upload target)
   const activePatients = useMemo(() =>
-    (patients || []).filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)),
+    (patients || []).filter((p: Row) => p.status === "active").sort((a: Row, b: Row) => a.name.localeCompare(b.name)),
     [patients]
   );
   const patientsWithDocs = useMemo(() => {
-    const ids = new Set((documents || []).map(d => d.patient_id).filter(Boolean));
-    return (patients || []).filter(p => ids.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
+    const ids = new Set((documents || []).map((d: Row) => d.patient_id).filter(Boolean));
+    return (patients || []).filter((p: Row) => ids.has(p.id)).sort((a: Row, b: Row) => a.name.localeCompare(b.name));
   }, [documents, patients]);
 
   // Filter & sort
   const filteredDocs = useMemo(() => {
     // Receipts (kind='receipt') belong to expenses, not the patient
     // Documents screen — surface them only via the Gastos tab.
-    let docs = (documents || []).filter(d => (d.kind || "patient") !== "receipt");
+    let docs = (documents || []).filter((d: Row) => (d.kind || "patient") !== "receipt");
 
     // Search
     if (search.trim()) {
       const q = search.toLowerCase();
-      docs = docs.filter(d => {
-        const p = patients.find(pt => pt.id === d.patient_id);
+      docs = docs.filter((d: Row) => {
+        const p = patients.find((pt: Row) => pt.id === d.patient_id);
         return d.name?.toLowerCase().includes(q) || p?.name?.toLowerCase().includes(q);
       });
     }
 
     // Patient filter
     if (filterPatient === "general") {
-      docs = docs.filter(d => !d.patient_id);
+      docs = docs.filter((d: Row) => !d.patient_id);
     } else if (filterPatient !== "all") {
-      docs = docs.filter(d => d.patient_id === filterPatient);
+      docs = docs.filter((d: Row) => d.patient_id === filterPatient);
     }
 
     // Type filter
-    if (filterType === "image") docs = docs.filter(d => isImageDoc(d));
-    else if (filterType === "pdf") docs = docs.filter(d => isPdfDoc(d));
-    else if (filterType === "doc") docs = docs.filter(d => isWordDoc(d));
+    if (filterType === "image") docs = docs.filter((d: Row) => isImageDoc(d));
+    else if (filterType === "pdf") docs = docs.filter((d: Row) => isPdfDoc(d));
+    else if (filterType === "doc") docs = docs.filter((d: Row) => isWordDoc(d));
 
     // Sort
-    if (sortBy === "name") docs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    else docs.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+    if (sortBy === "name") docs.sort((a: Row, b: Row) => (a.name || "").localeCompare(b.name || ""));
+    else docs.sort((a: Row, b: Row) => (b.created_at || "").localeCompare(a.created_at || ""));
 
     return docs;
   }, [documents, search, filterPatient, filterType, sortBy, patients]);
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
@@ -82,7 +85,7 @@ export function Documents() {
     setPendingFiles(valid);
   };
 
-  const confirmUpload = async (patientId) => {
+  const confirmUpload = async (patientId: string | null) => {
     if (!pendingFiles) return;
     const total = pendingFiles.length;
     setUploading(true);
@@ -115,8 +118,8 @@ export function Documents() {
     }
   };
 
-  const openDocViewer = async (doc) => {
-    let url;
+  const openDocViewer = async (doc: Row) => {
+    let url: string | undefined;
     try {
       url = await getDocumentUrl(doc.file_path);
     } catch {
@@ -139,10 +142,10 @@ export function Documents() {
     {viewingDoc && (
       <DocumentViewer
         doc={viewingDoc.doc} url={viewingDoc.url}
-        patientName={(patients || []).find(pt => pt.id === viewingDoc.doc.patient_id)?.name}
-        linkedSession={viewingDoc.doc.session_id ? (upcomingSessions || []).find(s => s.id === viewingDoc.doc.session_id) : null}
+        patientName={(patients || []).find((pt: Row) => pt.id === viewingDoc.doc.patient_id)?.name}
+        linkedSession={viewingDoc.doc.session_id ? (upcomingSessions || []).find((s: Row) => s.id === viewingDoc.doc.session_id) : null}
         onClose={() => setViewingDoc(null)}
-        onPatientClick={(() => { const p = (patients || []).find(pt => pt.id === viewingDoc.doc.patient_id); return p ? () => { setViewingDoc(null); openExpediente(p); } : undefined; })()}
+        onPatientClick={(() => { const p = (patients || []).find((pt: Row) => pt.id === viewingDoc.doc.patient_id); return p ? () => { setViewingDoc(null); openExpediente(p); } : undefined; })()}
       />
     )}
     <div className="page" style={{ paddingTop:16, paddingLeft:16, paddingRight:16 }}>
@@ -195,7 +198,7 @@ export function Documents() {
                   onClick={() => confirmUpload(null)}>
                   <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{t("docs.general")}</span>
                 </div>
-                {activePatients.map(p => (
+                {activePatients.map((p: Row) => (
                   <div className="row-item" key={p.id} role="button" tabIndex={0} style={{ cursor:"pointer" }}
                     onClick={() => confirmUpload(p.id)}>
                     <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{p.name}</span>
@@ -220,7 +223,7 @@ export function Documents() {
           style={{ fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", flex:1, minWidth:0 }}>
           <option value="all">{t("docs.allPatients")}</option>
           <option value="general">{t("docs.generalFilter")}</option>
-          {patientsWithDocs.map(p => (
+          {patientsWithDocs.map((p: Row) => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
@@ -245,7 +248,7 @@ export function Documents() {
       {/* Results count */}
       <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginBottom:8 }}>
         {t("docs.count", { count: filteredDocs.length })}
-        {filterPatient !== "all" && (() => { const p = patients.find(pt => pt.id === filterPatient); return p ? ` · ${p.name}` : ""; })()}
+        {filterPatient !== "all" && (() => { const p = patients.find((pt: Row) => pt.id === filterPatient); return p ? ` · ${p.name}` : ""; })()}
       </div>
 
       <DocumentList

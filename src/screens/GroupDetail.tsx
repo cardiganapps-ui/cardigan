@@ -27,7 +27,10 @@ import { haptic } from "../utils/haptics";
 /* Group management overlay. Tabbed (Resumen / Integrantes / Sesiones /
    Finanzas), mirroring PatientExpediente so it feels native. Composes the
    member-picker, occurrence, and schedule sheets + destructive confirms. */
-export function GroupDetail({ group, onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed group/member/session/note/doc rows
+type Row = any;
+
+export function GroupDetail({ group, onClose }: { group: Row; onClose: () => void }) {
   const { t } = useT();
   const {
     groups, groupMembers, patients, upcomingSessions, notes, documents, readOnly,
@@ -39,28 +42,28 @@ export function GroupDetail({ group, onClose }) {
   useLayer("group-detail", animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { panelRef.current = el; scrollRef.current = el; setPanelEl(el); };
 
   const [tab, setTab] = useState("resumen");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [occurrence, setOccurrence] = useState(null);
-  const [confirm, setConfirm] = useState(null); // { type, member? }
-  const [editingNote, setEditingNote] = useState(null);
+  const [occurrence, setOccurrence] = useState<Row | null>(null);
+  const [confirm, setConfirm] = useState<{ type: string; member?: Row } | null>(null);
+  const [editingNote, setEditingNote] = useState<Row | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [viewingDoc, setViewingDoc] = useState(null);
-  const fileInputRef = useRef(null);
+  const [viewingDoc, setViewingDoc] = useState<{ doc: Row; url: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Always read the live group from context so edits reflect immediately.
-  const g = groups.find(x => x.id === group.id) || group;
-  const patientsById = useMemo(() => new Map(patients.map(p => [p.id, p])), [patients]);
+  const g = groups.find((x: Row) => x.id === group.id) || group;
+  const patientsById = useMemo(() => new Map<string, Row>(patients.map((p: Row): [string, Row] => [p.id, p])), [patients]);
   const roster = useMemo(() => buildGroupRoster(g, groupMembers, patientsById), [g, groupMembers, patientsById]);
   const occurrences = useMemo(() => groupOccurrences(g, upcomingSessions), [g, upcomingSessions]);
   const rollup = useMemo(() => groupFinancesRollup(g, groupMembers, upcomingSessions, patientsById), [g, groupMembers, upcomingSessions, patientsById]);
   const memberCount = activeMemberCount(g, groupMembers);
 
-  const nextOcc = occurrences.filter(o => o.status === SESSION_STATUS.SCHEDULED)
-    .sort((a, b) => parseShortDate(a.date) - parseShortDate(b.date))[0];
+  const nextOcc = occurrences.filter((o: Row) => o.status === SESSION_STATUS.SCHEDULED)
+    .sort((a: Row, b: Row) => (parseShortDate(a.date)?.getTime() || 0) - (parseShortDate(b.date)?.getTime() || 0))[0];
 
   const tabs = [
     { k: "resumen", l: t("groups.tabResumen") },
@@ -71,11 +74,11 @@ export function GroupDetail({ group, onClose }) {
   ];
 
   const groupNotes = (notes || [])
-    .filter(n => n.group_id === g.id && !n._deleted_at)
-    .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+    .filter((n: Row) => n.group_id === g.id && !n._deleted_at)
+    .sort((a: Row, b: Row) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
   const groupDocs = (documents || [])
-    .filter(d => d.group_id === g.id)
-    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+    .filter((d: Row) => d.group_id === g.id)
+    .sort((a: Row, b: Row) => (b.created_at || "").localeCompare(a.created_at || ""));
 
   const newGroupNote = async () => {
     const n = await createNote({ groupId: g.id, title: "", content: "" });
@@ -84,7 +87,7 @@ export function GroupDetail({ group, onClose }) {
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
   const triggerUpload = useCallback(() => fileInputRef.current?.click(), []);
-  const handleFileUpload = async (e) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (fileInputRef.current) fileInputRef.current.value = "";
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
@@ -101,12 +104,12 @@ export function GroupDetail({ group, onClose }) {
     if (ok > 0) showToast?.(ok === 1 ? t("docs.uploadSuccessOne") : t("docs.uploadSuccessMany", { count: ok }), "success");
     else showToast?.(t("docs.uploadFailedOne"), "error");
   };
-  const openDoc = async (doc) => {
+  const openDoc = async (doc: Row) => {
     const url = await getDocumentUrl(doc.file_path);
     if (url) setViewingDoc({ doc, url });
   };
 
-  const existingActiveIds = groupMembers.filter(m => m.group_id === g.id && m.left_at == null).map(m => m.patient_id);
+  const existingActiveIds = groupMembers.filter((m: Row) => m.group_id === g.id && m.left_at == null).map((m: Row) => m.patient_id);
 
   const doConfirm = async () => {
     if (!confirm) return;
@@ -195,11 +198,11 @@ export function GroupDetail({ group, onClose }) {
                   <IconPlus size={16} /> {t("groups.addMembers")}
                 </button>
               )}
-              {roster.members.filter(m => m.active).length === 0 ? (
+              {roster.members.filter((m: Row) => m.active).length === 0 ? (
                 <EmptyState kind="patients" title={t("groups.noMembers")} body="" />
               ) : (
                 <div className="card">
-                  {roster.members.filter(m => m.active).map((m, i) => {
+                  {roster.members.filter((m: Row) => m.active).map((m: Row, i: number) => {
                     const p = m.patient;
                     return (
                       <div key={m.id} className="row-item">
@@ -280,7 +283,7 @@ export function GroupDetail({ group, onClose }) {
                 <EmptyState kind="notes" compact title={t("notes.noNotes")} body="" />
               ) : (
                 <div className="card" style={{ marginBottom:8 }}>
-                  {groupNotes.map((n) => (
+                  {groupNotes.map((n: Row) => (
                     <button key={n.id} className="row-item btn-tap" style={{ width:"100%", border:"none", background:"transparent", textAlign:"left", cursor:"pointer" }}
                       onClick={() => setEditingNote(n)}>
                       <div className="row-content">
