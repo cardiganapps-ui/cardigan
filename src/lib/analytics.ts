@@ -25,7 +25,9 @@
 
    Event taxonomy (kept short on purpose):
      - identify (sets context, doesn't fire an event)
-     - trial_started
+     - trial_started                (method: email)
+     - first_patient_created        (activation: the "aha" milestone)
+     - first_payment_recorded       (activation: money flowing)
      - activation_step_completed
      - activation_complete
      - activation_share_opened

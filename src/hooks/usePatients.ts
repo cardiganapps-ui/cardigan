@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
 import { getInitials, shortDateToISO, todayISO } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
+import { track } from "../lib/analytics";
 import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants";
 
 // ── Domain row types ────────────────────────────────────────────────
@@ -269,6 +270,10 @@ export function createPatientActions(
 
     setPatients(prev => [...prev, updatedPatient].sort((a, b) => a.name.localeCompare(b.name)));
     setMutating(false);
+    // Activation funnel: the FIRST patient is the key "aha" milestone.
+    // `patients` is the pre-insert closure array, so length 0 means this
+    // is the user's first. Fire-and-forget; no PII in the payload.
+    if (patients.length === 0) track("first_patient_created");
     return true;
   }
 

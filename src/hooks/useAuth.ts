@@ -5,6 +5,7 @@ import { isNative, isIOS } from "../lib/platform";
 import { signInWithAppleNative } from "../lib/nativeAppleSignIn";
 import { signInWithGoogleNative } from "../lib/nativeGoogleSignIn";
 import { clearInviteToken, getInviteContext } from "../utils/inviteTokenStorage";
+import { track } from "../lib/analytics";
 
 // Field/discipline nouns (gender-neutral). The verification email
 // template uses .Data.therapist_profession to render copy like
@@ -224,6 +225,11 @@ export function useAuth() {
       if (Array.isArray(identities) && identities.length === 0) {
         return { emailAlreadyRegistered: true, email };
       }
+      // Funnel top: a genuine new account whose verification email was
+      // sent. The 30-day in-app trial starts at created_at, so this is
+      // the "trial_started" signal. No session/identity yet, so the
+      // event is anonymous (no user_id context) by design.
+      track("trial_started", { method: "email" });
       return { pendingVerification: true, email };
     }
     return { data };

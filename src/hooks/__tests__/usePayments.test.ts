@@ -7,12 +7,16 @@ type Row = any;
 // Shared across the mocked modules. Reset in beforeEach.
 const mock = makeSupabaseMock();
 const recalcPatientCounters = vi.fn(async (..._args: Row[]) => null);
+const trackSpy = vi.fn();
 
 vi.mock("../../supabaseClient", () => ({
   get supabase() { return mock.supabase; },
 }));
 vi.mock("../../utils/patients", () => ({
   recalcPatientCounters: (...args: Row[]) => recalcPatientCounters(...args),
+}));
+vi.mock("../../lib/analytics", () => ({
+  track: (...args: Row[]) => trackSpy(...args),
 }));
 
 // Pull the factory AFTER the mocks are registered.
@@ -53,6 +57,7 @@ beforeEach(() => {
   mock.reset();
   recalcPatientCounters.mockReset();
   recalcPatientCounters.mockResolvedValue(null);
+  trackSpy.mockReset();
 });
 
 describe("createPayment", () => {
@@ -203,5 +208,29 @@ describe("updatePayment", () => {
 
     expect(payments.get()).toHaveLength(0);
     expect(mutationError.get()).toMatch(/ya no existe/);
+  });
+});
+
+describe("createPayment — activation funnel", () => {
+  it("fires first_payment_recorded only when payments start empty", async () => {
+    const ctx = seed({ payments: [] });
+    mock.enqueue("payments", { data: { id: "real-1", patient_id: "pat-1", patient: "Ana López", amount: 300, date: "8-Abr", method: "transferencia", color_idx: 2 }, error: null });
+
+    await ctx.actions.createPayment({ patientName: "Ana López", amount: 300, method: "transferencia", date: "8-Abr" });
+    await flush();
+
+    expect(trackSpy).toHaveBeenCalledWith("first_payment_recorded");
+    // No PII / amount in the event payload.
+    expect(trackSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT fire first_payment_recorded when a payment already exists", async () => {
+    const ctx = seed({ payments: [{ id: "pmt-0", patient_id: "pat-1", patient: "Ana López", amount: 100, date: "1-Abr", method: "efectivo" }] });
+    mock.enqueue("payments", { data: { id: "real-2", patient_id: "pat-1", patient: "Ana López", amount: 300, date: "8-Abr", method: "transferencia", color_idx: 2 }, error: null });
+
+    await ctx.actions.createPayment({ patientName: "Ana López", amount: 300, method: "transferencia", date: "8-Abr" });
+    await flush();
+
+    expect(trackSpy).not.toHaveBeenCalled();
   });
 });

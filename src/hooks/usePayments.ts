@@ -4,6 +4,7 @@ import { PAYMENT_METHOD } from "../data/constants";
 import { formatShortDate, getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
+import { track } from "../lib/analytics";
 
 // ── Domain row types ────────────────────────────────────────────────
 // Structural shapes the payment actions read/write. Kept local (rather
@@ -156,6 +157,11 @@ export function createPaymentActions(
       setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
     }
     setMutationError("");
+    // Activation funnel: first recorded payment. `payments` is the
+    // pre-insert closure array. Fired optimistically (covers both the
+    // online and offline-queued paths, which both return success). No
+    // PII / amount in the payload.
+    if (payments.length === 0) track("first_payment_recorded");
 
     const row = {
       user_id: userId,
