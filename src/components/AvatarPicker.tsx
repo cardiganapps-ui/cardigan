@@ -27,7 +27,33 @@ import { AvatarCropEditor } from "./AvatarCropEditor";
 const KIND_UPLOADED = "uploaded";
 const KIND_PRESET   = "preset";
 
-export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
+// Persisted avatar shape stored in user_metadata.avatar.
+interface StoredAvatar { kind?: string | null; value?: unknown }
+
+// Working draft state — a discriminated union over `kind`.
+type AvatarDraft =
+  | { kind: "none" }
+  | { kind: "remove" }
+  | { kind: "cropping"; file: File }
+  | { kind: "uploaded-file"; blob: Blob; previewUrl: string }
+  | { kind: "uploaded"; path: string }
+  | { kind: "preset"; id: string };
+
+// Errors thrown across the upload chain carry diagnostic tags.
+interface ErrLike extends Error {
+  code?: string;
+  status?: number;
+  stage?: string;
+  hint?: string;
+  info?: unknown;
+}
+
+export function AvatarPicker({ user, currentAvatar, onClose, onSaved }: {
+  user?: { id: string; email?: string; user_metadata?: { full_name?: string } } | null;
+  currentAvatar?: StoredAvatar | null;
+  onClose: () => void;
+  onSaved?: (avatar: StoredAvatar | null, user: unknown) => void;
+}) {
   const { t } = useT();
   // Pulled from context so the upload-path can fire toasts AFTER the
   // sheet closes (the optimistic-close flow leaves no UI behind in
@@ -36,12 +62,12 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { scrollRef.current = el; setPanelEl(el); };
 
   // Working state. Kind is either "uploaded-file" (new local file,
   // not yet uploaded), "uploaded" (current saved image), "remove"
   // (user wants to revert to initials), or "none".
-  const [draft, setDraft] = useState(() => fromCurrent(currentAvatar));
+  const [draft, setDraft] = useState<AvatarDraft>(() => fromCurrent(currentAvatar));
   // Resolved presigned URL for the user's saved uploaded avatar.
   // fromCurrent stores only the storage path; the preview <img> needs
   // a real URL, which the cache + signed-URL endpoint provide via this
@@ -50,9 +76,9 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   const { imageUrl: currentUploadedUrl } = useAvatarUrl(currentAvatar);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [dropHover, setDropHover] = useState(false);
-  const previewUrlRef = useRef(null);
+  const previewUrlRef = useRef<string | null>(null);
   useEffect(() => () => {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
   }, []);
@@ -61,7 +87,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   const initial = (userName.charAt(0) || "?").toUpperCase();
 
   const isDirty = useMemo(() => {
-    return !sameAvatar(draftToStored(draft), currentAvatar);
+    return !sameAvatar(draftToStored(draft), currentAvatar ?? null);
   }, [draft, currentAvatar]);
 
   /* ── File pick → crop preview ──
@@ -73,7 +99,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
      modern device for any reasonable photo. If decode does fail
      (corrupt file, exotic format), the cropper surfaces its own
      "no se pudo cargar" UI with a Volver button. */
-  const onFile = useCallback((file) => {
+  const onFile = useCallback((file?: File | null) => {
     setError("");
     if (!file) return;
     if (!(file.type || "").startsWith("image/")) {
@@ -86,7 +112,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
 
   /* When the cropper hands back a final blob, switch to "uploaded-file"
      state — the existing save path picks it up unchanged. */
-  const onCropConfirm = useCallback((blob) => {
+  const onCropConfirm = useCallback((blob: Blob) => {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     const previewUrl = URL.createObjectURL(blob);
     previewUrlRef.current = previewUrl;
@@ -98,7 +124,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
     setDraft(fromCurrent(currentAvatar));
   }, [currentAvatar]);
 
-  const onDrop = useCallback((e) => {
+  const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDropHover(false);
     const file = e.dataTransfer?.files?.[0];
@@ -111,7 +137,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
     haptic.warn();
   };
 
-  const onPickPreset = (id) => {
+  const onPickPreset = (id: string) => {
     if (!isPresetId(id)) return;
     setError("");
     setDraft({ kind: KIND_PRESET, id });
@@ -131,6 +157,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
        Errors surface via the toast queue (an inline error in a
        dismissed sheet would be invisible). */
     if (draft.kind === "uploaded-file") {
+      if (!user?.id) { setError(t("avatar.err.save") || "No se pudo guardar."); return; }
       const path = avatarPath(user.id);
       const blob = draft.blob;
       const previousAvatar = currentAvatar;
@@ -148,7 +175,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
       (async () => {
         try {
           await uploadBlobToR2(path, blob);
-          if (previousAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(previousAvatar.value);
+          if (previousAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(previousAvatar.value as string);
           const nextAvatar = { kind: KIND_UPLOADED, value: path };
           const { data: updData, error: updErr } = await supabase.auth.updateUser({
             data: { avatar: nextAvatar },
@@ -157,11 +184,12 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
           try { await supabase.auth.refreshSession(); } catch (_) { /* non-fatal */ }
           haptic.success();
           onSaved?.(nextAvatar, updData?.user || null);
-        } catch (err) {
+        } catch (rawErr) {
           // Roll back the optimistic blob URL — leaving it would
           // serve a stale local image after a hard reload, since
           // the auth metadata never landed. Free the URL too so
           // we don't leak the blob.
+          const err = rawErr as ErrLike;
           invalidateAvatarUrl(path);
           try { URL.revokeObjectURL(localBlobUrl); } catch { /* ignore */ }
           const tag = err?.code || err?.status ? ` (${err?.code || `HTTP ${err?.status}`})` : "";
@@ -181,12 +209,12 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
        confirmation land before the sheet closes. */
     setSaving(true);
     try {
-      let nextAvatar = null;
+      let nextAvatar: StoredAvatar | null = null;
 
       if (draft.kind === "remove") {
         nextAvatar = null;
       } else if (draft.kind === KIND_PRESET) {
-        if (currentAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(currentAvatar.value);
+        if (currentAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(currentAvatar.value as string);
         nextAvatar = { kind: KIND_PRESET, value: draft.id };
       } else {
         animatedClose();
@@ -208,7 +236,8 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
       haptic.success();
       onSaved?.(nextAvatar, updData?.user || null);
       animatedClose();
-    } catch (err) {
+    } catch (rawErr) {
+      const err = rawErr as ErrLike;
       console.error("[avatar] save failed", {
         stage: err?.stage,
         status: err?.status,
@@ -234,7 +263,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
     if (draft.kind === KIND_UPLOADED) {
       return currentUploadedUrl ? <img src={currentUploadedUrl} alt="" /> : initial;
     }
-    if (draft.kind === KIND_PRESET) return <img src={presetUrl(draft.id)} alt="" />;
+    if (draft.kind === KIND_PRESET) return <img src={presetUrl(draft.id) ?? undefined} alt="" />;
     return initial;
   }, [draft, initial, currentUploadedUrl]);
 
@@ -315,7 +344,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
                     className={"av-picker-tile" + (selected ? " is-selected" : "")}
                     onClick={() => onPickPreset(p.id)}
                   >
-                    <img src={presetUrl(p.id)} alt="" draggable={false} />
+                    <img src={presetUrl(p.id) ?? undefined} alt="" draggable={false} />
                   </button>
                 );
               })}
@@ -381,18 +410,18 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
 
 /* ── Helpers ────────────────────────────────────────────────────── */
 
-function fromCurrent(a) {
+function fromCurrent(a?: StoredAvatar | null): AvatarDraft {
   if (!a) return { kind: "none" };
   if (a.kind === KIND_UPLOADED && typeof a.value === "string") {
     return { kind: KIND_UPLOADED, path: a.value };
   }
   if (a.kind === KIND_PRESET && isPresetId(a.value)) {
-    return { kind: KIND_PRESET, id: a.value };
+    return { kind: KIND_PRESET, id: a.value as string };
   }
   return { kind: "none" };
 }
 
-function draftToStored(d) {
+function draftToStored(d: AvatarDraft): StoredAvatar | null {
   if (!d || d.kind === "none") return null;
   if (d.kind === "remove") return null;
   if (d.kind === "uploaded-file") return { kind: "uploaded-file" }; // sentinel — never equal to currentAvatar
@@ -401,13 +430,13 @@ function draftToStored(d) {
   return null;
 }
 
-function sameAvatar(a, b) {
+function sameAvatar(a: StoredAvatar | null, b: StoredAvatar | null) {
   if (!a && !b) return true;
   if (!a || !b) return false;
   return a.kind === b.kind && a.value === b.value;
 }
 
-async function uploadBlobToR2(path, blob) {
+async function uploadBlobToR2(path: string, blob: Blob) {
   let token;
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -417,19 +446,19 @@ async function uploadBlobToR2(path, blob) {
   }
   if (!token) throw Object.assign(new Error("no_session"), { stage: "presign" });
 
-  let dataUrl;
+  let dataUrl: string | ArrayBuffer | null;
   try {
-    dataUrl = await new Promise((resolve, reject) => {
+    dataUrl = await new Promise<string | ArrayBuffer | null>((resolve, reject) => {
       const fr = new FileReader();
       fr.onload = () => resolve(fr.result);
       fr.onerror = () => reject(new Error("read_failed"));
       fr.readAsDataURL(blob);
     });
   } catch (e) {
-    throw Object.assign(new Error(e?.message || "encode_failed"), { stage: "put", cause: e });
+    throw Object.assign(new Error((e as Error)?.message || "encode_failed"), { stage: "put", cause: e });
   }
 
-  let res;
+  let res: Response;
   try {
     res = await fetch("/api/upload-url", {
       method: "POST",
@@ -437,10 +466,10 @@ async function uploadBlobToR2(path, blob) {
       body: JSON.stringify({ path, dataUrl }),
     });
   } catch (e) {
-    throw Object.assign(new Error(e?.message || "put_fetch_failed"), { stage: "put", cause: e });
+    throw Object.assign(new Error((e as Error)?.message || "put_fetch_failed"), { stage: "put", cause: e });
   }
   if (!res.ok) {
-    let info = null;
+    let info: { code?: string; hint?: string; error?: string; text?: string } | null = null;
     try { info = await res.clone().json(); }
     catch (_) { info = { text: await res.text().catch(() => "") }; }
     throw Object.assign(new Error(`put_${res.status}`), {
