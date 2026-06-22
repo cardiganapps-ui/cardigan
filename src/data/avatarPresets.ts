@@ -20,10 +20,10 @@ export const AVATAR_PRESETS = [
 
 const PRESET_IDS = new Set(AVATAR_PRESETS.map(p => p.id));
 
-export function isPresetId(id) {
+export function isPresetId(id?: unknown): id is string {
   return typeof id === "string" && PRESET_IDS.has(id);
 }
 
-export function presetUrl(id) {
+export function presetUrl(id?: string | null) {
   return isPresetId(id) ? `/avatars/${id}.svg` : null;
 }

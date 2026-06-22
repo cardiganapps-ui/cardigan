@@ -22,7 +22,15 @@ import { MUSIC_TEACHER_TEMPLATES } from "./noteTemplates/music_teacher";
 import { TRAINER_TEMPLATES } from "./noteTemplates/trainer";
 import { DEFAULT_PROFESSION } from "./constants";
 
-const TEMPLATES_BY_PROFESSION = {
+export interface NoteTemplate {
+  id: string;
+  name: string;
+  icon: string;
+  title: string;
+  content: string;
+}
+
+const TEMPLATES_BY_PROFESSION: Record<string, NoteTemplate[]> = {
   psychologist:  PSYCHOLOGIST_TEMPLATES,
   nutritionist:  NUTRITIONIST_TEMPLATES,
   tutor:         TUTOR_TEMPLATES,
@@ -30,8 +38,8 @@ const TEMPLATES_BY_PROFESSION = {
   trainer:       TRAINER_TEMPLATES,
 };
 
-export function getNoteTemplates(profession) {
-  return TEMPLATES_BY_PROFESSION[profession]
+export function getNoteTemplates(profession?: string): NoteTemplate[] {
+  return (profession ? TEMPLATES_BY_PROFESSION[profession] : undefined)
     ?? TEMPLATES_BY_PROFESSION[DEFAULT_PROFESSION];
 }
 

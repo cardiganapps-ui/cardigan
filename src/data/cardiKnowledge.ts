@@ -204,8 +204,15 @@ Si te preguntan algo que no está cubierto en esta guía, dilo claramente y sugi
 /* Build the small per-request context block. Stays OUTSIDE the cached
    system block because its values change per request — caching it
    would invalidate the cache on every call. */
-export function buildCardiContext({ profession, screen, patientCount, sessionCount, expenseCount, recurringExpenseCount } = {}) {
-  const lines = ["## Contexto de esta sesión"];
+export function buildCardiContext({ profession, screen, patientCount, sessionCount, expenseCount, recurringExpenseCount }: {
+  profession?: string;
+  screen?: string;
+  patientCount?: number;
+  sessionCount?: number;
+  expenseCount?: number;
+  recurringExpenseCount?: number;
+} = {}) {
+  const lines: string[] = ["## Contexto de esta sesión"];
   if (profession) lines.push(`- Profesión: ${profession}`);
   if (screen) lines.push(`- Pantalla actual: ${screen}`);
   if (typeof patientCount === "number") lines.push(`- Pacientes activos: ${patientCount}`);

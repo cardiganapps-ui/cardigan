@@ -13,15 +13,21 @@ import { DEFAULT_PROFESSION } from "./constants";
    psychologist's seed for any profession that hasn't shipped its own
    defs yet (Phase 3+: tutor, music_teacher, trainer). */
 
+// Demo-only data builder: assembles DB rows of many shapes imperatively.
+// A single loose alias keeps it readable; nothing here crosses into the
+// typed app surface (useDemoData treats the result structurally).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 function uuid() {
   return "demo-" + Math.random().toString(36).slice(2, 11);
 }
 
-function dateStr(d) {
+function dateStr(d: Date) {
   return formatShortDate(d);
 }
 
-function addWeeks(d, n) {
+function addWeeks(d: Date, n: number) {
   const r = new Date(d);
   r.setDate(r.getDate() + n * 7);
   return r;
@@ -262,7 +268,7 @@ const NUTRITIONIST_NOTE_TOPICS = [
   { title: "Cierre de etapa", content: "Logró el peso meta. Se entregó plan de mantenimiento con 200 kcal adicionales. Próxima consulta en 1 mes para revisar adherencia post-meta." },
 ];
 
-const PATIENT_DEFS_BY_PROFESSION = {
+const PATIENT_DEFS_BY_PROFESSION: Record<string, Row[]> = {
   psychologist:  PSYCHOLOGIST_PATIENT_DEFS,
   nutritionist:  NUTRITIONIST_PATIENT_DEFS,
   tutor:         TUTOR_PATIENT_DEFS,
@@ -270,7 +276,7 @@ const PATIENT_DEFS_BY_PROFESSION = {
   trainer:       TRAINER_PATIENT_DEFS,
 };
 
-const NOTE_TOPICS_BY_PROFESSION = {
+const NOTE_TOPICS_BY_PROFESSION: Record<string, Row[]> = {
   psychologist:  PSYCHOLOGIST_NOTE_TOPICS,
   nutritionist:  NUTRITIONIST_NOTE_TOPICS,
   tutor:         TUTOR_NOTE_TOPICS,
@@ -278,9 +284,9 @@ const NOTE_TOPICS_BY_PROFESSION = {
   trainer:       TRAINER_NOTE_TOPICS,
 };
 
-const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
+const DAY_TO_JS: Record<string, number> = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
 
-function getNextDay(dayName, fromDate) {
+function getNextDay(dayName: string, fromDate: Date) {
   const target = DAY_TO_JS[dayName];
   const d = new Date(fromDate);
   let diff = target - d.getDay();
@@ -293,12 +299,12 @@ function getNextDay(dayName, fromDate) {
 // have no fixed weekday. The row's `day` column still holds the
 // literal weekday-of-the-date for calendar display.
 const JS_TO_DAY = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-function weekdayName(date) {
+function weekdayName(date: Date) {
   return JS_TO_DAY[date.getDay()];
 }
 
 /** @param {string} [profession] */
-export function generateDemoData(profession = DEFAULT_PROFESSION) {
+export function generateDemoData(profession: string = DEFAULT_PROFESSION) {
   const patientDefs = PATIENT_DEFS_BY_PROFESSION[profession]
     ?? PATIENT_DEFS_BY_PROFESSION[DEFAULT_PROFESSION];
   const noteTopics = NOTE_TOPICS_BY_PROFESSION[profession]
@@ -310,11 +316,11 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
   startDate.setDate(1);
 
   const demoUserId = "demo-user";
-  const patients = [];
-  const sessions = [];
-  const payments = [];
-  const notes = [];
-  const measurements = [];
+  const patients: Row[] = [];
+  const sessions: Row[] = [];
+  const payments: Row[] = [];
+  const notes: Row[] = [];
+  const measurements: Row[] = [];
 
   patientDefs.forEach((def, idx) => {
     const patientId = uuid();
@@ -330,7 +336,7 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
     // Generate weekly sessions from 9 months ago to 4 weeks from now
     const firstSession = getNextDay(def.day, startDate);
     const endGen = addWeeks(now, 4);
-    const patientSessions = [];
+    const patientSessions: Row[] = [];
     let current = new Date(firstSession);
 
     // Some professions/clients meet more than once per week. The flag
@@ -552,7 +558,7 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
     // Generate payments (roughly monthly, slightly less than billed to create realistic saldos)
     let totalPaid = 0;
     const monthlyBill = def.rate * 4;
-    let payMonth = new Date(startDate);
+    const payMonth = new Date(startDate);
     // Skip-threshold: months within this many back are "recent" and the
     // `overdue` flag will stop generating payments for those to create a
     // visible outstanding balance.
@@ -674,7 +680,7 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
           ? +(def.start_body_fat_pct - (start - weightKg) * 0.4).toFixed(1)
           : null;
 
-        const baseRow = {
+        const baseRow: Row = {
           id: uuid(),
           user_id: demoUserId,
           patient_id: patientId,
@@ -792,7 +798,8 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
 
     const sessDate = new Date(now);
     sessDate.setDate(sessDate.getDate() + (def.offsetDays || 0));
-    sessDate.setHours(...def.time.split(":").map(Number));
+    const [pH, pM] = def.time.split(":").map(Number);
+    sessDate.setHours(pH, pM);
 
     const sessionStatus = def.status || "scheduled";
     const sessionRate = def.rate;
@@ -857,9 +864,9 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
   });
 
   // Sort payments newest first
-  payments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  payments.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
   // Sort notes newest first
-  notes.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  notes.sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
 
   // Demo expenses — a realistic spread across categories so the Gastos
   // and Resumen tabs render with believable numbers in demo mode. All
@@ -869,7 +876,7 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
   const _today = new Date();
   const _y = _today.getFullYear();
   const _m = _today.getMonth() + 1;
-  const _prevYM = (offset) => {
+  const _prevYM = (offset: number) => {
     const d = new Date(_y, _today.getMonth() - offset, 1);
     return { y: d.getFullYear(), m: d.getMonth() + 1 };
   };
@@ -958,9 +965,9 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
   // completed, future → scheduled) tagged with group_id. Because demo
   // accounting iterates data.sessions, these rows fold into each member's
   // balance automatically — no counter bookkeeping needed here.
-  const groups = [];
-  const groupMembers = [];
-  const GROUP_NAMES = {
+  const groups: Row[] = [];
+  const groupMembers: Row[] = [];
+  const GROUP_NAMES: Record<string, string> = {
     psychologist: "Grupo de habilidades sociales",
     nutritionist: "Taller de nutrición grupal",
     tutor: "Clase grupal de matemáticas",

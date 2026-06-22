@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "prepare": "husky",
-    "prebuild": "node scripts/audit-api-auth.mjs && npm run audit:deps && node scripts/gen-privacy-page.mjs",
+    "prebuild": "node scripts/audit-api-auth.mjs && npm run audit:deps && node --experimental-strip-types scripts/gen-privacy-page.mjs",
     "build": "rm -rf node_modules/.vite dist && vite build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

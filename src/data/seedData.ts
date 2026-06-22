@@ -3,9 +3,9 @@ export const clientColors = ["#5B9BAF"];
 // Safe lookup for a client avatar color. Always returns a valid color even if
 // `idx` is nullish, negative, or out of range — use this instead of
 // `clientColors[i]` directly.
-export function getClientColor(idx) {
+export function getClientColor(idx?: number) {
   const n = clientColors.length;
-  const i = Number.isFinite(idx) ? ((idx % n) + n) % n : 0;
+  const i = (typeof idx === "number" && Number.isFinite(idx)) ? ((idx % n) + n) % n : 0;
   return clientColors[i];
 }
 
