@@ -81,11 +81,15 @@ export async function checkNativePermission() {
  *   { ok: true,  platform: 'ios'|'android', token: string }
  *   { ok: false, code: 'unsupported' | 'permission-denied' | 'register-failed' }
  */
-export async function subscribeNative() {
+type PushResult =
+  | { ok: true; platform: string; token: string }
+  | { ok: false; code: string; error?: string };
+
+export async function subscribeNative(): Promise<PushResult> {
   if (!isNative()) return { ok: false, code: "unsupported" };
 
   const platform = getPlatform(); // 'ios' | 'android'
-  let PushNotifications;
+  let PushNotifications: typeof import("@capacitor/push-notifications").PushNotifications;
   try {
     ({ PushNotifications } = await import("@capacitor/push-notifications"));
   } catch {
@@ -114,8 +118,8 @@ export async function subscribeNative() {
   // listener is one-shot for this call — we detach it once we have the
   // value to avoid resolving twice if the OS re-issues the token mid-
   // session.
-  return await new Promise((resolve) => {
-    let regHandle, errHandle;
+  return await new Promise<PushResult>((resolve) => {
+    let regHandle: { remove?: () => void } | undefined, errHandle: { remove?: () => void } | undefined;
     let settled = false;
 
     const cleanup = () => {
@@ -123,7 +127,7 @@ export async function subscribeNative() {
       try { errHandle?.remove?.(); } catch { /* ignore */ }
     };
 
-    const finish = (result) => {
+    const finish = (result: PushResult) => {
       if (settled) return;
       settled = true;
       cleanup();
@@ -145,7 +149,7 @@ export async function subscribeNative() {
       PushNotifications.addListener("registrationError", (err) => {
         clearTimeout(timeout);
         if (import.meta.env?.DEV) console.error("[nativePush] registration error:", err);
-        finish({ ok: false, code: "register-failed", error: (err && (err.error || err.message)) || JSON.stringify(err || {}).slice(0, 180) });
+        finish({ ok: false, code: "register-failed", error: ((err as { error?: string; message?: string }) && ((err as { error?: string }).error || (err as { message?: string }).message)) || JSON.stringify(err || {}).slice(0, 180) });
       }),
     ])
       .then(([r, e]) => { regHandle = r; errHandle = e; })
@@ -153,7 +157,7 @@ export async function subscribeNative() {
       .catch((err) => {
         clearTimeout(timeout);
         if (import.meta.env?.DEV) console.error("[nativePush] register threw:", err);
-        finish({ ok: false, code: "register-failed", error: err?.message || "register() threw" });
+        finish({ ok: false, code: "register-failed", error: (err as Error)?.message || "register() threw" });
       });
   });
 }

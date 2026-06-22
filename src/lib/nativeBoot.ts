@@ -71,7 +71,7 @@ function currentThemeIsDark() {
 //   Style.Light → DARK  (black) text — use on a LIGHT background
 // (The previous code had this inverted, which left the status bar
 // black-on-charcoal — invisible — in dark mode.)
-export async function applyStatusBarStyle(isDark) {
+export async function applyStatusBarStyle(isDark: boolean) {
   if (!isNative()) return;
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");

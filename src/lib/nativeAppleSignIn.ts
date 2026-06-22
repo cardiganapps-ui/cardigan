@@ -28,7 +28,7 @@ function randomNonce(length = 32) {
   return out;
 }
 
-async function sha256Hex(input) {
+async function sha256Hex(input: string) {
   const data = new TextEncoder().encode(input);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(digest))
@@ -78,15 +78,15 @@ export async function signInWithAppleNative() {
       ok: true,
       identityToken: idToken,
       nonce: rawNonce,
-      givenName: result?.fullName?.givenName,
-      familyName: result?.fullName?.familyName,
+      givenName: (result as { fullName?: { givenName?: string } })?.fullName?.givenName,
+      familyName: (result as { fullName?: { familyName?: string } })?.fullName?.familyName,
       email: result?.email,
     };
   } catch (err) {
     // ErrorCode.canceled is exported by the plugin for user-dismiss;
     // anything else is a real failure worth surfacing.
-    const msg = err?.message || String(err || "");
-    if (/cancel/i.test(msg) || err?.code === "canceled") {
+    const msg = (err as Error)?.message || String(err || "");
+    if (/cancel/i.test(msg) || (err as { code?: string })?.code === "canceled") {
       return { ok: false, code: "user-cancelled" };
     }
     return { ok: false, code: "failed", error: msg };

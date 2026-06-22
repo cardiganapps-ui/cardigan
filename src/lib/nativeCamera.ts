@@ -21,19 +21,19 @@ import { isNative } from "./platform";
 // error whose message contains "cancel" (iOS: "User cancelled photos
 // app"; Android: similar). Everything else (permission denied, no
 // camera, encode failure) is a real error worth surfacing.
-function isCancel(err) {
-  const msg = (err?.message || (typeof err === "string" ? err : "") || "").toLowerCase();
+function isCancel(err: unknown) {
+  const msg = ((err as Error)?.message || (typeof err === "string" ? err : "") || "").toLowerCase();
   return msg.includes("cancel");
 }
 
-async function dataUrlToFile(dataUrl, filename) {
+async function dataUrlToFile(dataUrl: string, filename: string) {
   const res = await fetch(dataUrl);
   const blob = await res.blob();
   return new File([blob], filename, { type: blob.type || "image/jpeg" });
 }
 
 /** Take a photo with the device camera. Returns a File or null on cancel. */
-export async function takePhoto({ quality = 80 } = {}) {
+export async function takePhoto({ quality = 80 }: { quality?: number } = {}) {
   if (!isNative()) return null;
   try {
     const { Camera, CameraResultType, CameraSource } = await import("@capacitor/camera");
@@ -61,7 +61,7 @@ export async function takePhoto({ quality = 80 } = {}) {
 }
 
 /** Pick an image from the photo library. Returns a File or null on cancel. */
-export async function pickFromLibrary({ quality = 80 } = {}) {
+export async function pickFromLibrary({ quality = 80 }: { quality?: number } = {}) {
   if (!isNative()) return null;
   try {
     const { Camera, CameraResultType, CameraSource } = await import("@capacitor/camera");

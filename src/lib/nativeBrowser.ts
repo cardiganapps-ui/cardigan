@@ -24,7 +24,7 @@ import { isNative } from "./platform";
 // malformed URL); without this guard that rejection propagated as an
 // unhandled promise rejection and the flow (e.g. Stripe Portal) silently
 // dead-ended with no feedback.
-export async function openExternal(url) {
+export async function openExternal(url?: string) {
   if (!url) return false;
   if (isNative()) {
     try {
@@ -42,7 +42,7 @@ export async function openExternal(url) {
 // "Open in new tab" variant. On native, identical to openExternal — the
 // in-app browser sheet IS the equivalent of a new tab. On web, opens in
 // a new window so the user can keep Cardigan open in the original tab.
-export async function openExternalNewTab(url) {
+export async function openExternalNewTab(url?: string) {
   if (!url) return false;
   if (isNative()) {
     try {
@@ -71,7 +71,7 @@ export async function openExternalNewTab(url) {
 // (Apple Calendar, Phone, Mail, WhatsApp, Maps). For HTTP URLs prefer
 // openExternal() above — that opens in the in-app browser sheet,
 // which is the right native equivalent of target="_blank".
-export async function launchUrl(url) {
+export async function launchUrl(url?: string) {
   if (!url) return false;
   if (isNative()) {
     const { AppLauncher } = await import("@capacitor/app-launcher");

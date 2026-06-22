@@ -25,18 +25,39 @@ import { useCallback, useEffect, useRef, useState } from "react";
    Surfaces a stable error code (string) so the consumer can map
    it to localised copy. */
 
-const RECOGNITION =
+// The Web Speech API isn't in the standard TS DOM lib (and
+// webkitSpeechRecognition never will be), so model the slice we use.
+interface SRResultItem { transcript?: string }
+interface SRResult { isFinal: boolean; [i: number]: SRResultItem }
+interface SREvent { resultIndex: number; results: { length: number; [i: number]: SRResult } }
+interface SRErrorEvent { error?: string }
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  onresult: ((e: SREvent) => void) | null;
+  onerror: ((e: SRErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
+type SRCtor = new () => SpeechRecognitionLike;
+
+const RECOGNITION: SRCtor | null =
   typeof window !== "undefined"
-    ? (window.SpeechRecognition || window.webkitSpeechRecognition || null)
+    ? ((window as { SpeechRecognition?: SRCtor; webkitSpeechRecognition?: SRCtor }).SpeechRecognition
+       || (window as { webkitSpeechRecognition?: SRCtor }).webkitSpeechRecognition
+       || null)
     : null;
 
-export function useVoiceDictation({ lang = "es-MX", onResult } = {}) {
+export function useVoiceDictation({ lang = "es-MX", onResult }: { lang?: string; onResult?: (text: string) => void } = {}) {
   const [supported] = useState(() => !!RECOGNITION);
   const [recording, setRecording] = useState(false);
   const [interim, setInterim] = useState("");
   const [error, setError] = useState("");
 
-  const recogRef = useRef(null);
+  const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const userStoppedRef = useRef(false);
   // Auto-restart counter. The engine sometimes hits an unrecoverable
   // state (mid-permission revoke, audio device disappearing) that
@@ -71,7 +92,7 @@ export function useVoiceDictation({ lang = "es-MX", onResult } = {}) {
     userStoppedRef.current = false;
     restartAttemptsRef.current = 0;
 
-    const r = new RECOGNITION();
+    const r = new RECOGNITION!();
     r.lang = lang;
     r.continuous = true;
     r.interimResults = true;
@@ -151,7 +172,7 @@ export function useVoiceDictation({ lang = "es-MX", onResult } = {}) {
       recogRef.current = r;
       setRecording(true);
     } catch (e) {
-      setError(e?.name || "start-failed");
+      setError((e as Error)?.name || "start-failed");
       setRecording(false);
     }
   }, [supported, recording, lang]);

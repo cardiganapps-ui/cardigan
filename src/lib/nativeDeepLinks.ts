@@ -22,7 +22,7 @@ let initialized = false;
 // the OS (system browser opens it as it would have anyway).
 const ALLOWED_HOSTS = new Set(["cardigan.mx", "www.cardigan.mx", "localhost"]);
 
-function applyLocalUrl(rawUrl) {
+function applyLocalUrl(rawUrl?: string) {
   if (!rawUrl || typeof window === "undefined") return;
   let parsed;
   try { parsed = new URL(rawUrl); } catch { return; }
@@ -45,7 +45,7 @@ export async function initNativeDeepLinks() {
   initialized = true;
   try {
     const { App } = await import("@capacitor/app");
-    await App.addListener("appUrlOpen", (event) => {
+    await App.addListener("appUrlOpen", (event: { url?: string }) => {
       applyLocalUrl(event?.url);
     });
     // Cold-start case: when the app was killed and the user tapped a

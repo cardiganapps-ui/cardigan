@@ -35,7 +35,7 @@ const GOOGLE_WEB_CLIENT_ID =
 // initialize() must run once before login(). Guarded so repeated
 // sign-in attempts don't re-init the native SDK.
 let _initialized = false;
-async function ensureInit(SocialLogin) {
+async function ensureInit(SocialLogin: typeof import("@capgo/capacitor-social-login").SocialLogin) {
   if (_initialized) return;
   await SocialLogin.initialize({
     google: {
@@ -63,11 +63,11 @@ export async function signInWithGoogleNative() {
     await ensureInit(SocialLogin);
     const res = await SocialLogin.login({ provider: "google", options: {} });
     // Online mode returns { provider, result: { idToken, accessToken, ... } }.
-    const idToken = res?.result?.idToken;
+    const idToken = (res?.result as { idToken?: string })?.idToken;
     if (!idToken) return { ok: false, code: "no-token" };
     return { ok: true, idToken };
   } catch (err) {
-    const msg = err?.message || String(err || "");
+    const msg = (err as Error)?.message || String(err || "");
     // The native picker dismiss surfaces as a cancel-ish error; treat it
     // as a silent no-op, not a red error on the auth screen.
     if (/cancel|canceled|cancelled|dismiss|user/i.test(msg)) {
