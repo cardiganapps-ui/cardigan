@@ -149,3 +149,103 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  # Real-auth money-write E2E against the dedicated STAGING Supabase
+  # project (WS-0 / WS-5b). Signs in as a seeded user and exercises the
+  # actual write path (record payment → balance, delete → revert) through
+  # real RLS + the counter triggers — coverage the hermetic demo smoke
+  # can't give. A guard step no-ops the whole job when the staging
+  # secrets are absent (forks / outside PRs), so it never fails for want
+  # of access. Single worker; the spec also self-skips on missing creds.
+  e2e-staging:
+    name: E2E money-write (staging, real auth)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Check staging secrets
+        id: guard
+        env:
+          URL: ${{ secrets.STAGING_SUPABASE_URL }}
+        run: |
+          if [ -n "$URL" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Staging secrets absent — skipping the real-auth money-write E2E."
+          fi
+
+      - if: steps.guard.outputs.ready == 'true'
+        run: npm ci --no-audit --no-fund
+
+      - name: Resolve Playwright version
+        if: steps.guard.outputs.ready == 'true'
+        id: pw
+        run: echo "version=$(node -p "require('./package.json').devDependencies['@playwright/test'].replace(/^[^\d]*/, '')")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        if: steps.guard.outputs.ready == 'true'
+        uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Playwright Chromium
+        if: steps.guard.outputs.ready == 'true' && steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache-hit path)
+        if: steps.guard.outputs.ready == 'true' && steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # The staging build needs the public URL + anon at build time; the
+      # spec + seed need the service role + test creds at run time.
+      - name: Write staging build env
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+        run: |
+          {
+            echo "VITE_SUPABASE_URL=${STAGING_SUPABASE_URL}"
+            echo "VITE_SUPABASE_ANON_KEY=${STAGING_SUPABASE_ANON_KEY}"
+            echo "VITE_VAPID_PUBLIC_KEY="
+            echo "VITE_NOTES_RECOVERY_PUBLIC_KEY="
+            echo "VITE_WHATSAPP_UI_ENABLED="
+          } > .env.e2e-staging
+
+      - name: Seed the staging test account
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          STAGING_SERVICE_ROLE: ${{ secrets.STAGING_SERVICE_ROLE }}
+          E2E_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
+        run: node scripts/seed-e2e-staging.mjs
+
+      - name: Run money-write spec
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          E2E_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
+          # The spec's setup/teardown signs in (RLS-scoped) to reset the
+          # seeded patient between runs — needs the public URL + anon too.
+          STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+        run: npm run test:e2e:staging
+
+      - name: Upload Playwright report on failure
+        if: failure() && steps.guard.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-staging
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

@@ -36,3 +36,6 @@ playwright/.cache/
 
 # Test coverage output (vitest --coverage)
 coverage/
+
+# Staging e2e build env (regenerated from CI secrets / locally)
+.env.e2e-staging

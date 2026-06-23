@@ -14,6 +14,10 @@ const PORT = 5180;
 
 export default defineConfig({
   testDir: "./e2e",
+  // money-write.spec.js is the real-auth staging spec — it runs only under
+  // playwright.staging.config.js (against the e2e-staging build). Keep it
+  // out of the hermetic demo smoke, which builds with fake Supabase values.
+  testIgnore: /money-write\.spec\.js/,
   timeout: 30_000,
   expect: { timeout: 5_000 },
   fullyParallel: false,

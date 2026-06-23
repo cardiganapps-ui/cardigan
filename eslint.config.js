@@ -155,7 +155,7 @@ export default defineConfig([
   },
   {
     /* Build-tool config files run in Node and read process.env. */
-    files: ['vite.config.js', 'vitest.config.js', 'eslint.config.js', 'playwright.config.js'],
+    files: ['vite.config.js', 'vitest.config.js', 'eslint.config.js', 'playwright.config.js', 'playwright.staging.config.js'],
     languageOptions: {
       globals: { ...globals.node },
     },
