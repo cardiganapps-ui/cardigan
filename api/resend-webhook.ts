@@ -30,6 +30,15 @@ type Row = any;
 
 const MAX_TIMESTAMP_SKEW_SEC = 5 * 60;
 
+// Idempotency key for a delivery event. Resend sends no single opaque
+// event id, but (email_id, type, event_at) uniquely identifies one —
+// `type`/`event_at` are always present, email_id is coalesced to "".
+// Backed by the uniq_resend_events_event_uid unique index (migration
+// 082); a redelivery hits 23505 and is skipped. Exported for testing.
+export function resendEventUid(emailId: Row, type: Row, eventAt: Row): string {
+  return `${emailId || ""}|${type || ""}|${eventAt || ""}`;
+}
+
 async function readRawBody(req: Row) {
   const chunks: Row[] = [];
   for await (const chunk of req) {
@@ -143,8 +152,11 @@ async function handler(req: Row, res: Row) {
       subject,
       seconds_since_send: secondsSinceSend,
       raw: event,
+      event_uid: resendEventUid(emailId, type, eventAt),
     });
-    if (error) console.warn("resend-webhook db error:", error.message);
+    // 23505 = the unique index already has this event — a Resend
+    // at-least-once redelivery. Idempotent: skip silently, don't warn.
+    if (error && error.code !== "23505") console.warn("resend-webhook db error:", error.message);
   } catch (err: Row) {
     console.warn("resend-webhook db exception:", err.message);
   }

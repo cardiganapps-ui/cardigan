@@ -2611,6 +2611,15 @@
       "udt_name": "timestamptz"
     },
     {
+      "column_default": null,
+      "column_name": "event_uid",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "resend_events",
+      "udt_name": "text"
+    },
+    {
       "column_default": "gen_random_uuid()",
       "column_name": "id",
       "data_type": "uuid",
@@ -5781,6 +5790,11 @@
     {
       "indexdef": "CREATE INDEX resend_events_type_event_at_idx ON public.resend_events USING btree (type, event_at DESC)",
       "indexname": "resend_events_type_event_at_idx",
+      "tablename": "resend_events"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_resend_events_event_uid ON public.resend_events USING btree (event_uid)",
+      "indexname": "uniq_resend_events_event_uid",
       "tablename": "resend_events"
     },
     {
