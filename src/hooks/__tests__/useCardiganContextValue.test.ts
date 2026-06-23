@@ -6,7 +6,9 @@
  * these tests pin the handlers that carry real logic — the pro-gated
  * uploadDocument, the undoable-delete wrappers, onCancelSession's
  * read-only gate, and onMarkCompleted's episodic "schedule next" prompt
- * (fire / suppress matrix).
+ * (fire / suppress matrix). Since the WS-2 slice, the hook returns
+ * { mainValue, uiValue }: actions/config live in mainValue, nav handlers
+ * (openExpediente …) in uiValue.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, cleanup } from "@testing-library/react";
@@ -82,14 +84,14 @@ afterEach(() => cleanup());
 describe("useCardiganContextValue", () => {
   it("overrides readOnly and surfaces isAdminUser", () => {
     const { result } = renderHook(() => useCardiganContextValue(baseDeps({ readOnly: true, admin: true })));
-    expect(result.current.readOnly).toBe(true);
-    expect(result.current.isAdminUser).toBe(true);
+    expect(result.current.mainValue.readOnly).toBe(true);
+    expect(result.current.mainValue.isAdminUser).toBe(true);
   });
 
   it("uploadDocument passes through for Pro users", async () => {
     const deps = baseDeps({ subscription: { isPro: true } });
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    const res = await result.current.uploadDocument();
+    const res = await result.current.mainValue.uploadDocument();
     expect(res).toBe("doc-id");
     expect(deps.requirePro).not.toHaveBeenCalled();
   });
@@ -97,7 +99,7 @@ describe("useCardiganContextValue", () => {
   it("uploadDocument is pro-gated to a no-op for non-Pro users", async () => {
     const deps = baseDeps({ subscription: { isPro: false } });
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    const res = await result.current.uploadDocument();
+    const res = await result.current.mainValue.uploadDocument();
     expect(res).toBeNull();
     expect(deps.requirePro).toHaveBeenCalledWith("documents");
     expect(deps.data.uploadDocument).not.toHaveBeenCalled();
@@ -113,19 +115,19 @@ describe("useCardiganContextValue", () => {
   it("onCancelSession is gated by readOnly", async () => {
     const ro = baseDeps({ readOnly: true });
     const { result: r1 } = renderHook(() => useCardiganContextValue(ro));
-    await r1.current.onCancelSession({ id: "s1" }, false, null);
+    await r1.current.mainValue.onCancelSession({ id: "s1" }, false, null);
     expect(ro.updateSessionStatus).not.toHaveBeenCalled();
 
     const rw = baseDeps({ readOnly: false });
     const { result: r2 } = renderHook(() => useCardiganContextValue(rw));
-    await r2.current.onCancelSession({ id: "s1" }, true, "reason");
+    await r2.current.mainValue.onCancelSession({ id: "s1" }, true, "reason");
     expect(rw.updateSessionStatus).toHaveBeenCalledWith("s1", "cancelled", true, "reason");
   });
 
   it("onMarkCompleted fires the schedule-next prompt for an episodic patient with no future visit", async () => {
     const deps = baseDeps();
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    const ok = await result.current.onMarkCompleted({ id: "s1", patient_id: "p1" });
+    const ok = await result.current.mainValue.onMarkCompleted({ id: "s1", patient_id: "p1" });
     expect(ok).toBe(true);
     expect(deps.updateSessionStatus).toHaveBeenCalledWith("s1", "completed");
     expect(deps.showToast).toHaveBeenCalledTimes(1);
@@ -138,7 +140,7 @@ describe("useCardiganContextValue", () => {
   it("onMarkCompleted does NOT prompt for a non-episodic (recurring) patient", async () => {
     const deps = baseDeps({ patients: [{ id: "p1", name: "Juan", scheduling_mode: "recurring" }] });
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    await result.current.onMarkCompleted({ id: "s1", patient_id: "p1" });
+    await result.current.mainValue.onMarkCompleted({ id: "s1", patient_id: "p1" });
     expect(deps.showToast).not.toHaveBeenCalled();
   });
 
@@ -147,14 +149,14 @@ describe("useCardiganContextValue", () => {
       upcomingSessions: [{ id: "s2", patient_id: "p1", status: "scheduled", date: "2026-12-31" }],
     });
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    await result.current.onMarkCompleted({ id: "s1", patient_id: "p1" });
+    await result.current.mainValue.onMarkCompleted({ id: "s1", patient_id: "p1" });
     expect(deps.showToast).not.toHaveBeenCalled();
   });
 
   it("onMarkCompleted is gated by readOnly and does not flip status", async () => {
     const deps = baseDeps({ readOnly: true });
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    const ok = await result.current.onMarkCompleted({ id: "s1", patient_id: "p1" });
+    const ok = await result.current.mainValue.onMarkCompleted({ id: "s1", patient_id: "p1" });
     expect(ok).toBe(false);
     expect(deps.updateSessionStatus).not.toHaveBeenCalled();
   });
@@ -162,7 +164,7 @@ describe("useCardiganContextValue", () => {
   it("onMarkCompleted with a non-completed override flips status but does not prompt", async () => {
     const deps = baseDeps();
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    await result.current.onMarkCompleted({ id: "s1", patient_id: "p1" }, "scheduled");
+    await result.current.mainValue.onMarkCompleted({ id: "s1", patient_id: "p1" }, "scheduled");
     expect(deps.updateSessionStatus).toHaveBeenCalledWith("s1", "scheduled");
     expect(deps.showToast).not.toHaveBeenCalled();
   });
@@ -170,10 +172,35 @@ describe("useCardiganContextValue", () => {
   it("openExpediente stashes origin + navigates, consumeExpediente drains it", () => {
     const deps = baseDeps({ screen: "home" });
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    result.current.openExpediente({ id: "p1" });
+    result.current.uiValue.openExpediente({ id: "p1" });
     expect(deps.setScreen).toHaveBeenCalledWith("patients");
-    const drained = result.current.consumeExpediente();
+    const drained = result.current.uiValue.consumeExpediente();
     expect(drained).toEqual({ patient: { id: "p1" }, origin: "home" });
-    expect(result.current.consumeExpediente()).toBeNull();
+    expect(result.current.uiValue.consumeExpediente()).toBeNull();
+  });
+
+  // ── WS-2 slice invariants ──
+  it("partitions keys disjointly across the main and ui slices", () => {
+    const { result } = renderHook(() => useCardiganContextValue(baseDeps()));
+    const mainKeys = Object.keys(result.current.mainValue);
+    const uiKeys = Object.keys(result.current.uiValue);
+    expect(mainKeys.filter((k) => uiKeys.includes(k))).toEqual([]);
+  });
+
+  it("keeps mainValue referentially STABLE across a navigation (UI-state) change", () => {
+    // All deps held fixed except `screen` — the spread copies the same
+    // references, so only the UI input changes between renders.
+    const fixed = baseDeps();
+    const { result, rerender } = renderHook(
+      ({ screen }: { screen: string }) => useCardiganContextValue({ ...fixed, screen }),
+      { initialProps: { screen: "home" } },
+    );
+    const main1 = result.current.mainValue;
+    const ui1 = result.current.uiValue;
+    rerender({ screen: "agenda" });
+    // The whole point of WS-2: navigation must NOT churn the main slice…
+    expect(result.current.mainValue).toBe(main1);
+    // …while the UI slice does change.
+    expect(result.current.uiValue).not.toBe(ui1);
   });
 });

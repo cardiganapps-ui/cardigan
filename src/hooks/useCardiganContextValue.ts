@@ -92,7 +92,14 @@ export function useCardiganContextValue(deps: CardiganContextValueDeps) {
     openQuickSchedule, updateSessionStatus, patients, upcomingSessions, t,
   } = deps;
 
-  return useMemo(() => ({
+  // ── Main slice ──
+  // Data arrays + mutation actions + stable cross-cutting callbacks +
+  // config. Crucially, its dependency array does NOT include the
+  // fast-changing UI state (screen / drawerOpen / pendingFabAction /
+  // tutorial / theme / notifications) — those live in the UI slice below
+  // — so this value stays referentially stable across navigation, and a
+  // consumer reading only useCardiganMain() stops re-rendering on nav.
+  const mainValue = useMemo(() => ({
     ...data,
     // Override data.readOnly with the composed value (admin view-as
     // OR trial-expired). Order matters — this MUST come after
@@ -121,42 +128,10 @@ export function useCardiganContextValue(deps: CardiganContextValueDeps) {
     accentTheme,
     setProfessionLocal: userProfile.setProfessionLocal,
     groupsEnabled, setGroupsEnabled,
-    user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, setHideFab, setHideBottomTabs, setScreen,
+    user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet,
     isAdminUser: admin, // surfaced to CommandPalette for admin-only commands
-    navigate, pushLayer, popLayer, removeLayer, online,
-    screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,
-    pendingFabAction,
-    requestFabAction: setPendingFabAction,
-    consumeFabAction: () => setPendingFabAction(null),
-    openActivationShareSheet: () => setActivationShareOpen(true),
-    setAgendaView: (v: Row) => { pendingAgendaViewRef.current = v; },
-    consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
-    openExpediente: (patient: Row) => {
-      // Remember which screen the user came from so closing the
-      // expediente can take them back there instead of stranding them
-      // on Pacientes. Only set an origin when the caller isn't already
-      // on Pacientes — otherwise closing would navigate to itself.
-      pendingExpedienteRef.current = { patient, origin: screen !== "patients" ? screen : null };
-      setScreen("patients");
-    },
-    openNoteById: (id: Row) => {
-      // Navigate to Archivo (which routes to Notes tab by default) and
-      // stash the id; Notes screen reads it on mount and opens the
-      // editor with the matching note. Same pendingRef pattern as
-      // openExpediente / setAgendaView.
-      pendingNoteOpenRef.current = id;
-      setScreen("archivo");
-    },
-    consumePendingNoteOpen: () => {
-      const v = pendingNoteOpenRef.current;
-      pendingNoteOpenRef.current = null;
-      return v;
-    },
-    consumeExpediente: () => {
-      const v = pendingExpedienteRef.current;
-      pendingExpedienteRef.current = null;
-      return v;
-    },
+    online,
+    showSuccess, showToast,
     openQuickSchedule,
     onCancelSession: async (s: Row, charge: Row, reason: Row) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     /* onMarkCompleted intercepts the standard updateSessionStatus
@@ -221,5 +196,50 @@ export function useCardiganContextValue(deps: CardiganContextValueDeps) {
       );
       return ok;
     },
-  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withUndoableDelete, groupsEnabled, setGroupsEnabled, setHideFab, setHideBottomTabs, setPendingFabAction, setActivationShareOpen, pendingAgendaViewRef, pendingExpedienteRef, pendingNoteOpenRef]);
+  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, showSuccess, showToast, online, withUndoableDelete, groupsEnabled, setGroupsEnabled]);
+
+  // ── UI slice ──
+  // The fast-changing navigation / UI state + the nav actions that pair
+  // with it. This value DOES change on navigation (that's the point);
+  // only components that read useCardiganUI() re-render then.
+  const uiValue = useMemo(() => ({
+    screen, drawerOpen, setDrawerOpen, navigate, setScreen,
+    pushLayer, popLayer, removeLayer,
+    tutorial, theme, notifications,
+    setHideFab, setHideBottomTabs,
+    pendingFabAction,
+    requestFabAction: setPendingFabAction,
+    consumeFabAction: () => setPendingFabAction(null),
+    openActivationShareSheet: () => setActivationShareOpen(true),
+    setAgendaView: (v: Row) => { pendingAgendaViewRef.current = v; },
+    consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
+    openExpediente: (patient: Row) => {
+      // Remember which screen the user came from so closing the
+      // expediente can take them back there instead of stranding them
+      // on Pacientes. Only set an origin when the caller isn't already
+      // on Pacientes — otherwise closing would navigate to itself.
+      pendingExpedienteRef.current = { patient, origin: screen !== "patients" ? screen : null };
+      setScreen("patients");
+    },
+    openNoteById: (id: Row) => {
+      // Navigate to Archivo (which routes to Notes tab by default) and
+      // stash the id; Notes screen reads it on mount and opens the
+      // editor with the matching note. Same pendingRef pattern as
+      // openExpediente / setAgendaView.
+      pendingNoteOpenRef.current = id;
+      setScreen("archivo");
+    },
+    consumePendingNoteOpen: () => {
+      const v = pendingNoteOpenRef.current;
+      pendingNoteOpenRef.current = null;
+      return v;
+    },
+    consumeExpediente: () => {
+      const v = pendingExpedienteRef.current;
+      pendingExpedienteRef.current = null;
+      return v;
+    },
+  }), [screen, drawerOpen, setDrawerOpen, navigate, setScreen, pushLayer, popLayer, removeLayer, tutorial, theme, notifications, setHideFab, setHideBottomTabs, pendingFabAction, setPendingFabAction, setActivationShareOpen, pendingAgendaViewRef, pendingExpedienteRef, pendingNoteOpenRef]);
+
+  return { mainValue, uiValue };
 }

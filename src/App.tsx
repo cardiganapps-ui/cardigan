@@ -928,10 +928,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // The CardiganContext assembler — composes `...data` with the shell's
   // overrides + cross-cutting handlers (pro-gated uploadDocument, the
   // undoable-delete wrappers, onCancelSession, onMarkCompleted's episodic
-  // "schedule next" prompt) into the single memoized object the 106
-  // context consumers read. Lives in useCardiganContextValue so the shell
-  // stops owning the 130-line memo; the behaviorful handlers are
-  // characterization-tested there.
+  // "schedule next" prompt) into the two memoized slices the context
+  // consumers read: `mainValue` (data + actions + config, stable across
+  // navigation) and `uiValue` (fast-changing nav/UI state). Lives in
+  // useCardiganContextValue so the shell stops owning the memo; the
+  // behaviorful handlers are characterization-tested there.
   const ctxValue = useCardiganContextValue({
     data, readOnly, subscription, requirePro, withUndoableDelete,
     noteCrypto, profession, accentTheme, userProfile, groupsEnabled, setGroupsEnabled,
@@ -1036,7 +1037,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   };
 
   return (
-    <CardiganProvider value={ctxValue}>
+    <CardiganProvider mainValue={ctxValue.mainValue} uiValue={ctxValue.uiValue}>
     <div className="shell" ref={shellRef}>
       {/* Skip-to-main-content link — visually hidden until it receives
           focus, at which point it materializes in the top-left corner.
