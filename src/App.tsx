@@ -8,13 +8,15 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { LoadingSkeleton, SkeletonCrossfade } from "./components/LoadingSkeleton";
 import { isNative } from "./lib/platform";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
+import { useActionSheets } from "./hooks/useActionSheets";
+import { useProGatedNav } from "./hooks/useProGatedNav";
+import { useUndoableDelete } from "./hooks/useUndoableDelete";
 import { AppOverlays } from "./components/app/AppOverlays";
 import { AppBanners } from "./components/app/AppBanners";
 import { AppTopbar } from "./components/app/AppTopbar";
 import { AppSheets } from "./components/app/AppSheets";
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
-import { haptic } from "./utils/haptics";
 import { useDemoData } from "./hooks/useDemoData";
 import { useNavigation } from "./hooks/useNavigation";
 import { CardiganProvider } from "./context/CardiganContext";
@@ -544,9 +546,23 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   const readOnly = testModeUnlocked
     ? false
     : (data.readOnly || subscription.accessExpired);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [paymentDraft, setPaymentDraft] = useState<Row>({ patientName:"", amount:"" });
-  const [editingPayment, setEditingPayment] = useState<Row>(null);
+
+  // App-level action sheets (payment / expense / recurring-expense /
+  // quick-schedule) — state + the openers exposed on context. Extracted
+  // to useActionSheets so the shell stops owning the near-identical
+  // open-flag + draft boilerplate; gating (readOnly) is preserved.
+  const {
+    paymentModalOpen, setPaymentModalOpen,
+    paymentDraft,
+    editingPayment, setEditingPayment,
+    openEditPaymentModal, openRecordPaymentModal,
+    expenseSheetOpen, setExpenseSheetOpen,
+    editingExpense, setEditingExpense,
+    openRecordExpenseModal, openEditExpenseModal,
+    recurringExpenseSheetOpen, setRecurringExpenseSheetOpen,
+    openRecurringExpenseSheet,
+    quickScheduleFor, setQuickScheduleFor, openQuickSchedule,
+  } = useActionSheets(readOnly);
 
   /* ── Toast queue (single source of truth) ──
      Previously three separate toast slots (success, mutationError,
@@ -567,11 +583,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
      The end-of-visit toast (fired below from onMarkCompleted) routes
      into this so the user can schedule the next consult with one tap
      from the toast, regardless of which screen they're on. */
-  const [quickScheduleFor, setQuickScheduleFor] = useState<Row>(null);
-  const openQuickSchedule = useCallback((patient: Row) => {
-    if (!patient) return;
-    setQuickScheduleFor(patient);
-  }, []);
   // Post-reload "Actualizado correctamente" toast — UpdatePrompt
   // stamps localStorage right before the SW reload, and we surface
   // the confirmation once the new build mounts. consumePostUpdateToast
@@ -671,81 +682,21 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
     showSuccess, showToast, t,
   });
 
-  // ── Pro feature gating ──
-  // Centralized "open the upgrade sheet" so any screen can call
-  // requirePro("documents" | "encryption" | "calendar") without
-  // mounting its own copy of the sheet. The sheet renders once at App
-  // level, far enough below the StripePaymentSheet that subscribing
-  // from inside it can stack cleanly.
-  const [proSheetOpen, setProSheetOpen] = useState(false);
-  const [proSheetFeature, setProSheetFeature] = useState<string | null>(null);
-  const requirePro = useCallback((feature?: string) => {
-    // Trial users + expired users land here. Pro users (active sub,
-    // comp, admin) should never see this sheet — callers must short-
-    // circuit on `subscription.isPro` before invoking.
-    setProSheetFeature(feature || "default");
-    setProSheetOpen(true);
-  }, []);
-
-  // ── Cardi (in-app navigation chatbot) ──
-  // Lives as a sheet, not a screen — the drawer routes the "cardi"
-  // nav id through `handleDrawerNav` below, which gates on isPro and
-  // either opens the sheet or bumps the user to ProUpgradeSheet.
-  const [cardiOpen, setCardiOpen] = useState(false);
-  const [inboxOpen, setInboxOpen] = useState(false);
-  const handleDrawerNav = useCallback((id: string) => {
-    if (id === "cardi") {
-      if (!subscription.isPro) {
-        requirePro("cardi");
-        return;
-      }
-      setCardiOpen(true);
-      return;
-    }
-    setScreen(id);
-  }, [subscription.isPro, requirePro, setScreen]);
+  // ── Pro-gated nav (upgrade gate + Cardi + Inbox) ──
+  // requirePro(feature) opens the upgrade sheet (rendered once at App
+  // level via AppOverlays); handleDrawerNav routes "cardi" through the
+  // isPro gate and everything else to setScreen. Extracted to
+  // useProGatedNav; guard sets + dep arrays unchanged.
+  const {
+    proSheetOpen, setProSheetOpen, proSheetFeature, requirePro,
+    cardiOpen, setCardiOpen,
+    inboxOpen, setInboxOpen,
+    handleDrawerNav,
+  } = useProGatedNav({ isPro: subscription.isPro, setScreen });
 
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
   const { imageUrl: avatarImageUrl } = useAvatarUrl(demo ? null : user?.user_metadata?.avatar);
-
-  const openEditPaymentModal = useCallback((payment: Row) => {
-    if (readOnly) return;
-    setEditingPayment(payment);
-    setPaymentDraft({ patientName: "", amount: "" });
-    setPaymentModalOpen(true);
-  }, [readOnly]);
-
-  const openRecordPaymentModal = useCallback((patient: Row) => {
-    if (readOnly) return;
-    setEditingPayment(null);
-    setPaymentDraft({
-      patientName: patient?.name || "",
-      amount: patient ? String(patient.amountDue || 0) : "",
-    });
-    setPaymentModalOpen(true);
-  }, [readOnly]);
-
-  // Expense sheet — mirrors the payment-modal pattern so any screen
-  // (FAB, GastosTab list, ResumenTab CTA) can open record-mode or
-  // edit-mode through context.
-  const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<Row>(null);
-  const openRecordExpenseModal = useCallback(() => {
-    if (readOnly) return;
-    setEditingExpense(null);
-    setExpenseSheetOpen(true);
-  }, [readOnly]);
-  const openEditExpenseModal = useCallback((expense: Row) => {
-    if (readOnly) return;
-    setEditingExpense(expense);
-    setExpenseSheetOpen(true);
-  }, [readOnly]);
-  const [recurringExpenseSheetOpen, setRecurringExpenseSheetOpen] = useState(false);
-  const openRecurringExpenseSheet = useCallback(() => {
-    if (readOnly) return;
-    setRecurringExpenseSheetOpen(true);
-  }, [readOnly]);
 
   /* ── Edge swipe to open drawer ──
      These handlers are attached via a native addEventListener with
@@ -831,57 +782,10 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // (withSuccess wrapper removed — the one remaining caller
   // [deleteRecurringTemplate] no longer needs a success toast. The
   // list row disappears as confirmation, which is enough.)
-  // Undo-aware delete wrapper. Takes a `softFn` that returns
-  // { commit, undo } (defined per-domain in useSessions /
-  // usePayments / useExpenses / useNotes) and orchestrates:
-  //   1. Optimistic state change happens immediately inside softFn.
-  //   2. A "X eliminado · Deshacer" toast shows for UNDO_MS.
-  //   3. If the user taps "Deshacer" within the window → undo() runs
-  //      and the row reappears in place. No network call.
-  //   4. Otherwise the timer fires → commit() runs the server-side
-  //      delete (or enqueues offline).
-  //   5. If the tab is backgrounded mid-window, commit() runs eagerly
-  //      via the visibilitychange handler — closing the tab would
-  //      kill the setTimeout and silently leave the row in the DB.
-  // Returns true so callers using `await delete(id)` see the same
-  // success contract as before.
-  const UNDO_MS = 3000;
-  const withUndoableDelete = useCallback((softFn: Row, label: string) => async (...args: Row[]) => {
-    if (typeof softFn !== "function") return false;
-    const handle = softFn(...args);
-    if (!handle || typeof handle.commit !== "function") return false;
-
-    let done = false;
-    // eslint-disable-next-line prefer-const -- referenced in cleanup() closure below before its single assignment
-    let timer: ReturnType<typeof setTimeout>;
-    const onHidden = () => { if (document.visibilityState === "hidden") finalize(); };
-    const cleanup = () => {
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onHidden);
-    };
-    const finalize = () => {
-      if (done) return;
-      done = true;
-      cleanup();
-      handle.commit();
-    };
-    const restore = () => {
-      if (done) return;
-      done = true;
-      cleanup();
-      handle.undo();
-    };
-
-    timer = setTimeout(finalize, UNDO_MS);
-    document.addEventListener("visibilitychange", onHidden);
-    haptic.tap();
-    showToast(label, "info", {
-      actionLabel: "Deshacer",
-      onRetry: restore,
-      duration: UNDO_MS,
-    });
-    return true;
-  }, [showToast]);
+  // Undo-aware delete wrapper (optimistic change → "Deshacer" toast →
+  // commit on timeout / eager-commit on tab-hide). Extracted to
+  // useUndoableDelete; the single dependency is the toast channel.
+  const withUndoableDelete = useUndoableDelete(showToast);
 
   // The CardiganContext assembler — composes `...data` with the shell's
   // overrides + cross-cutting handlers (pro-gated uploadDocument, the
