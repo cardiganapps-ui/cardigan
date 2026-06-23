@@ -34,6 +34,17 @@ export function useToastQueue({ mutationError, fetchError, clearMutationError, r
   const [toasts, setToasts] = useState<Row[]>([]);
   const nextToastIdRef = useRef(0);
 
+  // Keep `refresh` in a ref so the error-sync effects below depend ONLY
+  // on the error signal, not on refresh's identity. showToast mints a
+  // fresh toast id on every call, so if the effect re-ran on every
+  // render (which it would if `refresh` were an unstable inline
+  // function — exactly what a caller might pass), it would loop:
+  // setState → render → effect → setState → … The ref breaks that:
+  // onRetry always invokes the latest refresh without widening deps.
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+  const runRefresh = useCallback(() => refreshRef.current?.(), []);
+
   const showToast = useCallback((msg: string, type = "info", opts: Row = {}) => {
     if (!msg) return null;
     const id = ++nextToastIdRef.current;
@@ -90,18 +101,18 @@ export function useToastQueue({ mutationError, fetchError, clearMutationError, r
   // error resolves.
   useEffect(() => {
     if (mutationError) {
-      showToast(mutationError, "error", { persistent: true, onRetry: refresh, key: "mutation-error" });
+      showToast(mutationError, "error", { persistent: true, onRetry: runRefresh, key: "mutation-error" });
     } else {
       // Functional updater returns `prev` unchanged when there's nothing
-      // to remove, so React bails out — no cascading render. The
-      // set-state-in-effect rule can't see the bail-out, so disable it
-      // here (clearing a resolved error toast is a legitimate sync).
+      // to remove, so React bails out — no cascading render (clearing a
+      // resolved error toast is a legitimate sync). The rule can't see
+      // the bail-out, so disable it here.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setToasts(prev => prev.some(x => x.key === "mutation-error")
         ? prev.filter(x => x.key !== "mutation-error")
         : prev);
     }
-  }, [mutationError, showToast, refresh]);
+  }, [mutationError, showToast, runRefresh]);
 
   // Surface a FAILED initial data load (e.g. launched in airplane mode,
   // or the network dropped during the parallel fetch). Without this the
@@ -111,14 +122,14 @@ export function useToastQueue({ mutationError, fetchError, clearMutationError, r
   // the start of each fetch, so a successful refresh clears it.
   useEffect(() => {
     if (fetchError) {
-      showToast(t("loadFailed"), "error", { persistent: true, onRetry: refresh, key: "fetch-error" });
+      showToast(t("loadFailed"), "error", { persistent: true, onRetry: runRefresh, key: "fetch-error" });
     } else {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setToasts(prev => prev.some(x => x.key === "fetch-error")
         ? prev.filter(x => x.key !== "fetch-error")
         : prev);
     }
-  }, [fetchError, showToast, refresh, t]);
+  }, [fetchError, showToast, runRefresh, t]);
 
   return { toasts, showToast, showSuccess, dismissToast };
 }

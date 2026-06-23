@@ -62,7 +62,7 @@ describe("useToastQueue", () => {
     const errToast = result.current.toasts.find((x: { key?: string }) => x.key === "mutation-error");
     expect(errToast).toMatchObject({ persistent: true, message: "save failed" });
     // Error resolves → the keyed toast is removed.
-    rerender({ err: undefined });
+    rerender({ err: "" });
     expect(result.current.toasts.some((x: { key?: string }) => x.key === "mutation-error")).toBe(false);
   });
 
