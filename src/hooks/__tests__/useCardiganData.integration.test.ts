@@ -22,7 +22,7 @@
    fetch is a clean read. */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, waitFor, cleanup } from "@testing-library/react";
+import { renderHook, waitFor, cleanup, act } from "@testing-library/react";
 import { makeSupabaseMock } from "../../test/mockSupabase";
 import { SESSION_STATUS, PATIENT_STATUS } from "../../data/constants";
 import { isoToShortDate } from "../../utils/dates";
@@ -170,6 +170,35 @@ describe("useCardiganData — fetch → normalize → enrich", () => {
     expect(result.current.patients).toEqual([]);
     // …but the OTHER tables still loaded (this is the whole point).
     expect(result.current.payments).toHaveLength(1);
+  });
+
+  it("KEEPS last-known-good data when a table errors on a background refresh", async () => {
+    // First load succeeds: one patient + one completed session (consumed
+    // 1000, paid 0 → owes 1000).
+    mock.setFallback("patients", {
+      data: [{ id: "p1", user_id: "u1", name: "Ana", rate: 1000, paid: 0, opening_balance: 0, status: PATIENT_STATUS.ACTIVE, color_idx: 0, scheduling_mode: "recurring" }],
+      error: null,
+    });
+    mock.setFallback("sessions", sessionsPager([
+      { id: "s1", user_id: "u1", patient_id: "p1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: "8-Abr", time: "10:00" },
+    ]));
+
+    const { result } = renderHook(() => useCardiganData({ id: "u1" }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.patients).toHaveLength(1);
+    expect(result.current.patients[0].amountDue).toBe(1000);
+
+    // A later background refresh hits a flaky patients table.
+    mock.setFallback("patients", { data: null, error: { message: "flaky" } });
+    await act(async () => { await result.current.refresh(); });
+
+    // The failure surfaces via fetchError…
+    expect(result.current.fetchError).toBe("flaky");
+    // …but the previously-loaded patient (and its balance) is NOT wiped to
+    // [] — last-known-good stays on screen instead of flashing a wrong $0.
+    expect(result.current.patients).toHaveLength(1);
+    expect(result.current.patients[0].name).toBe("Ana");
+    expect(result.current.patients[0].amountDue).toBe(1000);
   });
 
   it("skips the fetch entirely when there is no user", async () => {

@@ -849,7 +849,13 @@ export function useCardiganData(
     // lives in utils/recurrence.js as a pure function so it can be
     // unit-tested without supabase. This module is responsible only
     // for the side effects (insert + counter update).
-    if (userId && !readOnly && !_extending) {
+    //
+    // PRIME DIRECTIVE: never make schedule-insert decisions off a FAILED
+    // read. If the patients or sessions fetch errored (allSettled mapped
+    // it to { data: null }), pData/sData are empty and computing
+    // auto-extend rows against that incomplete history risks regenerating
+    // phantom slots. Skip entirely until a clean read lands.
+    if (userId && !readOnly && !_extending && !pRes.error && !sRes.error) {
       _extending = true;
       try {
         const today = new Date();
@@ -917,7 +923,11 @@ export function useCardiganData(
     // session rows (one per active member), so the counter trigger maintains
     // each member's billed/sessions server-side just like the patient path.
     // Same phantom-prevention rules (future-only, clamp-at-today) apply.
-    if (userId && !readOnly && !_extendingGroups && gData.length > 0) {
+    // Same failed-read guard as the per-patient pass: a group/member/
+    // session fetch error leaves these arrays empty, so don't fan out
+    // occurrences off incomplete data.
+    if (userId && !readOnly && !_extendingGroups && gData.length > 0
+        && !gRes.error && !gmRes.error && !sRes.error && !pRes.error) {
       _extendingGroups = true;
       try {
         const today = new Date();
@@ -962,7 +972,12 @@ export function useCardiganData(
     // never silently insert money rows beyond the documented cap.
     let eData: Row[] = eRes?.data || [];
     const reData: Row[] = reRes?.data || [];
-    if (userId && !readOnly && !_generatingExpenses && reData.length > 0) {
+    // Failed-read guard (money write path): only generate recurring
+    // expense rows when BOTH the expenses and recurring_expenses reads
+    // succeeded — otherwise computeRecurringExpenseRows could re-create
+    // an already-existing slot it just couldn't see.
+    if (userId && !readOnly && !_generatingExpenses && reData.length > 0
+        && !eRes?.error && !reRes?.error) {
       _generatingExpenses = true;
       try {
         const { auto } = computeRecurringExpenseRows(reData, eData, new Date(), userId);
@@ -987,48 +1002,60 @@ export function useCardiganData(
       }
     }
 
-    setPatients(pData);
-    setUpcomingSessions(sData);
-    setPayments(mapRows(pmRes.data));
+    // ── Commit per-domain, keeping last-known-good on a per-table error ──
+    // A transient failure of ONE table during a background refresh must
+    // not wipe that domain to []. allSettled mapped a rejected query to
+    // { data: null, error }; committing that would blank the domain — and
+    // for patients/sessions/payments would flash a WRONG $0 balance with
+    // real money on screen. On error we leave the prior state untouched
+    // (the failure still surfaces via the fetch-error toast above); only a
+    // clean read replaces the data.
+    if (!pRes.error) setPatients(pData);
+    if (!sRes.error) setUpcomingSessions(sData);
+    if (!pmRes.error) setPayments(mapRows(pmRes.data));
     // Decrypt any encrypted notes inline if the user is unlocked.
     // Locked rows keep their ciphertext + encrypted=true flag and are
     // displayed as "[cifrado]" by the consumer until unlock triggers
     // a re-fetch.
     let notesData = nRes.data || [];
-    if (noteCrypto?.decrypt) {
-      const decrypt = noteCrypto.decrypt;
-      notesData = await Promise.all(notesData.map(async (n: Row) => {
-        if (!n.encrypted) return n;
-        const plain = await decrypt(n.content, true);
-        return plain == null ? n : { ...n, content: plain };
-      }));
+    if (!nRes.error) {
+      if (noteCrypto?.decrypt) {
+        const decrypt = noteCrypto.decrypt;
+        notesData = await Promise.all(notesData.map(async (n: Row) => {
+          if (!n.encrypted) return n;
+          const plain = await decrypt(n.content, true);
+          return plain == null ? n : { ...n, content: plain };
+        }));
+      }
+      setNotes(notesData);
     }
-    setNotes(notesData);
     // Decrypt tag labels (same envelope as notes). For non-encrypted
     // rows the ciphertext column already holds the plaintext, so we
     // pass it through unchanged. For encrypted rows we run the same
     // decrypt the notes path uses.
     let tagsData = tRes?.data || [];
-    if (noteCrypto?.decrypt) {
-      const decrypt = noteCrypto.decrypt;
-      tagsData = await Promise.all(tagsData.map(async (t: Row) => {
-        const plain = await decrypt(t.label_ciphertext, /* encrypted= */ true).catch(() => null);
-        return { ...t, label: plain ?? t.label_ciphertext };
-      }));
-    } else {
-      tagsData = tagsData.map((t: Row) => ({ ...t, label: t.label_ciphertext }));
+    if (!tRes?.error) {
+      if (noteCrypto?.decrypt) {
+        const decrypt = noteCrypto.decrypt;
+        tagsData = await Promise.all(tagsData.map(async (t: Row) => {
+          const plain = await decrypt(t.label_ciphertext, /* encrypted= */ true).catch(() => null);
+          return { ...t, label: plain ?? t.label_ciphertext };
+        }));
+      } else {
+        tagsData = tagsData.map((t: Row) => ({ ...t, label: t.label_ciphertext }));
+      }
+      setTags(tagsData);
     }
-    setTags(tagsData);
-    setTagLinks(tlRes?.data || []);
-    setDocuments(dRes.data || []);
-    setMeasurements(mRes.data || []);
-    setExpenses(eData);
-    setRecurringExpenses(reData);
-    setRescheduleRequests(rrRes?.data || []);
-    setNoteAttachments(naRes?.data || []);
-    setGroups(gData);
-    setGroupMembers(gmData);
-    setNotifications(nfRes?.data || []);
+    if (!tlRes?.error) setTagLinks(tlRes?.data || []);
+    if (!dRes.error) setDocuments(dRes.data || []);
+    if (!mRes.error) setMeasurements(mRes.data || []);
+    if (!eRes?.error) setExpenses(eData);
+    if (!reRes?.error) setRecurringExpenses(reData);
+    if (!rrRes?.error) setRescheduleRequests(rrRes?.data || []);
+    if (!naRes?.error) setNoteAttachments(naRes?.data || []);
+    if (!gRes?.error) setGroups(gData);
+    if (!gmRes?.error) setGroupMembers(gmData);
+    if (!nfRes?.error) setNotifications(nfRes?.data || []);
     setLoading(false);
 
     /* Persist the fresh snapshot for next cold start. We do this
@@ -1038,21 +1065,30 @@ export function useCardiganData(
        not a partial state. Mutations after this point flow through
        in-memory state only; the next refresh () writes the
        up-to-date cache. */
-    saveCachedData(userId, {
-      patients: pData,
-      upcomingSessions: sData,
-      payments: mapRows(pmRes.data),
-      notes: notesData,
-      documents: dRes.data || [],
-      measurements: mRes.data || [],
-      expenses: eData,
-      recurringExpenses: reData,
-      rescheduleRequests: rrRes?.data || [],
-      noteAttachments: naRes?.data || [],
-      groups: gData,
-      groupMembers: gmData,
-      notifications: nfRes?.data || [],
-    });
+    // Only refresh the cold-start cache when the WHOLE fetch succeeded.
+    // Writing a partial snapshot (with the failed domains blanked) would
+    // poison the next cold start — the cache would show empty patients /
+    // sessions / payments until a full success overwrote it. On any
+    // per-table error, keep the last full snapshot instead.
+    const anyFetchError = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes]
+      .some(r => r?.error);
+    if (!anyFetchError) {
+      saveCachedData(userId, {
+        patients: pData,
+        upcomingSessions: sData,
+        payments: mapRows(pmRes.data),
+        notes: notesData,
+        documents: dRes.data || [],
+        measurements: mRes.data || [],
+        expenses: eData,
+        recurringExpenses: reData,
+        rescheduleRequests: rrRes?.data || [],
+        noteAttachments: naRes?.data || [],
+        groups: gData,
+        groupMembers: gmData,
+        notifications: nfRes?.data || [],
+      });
+    }
     // Re-run when the crypto status flips so encrypted notes get
     // re-fetched + decrypted right after the user unlocks. We can't
     // include the encrypt/decrypt fns in deps directly because they
