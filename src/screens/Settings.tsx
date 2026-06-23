@@ -11,6 +11,7 @@ import { DiagnosticsSheet } from "../components/sheets/DiagnosticsSheet";
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
 import { IconUsers, IconStar, IconKey, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconLock, IconSparkle } from "../components/Icons";
 import { AccountHeader } from "./settings/AccountHeader";
+import { MfaSheets } from "./settings/sheets/MfaSheets";
 import { SubscriptionPanel } from "./settings/SubscriptionPanel";
 import { AppearancePanel } from "./settings/AppearancePanel";
 import { FeaturesPanel } from "./settings/FeaturesPanel";
@@ -124,21 +125,6 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
   // widget holds the issued token until natural expiry (~5 min) and
   // subsequent submits look stuck verifying.
   const turnstileRef = useRef<Row>(null);
-  const [mfaCode, setMfaCode] = useState("");
-  const [mfaBusy, setMfaBusy] = useState(false);
-  const [mfaUiError, setMfaUiError] = useState("");
-  const [mfaUnenrollId, setMfaUnenrollId] = useState<string | null>(null);
-  const [mfaSecretCopied, setMfaSecretCopied] = useState(false);
-  const copyMfaSecret = async () => {
-    if (!mfa.enrollment?.secret) return;
-    try {
-      await navigator.clipboard.writeText(mfa.enrollment.secret);
-      setMfaSecretCopied(true);
-      setTimeout(() => setMfaSecretCopied(false), 1800);
-    } catch {
-      showToast(t("settings.calendarCopyError"), "error");
-    }
-  };
 
   // Toggle in-flight — prevents double-taps and shows the spinner knob
   // during the server round-trip for enable/disable.
@@ -775,15 +761,10 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         showEncryptionSetup={showEncryptionSetup}
         encSummary={encSummary}
         onOpenMfa={() => {
+          // MfaSheets resets its own code/error state and kicks off
+          // enrollment when the enroll sheet opens; here we just route.
           if (mfa.loading) return;
-          setMfaUiError(""); setMfaCode("");
-          if (mfa.factors.length === 0) {
-            setActiveSheet("mfaEnroll");
-            if (!mfa.enrollment) mfa.enroll();
-          } else {
-            setMfaUnenrollId(mfa.factors[0].id);
-            setActiveSheet("mfaManage");
-          }
+          setActiveSheet(mfa.factors.length === 0 ? "mfaEnroll" : "mfaManage");
         }}
         onOpenPasskeys={() => setActiveSheet("passkeys")}
         onOpenEncryption={() => {
@@ -1958,139 +1939,16 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         </div>
       )}
 
-      {/* ── MFA: ENROLL SHEET ──
-         Three-step flow: enroll() runs on sheet open and stashes a
-         QR + secret on the hook; user scans + enters code; verify()
-         flips the factor to verified. Sheet closes on success. */}
-      {activeSheet === "mfaEnroll" && (
-        <div className="sheet-overlay" onClick={() => { if (!mfaBusy) { mfa.cancelEnroll(); setActiveSheet(null); } }}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.mfaEnrollTitle")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => { if (!mfaBusy) { mfa.cancelEnroll(); setActiveSheet(null); } }} disabled={mfaBusy}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
-                {t("settings.mfaEnrollExplain")}
-              </div>
-              {!mfa.enrollment && (
-                <div style={{ fontSize: 13, color: "var(--charcoal-xl)", marginBottom: 12 }}>{t("loading")}</div>
-              )}
-              {mfa.enrollment && (
-                <>
-                  {mfa.enrollment.qr && (
-                    <div style={{ display:"flex", justifyContent:"center", marginBottom: 14 }}>
-                      <img src={mfa.enrollment.qr} alt="MFA QR" width={180} height={180} style={{ background:"var(--white)", padding:8, borderRadius:"var(--radius)" }} />
-                    </div>
-                  )}
-                  <div style={{ fontSize: 12, color: "var(--charcoal-md)", marginBottom: 6 }}>{t("settings.mfaSecretLabel")}</div>
-                  <div style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", fontFamily:"var(--font-mono, monospace)", fontSize:12, padding:"10px 12px", borderRadius:"var(--radius)", wordBreak:"break-all", marginBottom: 8, userSelect:"all" }}>
-                    {mfa.enrollment.secret}
-                  </div>
-                  <button type="button" className="btn btn-ghost" onClick={copyMfaSecret} disabled={mfaBusy}
-                    style={{ width:"100%", marginBottom: 14 }}>
-                    {mfaSecretCopied ? t("settings.mfaSecretCopied") : t("settings.mfaSecretCopy")}
-                  </button>
-                  <div className="input-group" style={{ marginBottom: 12 }}>
-                    <label className="input-label">{t("settings.mfaCodeLabel")}</label>
-                    <input
-                      className="input"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      pattern="[0-9]{6}"
-                      maxLength={6}
-                      value={mfaCode}
-                      onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      placeholder="123456"
-                      style={{ letterSpacing:"0.4em", textAlign:"center", fontSize:18, fontFamily:"var(--font-mono, monospace)" }}
-                      disabled={mfaBusy}
-                    />
-                  </div>
-                </>
-              )}
-              {(mfaUiError || mfa.error) && (
-                <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{mfaUiError || mfa.error}</div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={mfaBusy || !mfa.enrollment || mfaCode.length !== 6}
-                  onClick={async () => {
-                    setMfaBusy(true); setMfaUiError("");
-                    const ok = await mfa.verifyEnroll(mfaCode);
-                    setMfaBusy(false);
-                    if (ok) {
-                      setMfaCode("");
-                      setActiveSheet(null);
-                      showToast(t("settings.mfaEnrolled"), "success");
-                    } else {
-                      setMfaUiError(t("settings.mfaCodeWrong"));
-                    }
-                  }}
-                >
-                  {mfaBusy ? t("loading") : t("settings.mfaVerify")}
-                </button>
-                <button type="button" className="btn btn-ghost" disabled={mfaBusy}
-                  onClick={() => { mfa.cancelEnroll(); setActiveSheet(null); }}>
-                  {t("cancel")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── MFA: MANAGE SHEET (already enrolled) ── */}
-      {activeSheet === "mfaManage" && (
-        <div className="sheet-overlay" onClick={() => !mfaBusy && setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.mfaTitle")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => !mfaBusy && setActiveSheet(null)} disabled={mfaBusy}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
-                {t("settings.mfaManageActive")}
-              </div>
-              <div style={{ background:"var(--red-bg, #fdecea)", color:"var(--red-dark, #922)", padding:"10px 12px", borderRadius:"var(--radius)", fontSize:13, lineHeight:1.5, marginBottom: 16 }}>
-                {t("settings.mfaUnenrollWarn")}
-              </div>
-              {(mfaUiError || mfa.error) && (
-                <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{mfaUiError || mfa.error}</div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  style={{ background:"var(--red)", color:"var(--white)" }}
-                  disabled={mfaBusy || !mfaUnenrollId}
-                  onClick={async () => {
-                    if (!mfaUnenrollId) return;
-                    setMfaBusy(true); setMfaUiError("");
-                    const ok = await mfa.unenroll(mfaUnenrollId);
-                    setMfaBusy(false);
-                    if (ok) {
-                      setActiveSheet(null);
-                      showToast(t("settings.mfaUnenrolled"), "info");
-                    } else {
-                      setMfaUiError(t("settings.mfaUnenrollError"));
-                    }
-                  }}
-                >
-                  {mfaBusy ? t("loading") : t("settings.mfaUnenroll")}
-                </button>
-                <button type="button" className="btn btn-ghost" disabled={mfaBusy} onClick={() => setActiveSheet(null)}>
-                  {t("cancel")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MFA enroll + manage sheets (state + JSX extracted to MfaSheets;
+          the shared `mfa` instance + sheet-trap wiring are passed in). */}
+      <MfaSheets
+        mode={activeSheet === "mfaEnroll" ? "enroll" : activeSheet === "mfaManage" ? "manage" : null}
+        mfa={mfa}
+        onClose={() => setActiveSheet(null)}
+        showToast={showToast}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      />
 
       {/* ── PASSKEYS SHEET ──
          Lists the user's WebAuthn passkeys and lets them add or remove
