@@ -11,6 +11,7 @@ import { useNoteCrypto } from "./hooks/useNoteCrypto";
 import { AppOverlays } from "./components/app/AppOverlays";
 import { AppBanners } from "./components/app/AppBanners";
 import { AppTopbar } from "./components/app/AppTopbar";
+import { AppSheets } from "./components/app/AppSheets";
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { haptic } from "./utils/haptics";
@@ -18,12 +19,6 @@ import { useDemoData } from "./hooks/useDemoData";
 import { useNavigation } from "./hooks/useNavigation";
 import { CardiganProvider } from "./context/CardiganContext";
 import { I18nProvider, useT } from "./i18n/index";
-// Lazy-load the conditionally-rendered surfaces. Each only mounts in
-// response to a user action (open drawer, record payment, open command
-// palette, etc.), so deferring them shaves their bytes off the cold-
-// start cost. Sub-2KB Suspense fallback={null} is invisible — these
-// modules ship in their own chunks and pre-fetch by Vite's link
-// preload as soon as the main shell renders.
 // Importer factories are extracted so we can both lazy-load AND
 // prefetch the chunks. The prefetch path (called from useEffect +
 // hamburger hover/focus, see AppShell) imports the module so the
@@ -31,33 +26,24 @@ import { I18nProvider, useT } from "./i18n/index";
 // the user actually opens the surface. Without the prefetch the
 // first hamburger tap on a cold load gets a "nothing happens" beat
 // while the chunk fetches in the background — Suspense fallback={null}.
+// The matching lazy() component declarations live where they render —
+// Drawer here, the payment/expense/command-palette ones in AppSheets —
+// and resolve the same Vite chunk these factories warm.
 const drawerImport = () => import("./components/Drawer");
 const paymentModalImport = () => import("./components/PaymentModal");
 const expenseSheetImport = () => import("./components/sheets/ExpenseSheet");
-const recurringExpenseSheetImport = () => import("./components/sheets/RecurringExpenseSheet");
 const commandPaletteImport = () => import("./components/CommandPalette");
 const Drawer = lazy(() => drawerImport().then(m => ({ default: m.Drawer })));
-const PaymentModal = lazy(() => paymentModalImport().then(m => ({ default: m.PaymentModal })));
-const ExpenseSheet = lazy(() => expenseSheetImport().then(m => ({ default: m.ExpenseSheet })));
-const RecurringExpenseSheet = lazy(() => recurringExpenseSheetImport().then(m => ({ default: m.RecurringExpenseSheet })));
-const CommandPalette = lazy(commandPaletteImport);
-import { QuickActions } from "./components/QuickActions";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useViewport } from "./hooks/useViewport";
 import { useEdgeSwipeGesture } from "./hooks/useEdgeSwipeGesture";
 import { PullToRefresh } from "./components/PullToRefresh";
-import { BottomTabs } from "./components/BottomTabs";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { useConnectivity } from "./hooks/useConnectivity";
 import { AuthSplash } from "./components/AuthSplash";
-// Tutorial only runs on first sign-in (and on user-triggered replay
-// from Settings). Lazy so the ~30 KB tutorial chunk doesn't sit in
-// the main bundle for users who already finished it.
-const Tutorial = lazy(() => import("./components/Tutorial/Tutorial").then(m => ({ default: m.Tutorial })));
 import { useTutorial } from "./hooks/useTutorial";
 import { ToastStack } from "./components/Toast";
-import { QuickScheduleSheet } from "./components/sheets/QuickScheduleSheet";
 import { Home } from "./screens/Home";
 /* Secondary screens — lazy-loaded so the main bundle drops the
    weight of components a user may never visit in a session.
@@ -102,7 +88,6 @@ import { setSentryProfession } from "./lib/sentry";
 import { identify as analyticsIdentify, reset as analyticsReset } from "./lib/analytics";
 import MfaChallengeGate from "./components/MfaChallengeGate";
 import { PasswordRecoveryScreen } from "./components/PasswordRecoveryScreen";
-import { BugReportSheet } from "./components/BugReportFab";
 import { UpdatePrompt, consumePostUpdateToast } from "./components/UpdatePrompt";
 import { useTheme } from "./hooks/useTheme";
 import { useNotifications } from "./hooks/useNotifications";
@@ -1158,70 +1143,36 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
             </SkeletonCrossfade>
           </div>
         </PullToRefresh>
-        {!readOnly && (
-          <Suspense fallback={null}>
-            <PaymentModal open={paymentModalOpen} onClose={((msg: Row) => { setPaymentModalOpen(false); setEditingPayment(null); if (typeof msg === "string" && msg) showSuccess(msg); }) as Row}
-              initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} editingPayment={editingPayment} />
-          </Suspense>
-        )}
-        {!readOnly && expenseSheetOpen && (
-          <Suspense fallback={null}>
-            <ExpenseSheet
-              editingExpense={editingExpense}
-              onClose={((msg: Row) => {
-                setExpenseSheetOpen(false);
-                setEditingExpense(null);
-                if (typeof msg === "string" && msg) showSuccess(msg);
-              }) as Row}
-            />
-          </Suspense>
-        )}
-        {!readOnly && recurringExpenseSheetOpen && (
-          <Suspense fallback={null}>
-            <RecurringExpenseSheet
-              onClose={() => setRecurringExpenseSheetOpen(false)}
-            />
-          </Suspense>
-        )}
-        {!readOnly && !hideFab && <QuickActions />}
-        {!hideBottomTabs && <BottomTabs />}
-        <Suspense fallback={null}>
-          <CommandPalette
-            open={paletteOpen}
-            onClose={() => setPaletteOpen(false)}
-            currentAdminId={user?.id}
-          onViewAsUser={admin && !readOnly ? (uid: string) => {
-            // Same impersonation entry as AdminLayout's onViewAs. We
-            // snapshot the admin hash (empty when invoked from a non-admin
-            // screen) so the read-only banner's exit returns to wherever
-            // the admin invoked the action from.
-            viewAsOriginHashRef.current = typeof window !== "undefined"
-              ? window.location.hash
-              : null;
-            setViewAsUserId(uid);
-            navigate("home");
-          } : undefined}
-          />
-        </Suspense>
-
-        {user && !demo && !readOnly && (
-          <BugReportSheet open={bugReportOpen} onClose={() => setBugReportOpen(false)} user={user} screen={screen} />
-        )}
-        {!demo && !readOnly && (
-          <Suspense fallback={null}>
-            <Tutorial />
-          </Suspense>
-        )}
-        {/* Global QuickScheduleSheet — opened from the
-            end-of-visit toast or any "openQuickSchedule(patient)"
-            consumer. Mounted unconditionally; renders null when no
-            patient is set so the rest of the shell isn't affected. */}
-        {quickScheduleFor && (
-          <QuickScheduleSheet
-            patient={quickScheduleFor}
-            onClose={() => setQuickScheduleFor(null)}
-          />
-        )}
+        <AppSheets
+          readOnly={readOnly}
+          demo={demo}
+          user={user}
+          admin={admin}
+          screen={screen}
+          paymentModalOpen={paymentModalOpen}
+          setPaymentModalOpen={setPaymentModalOpen}
+          editingPayment={editingPayment}
+          setEditingPayment={setEditingPayment}
+          paymentDraft={paymentDraft}
+          showSuccess={showSuccess}
+          expenseSheetOpen={expenseSheetOpen}
+          setExpenseSheetOpen={setExpenseSheetOpen}
+          editingExpense={editingExpense}
+          setEditingExpense={setEditingExpense}
+          recurringExpenseSheetOpen={recurringExpenseSheetOpen}
+          setRecurringExpenseSheetOpen={setRecurringExpenseSheetOpen}
+          hideFab={hideFab}
+          hideBottomTabs={hideBottomTabs}
+          paletteOpen={paletteOpen}
+          setPaletteOpen={setPaletteOpen}
+          viewAsOriginHashRef={viewAsOriginHashRef}
+          setViewAsUserId={setViewAsUserId}
+          navigate={navigate}
+          bugReportOpen={bugReportOpen}
+          setBugReportOpen={setBugReportOpen}
+          quickScheduleFor={quickScheduleFor}
+          setQuickScheduleFor={setQuickScheduleFor}
+        />
       </div>
     </div>
     </CardiganProvider>
