@@ -8,29 +8,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { LoadingSkeleton, SkeletonCrossfade } from "./components/LoadingSkeleton";
 import { isNative, isIOS } from "./lib/platform";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
-// Conditionally rendered after first paint by various gates (one-time
-// prompts, encryption unlock, post-subscribe celebration, etc.). Lazy
-// shaves them off the cold-start payload.
-const EncryptionUnlockGate = lazy(() => import("./components/EncryptionUnlockGate"));
-const SubscriptionWelcome = lazy(() => import("./components/SubscriptionWelcome"));
-const MilestoneCelebration = lazy(() => import("./components/MilestoneCelebration").then(m => ({ default: m.MilestoneCelebration })));
-const ActivationCompleteShareSheet = lazy(() => import("./components/ActivationCompleteShareSheet").then(m => ({ default: m.ActivationCompleteShareSheet })));
-const RatingSheet = lazy(() => import("./components/RatingSheet").then(m => ({ default: m.RatingSheet })));
-// Conditionally rendered by activeSheet === "shareFolder" — lazy
-// keeps its (and its date-picker / preview deps') bytes off cold start.
-const ShareFolderSheet = lazy(() => import("./components/sheets/ShareFolderSheet").then(m => ({ default: m.ShareFolderSheet })));
-// Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
-// user actually opens the welcome-modal subscribe flow.
-const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet"));
-const ProUpgradeSheet = lazy(() => import("./components/ProUpgradeSheet").then(m => ({ default: m.ProUpgradeSheet })));
-const CardiSheet = lazy(() => import("./components/sheets/CardiSheet").then(m => ({ default: m.CardiSheet })));
-const InboxSheet = lazy(() => import("./components/sheets/InboxSheet").then(m => ({ default: m.InboxSheet })));
-const TrialReminderPrompt = lazy(() => import("./components/TrialReminderPrompt"));
-const PasskeyEnrollPrompt = lazy(() => import("./components/PasskeyEnrollPrompt"));
-// Lazy because it pulls a small confetti renderer + a celebration
-// modal that 99% of users see once or never. No reason to bundle it
-// in the main chunk.
-const SubscriptionSuccess = lazy(() => import("./components/SubscriptionSuccess").then(m => ({ default: m.SubscriptionSuccess })));
+import { AppOverlays } from "./components/app/AppOverlays";
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { AvatarContent } from "./components/Avatar";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
@@ -126,7 +104,6 @@ import { useAccentTheme } from "./hooks/useAccentTheme";
 import { DEFAULT_PROFESSION, SIGNUP_SOURCE_CUTOFF_ISO } from "./data/constants";
 import { setSentryProfession } from "./lib/sentry";
 import { identify as analyticsIdentify, reset as analyticsReset } from "./lib/analytics";
-import ConsentBanner from "./components/ConsentBanner";
 import MfaChallengeGate from "./components/MfaChallengeGate";
 import { PasswordRecoveryScreen } from "./components/PasswordRecoveryScreen";
 import { BugReportSheet } from "./components/BugReportFab";
@@ -1048,151 +1025,48 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
       <a href="#main-content" className="skip-link">
         {t("a11y.skipToMain") || "Saltar al contenido"}
       </a>
-      {/* LFPDPPP consent gate — blocks the app on first login or after a
-          policy version bump. Skipped in demo mode (no real user) and
-          in admin "view as user" mode (read-only). */}
-      {!demo && !readOnly && user && <ConsentBanner user={user} />}
-      {!demo && !readOnly && user && !cryptoGateDismissed && (
-        <Suspense fallback={null}>
-          <EncryptionUnlockGate noteCrypto={noteCrypto} onSkip={() => setCryptoGateDismissed(true)} />
-        </Suspense>
-      )}
-      {welcomeProOpen && (
-        <Suspense fallback={null}>
-          <SubscriptionWelcome
-            daysLeftInTrial={subscription.daysLeftInTrial ?? undefined}
-            onContinue={closeWelcomePro}
-            onSubscribe={subscribeFromWelcomePro}
-          />
-        </Suspense>
-      )}
-      <Suspense fallback={null}>
-        {welcomePaymentOpen && (
-          <StripePaymentSheet
-            open={welcomePaymentOpen}
-            daysLeftInTrial={subscription.daysLeftInTrial ?? undefined}
-            onClose={() => setWelcomePaymentOpen(false)}
-            onSuccess={() => {
-              setWelcomePaymentOpen(false);
-              showSuccess(t("subscription.toastSubscribed"));
-            }}
-          />
-        )}
-      </Suspense>
-      {/* Pro feature upgrade prompt — opens whenever a non-Pro user
-          tries to use a gated feature. Centralized here so any screen
-          can trigger via `requirePro(featureKey)` from context. */}
-      <Suspense fallback={null}>
-        {proSheetOpen && (
-          <ProUpgradeSheet
-            open={proSheetOpen}
-            feature={proSheetFeature ?? undefined}
-            onClose={() => setProSheetOpen(false)}
-          />
-        )}
-      </Suspense>
-      {/* Cardi — in-app navigation/help chatbot. Lazy-loaded so the
-          @anthropic-ai/sdk-powered hook + the sheet bundle only ship
-          when the user actually opens the chat. */}
-      <Suspense fallback={null}>
-        {cardiOpen && (
-          <CardiSheet open={cardiOpen} onClose={() => setCardiOpen(false)} />
-        )}
-      </Suspense>
-      {/* In-app notification inbox — bell in the topbar opens it. Lazy so
-          the sheet bundle only ships when first opened. */}
-      <Suspense fallback={null}>
-        {inboxOpen && <InboxSheet onClose={() => setInboxOpen(false)} />}
-      </Suspense>
-      {/* Trial reminder — fires once per day at 15/10/5/3/2/1 days left.
-          The dedicated payment sheet next to it stays mounted so the
-          subscribe path keeps working even after the reminder closes. */}
-      <Suspense fallback={null}>
-        {trialReminderOpen && (
-          <TrialReminderPrompt
-            open={trialReminderOpen}
-            daysLeft={trialReminderDays ?? undefined}
-            onSubscribe={subscribeFromTrialReminder}
-            onDismiss={() => setTrialReminderOpen(false)}
-          />
-        )}
-        {passkeyPromptOpen && (
-          <PasskeyEnrollPrompt
-            open={passkeyPromptOpen}
-            creating={passkeyCreating}
-            onCreate={createPasskeyFromPrompt}
-            onDismiss={dismissPasskeyPrompt}
-          />
-        )}
-        {trialReminderPaymentOpen && (
-          <StripePaymentSheet
-            open={trialReminderPaymentOpen}
-            daysLeftInTrial={subscription.daysLeftInTrial ?? undefined}
-            onClose={() => setTrialReminderPaymentOpen(false)}
-            onSuccess={() => {
-              setTrialReminderPaymentOpen(false);
-              showSuccess(t("subscription.toastSubscribed"));
-            }}
-          />
-        )}
-        {subscriptionSuccessOpen && (
-          <SubscriptionSuccess
-            open={subscriptionSuccessOpen}
-            onClose={closeSubscriptionSuccess}
-          />
-        )}
-      </Suspense>
-      {/* 0→1 first-patient / first-session / first-payment celebration.
-          No UI of its own — fires success toasts via context.
-          Skipped in demo + admin-view-as flows by passing accessState. */}
-      {!demo && !viewAsUserId && user && (
-        <Suspense fallback={null}>
-          <MilestoneCelebration
-            userId={user.id}
-            accessState={subscription.accessState}
-          />
-        </Suspense>
-      )}
-      {/* Opens after the user crosses all 4 activation steps (the
-          ActivationChecklist fires this via openActivationShareSheet
-          on its own bonus-grant path). The sheet is lazy in the
-          sense that the state stays false until that single
-          transition — no rendering cost on the steady state. */}
-      {!demo && !readOnly && user && (
-        <Suspense fallback={null}>
-          <ActivationCompleteShareSheet
-            open={activationShareOpen}
-            onClose={() => setActivationShareOpen(false)}
-            code={subscription?.referralInfo?.code || undefined}
-          />
-        </Suspense>
-      )}
-      {/* In-app rating sheet — driven either by the #rating hash
-          (email deep-link) or the organic day-14 eligibility check
-          above. Hidden in demo + read-only modes. */}
-      {!demo && !readOnly && user && (
-        <Suspense fallback={null}>
-          <RatingSheet
-            open={ratingSheetOpen}
-            onClose={() => setRatingSheetOpen(false)}
-            promptKind="day14_v1"
-            userId={user.id}
-          />
-        </Suspense>
-      )}
-      {/* PWA Web Share Target receiver — only mounts when a share
-          arrived (shareFolderUrl set by the URL-param effect). The
-          sheet itself handles the "URL didn't parse" case so we
-          don't need to validate here. */}
-      {!demo && !readOnly && user && shareFolderUrl && (
-        <Suspense fallback={null}>
-          <ShareFolderSheet
-            open={!!shareFolderUrl}
-            url={shareFolderUrl}
-            onClose={() => setShareFolderUrl(null)}
-          />
-        </Suspense>
-      )}
+      <AppOverlays
+        demo={demo}
+        readOnly={readOnly}
+        user={user}
+        viewAsUserId={viewAsUserId}
+        noteCrypto={noteCrypto}
+        cryptoGateDismissed={cryptoGateDismissed}
+        setCryptoGateDismissed={setCryptoGateDismissed}
+        subscription={subscription}
+        welcomeProOpen={welcomeProOpen}
+        closeWelcomePro={closeWelcomePro}
+        subscribeFromWelcomePro={subscribeFromWelcomePro}
+        welcomePaymentOpen={welcomePaymentOpen}
+        setWelcomePaymentOpen={setWelcomePaymentOpen}
+        proSheetOpen={proSheetOpen}
+        proSheetFeature={proSheetFeature}
+        setProSheetOpen={setProSheetOpen}
+        cardiOpen={cardiOpen}
+        setCardiOpen={setCardiOpen}
+        inboxOpen={inboxOpen}
+        setInboxOpen={setInboxOpen}
+        trialReminderOpen={trialReminderOpen}
+        trialReminderDays={trialReminderDays}
+        subscribeFromTrialReminder={subscribeFromTrialReminder}
+        setTrialReminderOpen={setTrialReminderOpen}
+        passkeyPromptOpen={passkeyPromptOpen}
+        passkeyCreating={passkeyCreating}
+        createPasskeyFromPrompt={createPasskeyFromPrompt}
+        dismissPasskeyPrompt={dismissPasskeyPrompt}
+        trialReminderPaymentOpen={trialReminderPaymentOpen}
+        setTrialReminderPaymentOpen={setTrialReminderPaymentOpen}
+        subscriptionSuccessOpen={subscriptionSuccessOpen}
+        closeSubscriptionSuccess={closeSubscriptionSuccess}
+        activationShareOpen={activationShareOpen}
+        setActivationShareOpen={setActivationShareOpen}
+        ratingSheetOpen={ratingSheetOpen}
+        setRatingSheetOpen={setRatingSheetOpen}
+        shareFolderUrl={shareFolderUrl}
+        setShareFolderUrl={setShareFolderUrl}
+        showSuccess={showSuccess}
+        t={t}
+      />
       <Suspense fallback={null}>
         <Drawer screen={screen} setScreen={handleDrawerNav} onClose={() => { setDrawerOpen(false); setSwipeProgress(0); }}
           user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
