@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
+import { useToastQueue } from "./hooks/useToastQueue";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { isNative, isIOS } from "./lib/platform";
 import { supabase } from "./supabaseClient";
@@ -856,57 +857,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
      collide on screen. Now every surface pushes into one queue; the
      UI renders up to MAX_TOASTS with a stagger, oldest fading out
      first. Persistent toasts (the mutationError) don't auto-dismiss. */
-  const [toasts, setToasts] = useState<Row[]>([]);
-  const nextToastIdRef = useRef(0);
-  const showToast = useCallback((msg: string, type = "info", opts: Row = {}) => {
-    if (!msg) return null;
-    const id = ++nextToastIdRef.current;
-    setToasts(prev => {
-      // Drop an earlier entry with the same key (e.g. reopening the
-      // mutation-error channel) before appending, so the user only
-      // sees one copy of a recurring message at a time.
-      const base = opts.key ? prev.filter((t: Row) => t.key !== opts.key) : prev;
-      const next = [...base, {
-        id, kind: type, message: msg,
-        persistent: !!opts.persistent,
-        // Forward `duration` so callers (e.g. withUndoableDelete's 3-second
-        // window) can override the 1.4s default. Previously dropped here,
-        // which silently made the "Deshacer" toast disappear at 1.4s
-        // while the commit timer still ran out to 5s — leaving ~3.6s of
-        // ghost-undo state where the row was gone, no toast visible, no
-        // way to recover. ToastStack forwards the value through to <Toast>.
-        duration: opts.duration,
-        onRetry: opts.onRetry,
-        actionLabel: opts.actionLabel,
-        key: opts.key,
-      }];
-      if (next.length <= 5) return next;
-      // Over cap: drop oldest non-persistent first.
-      const out: Row[] = [];
-      let toDrop = next.length - 5;
-      for (const t of next) {
-        if (toDrop > 0 && !t.persistent) { toDrop--; continue; }
-        out.push(t);
-      }
-      return out;
-    });
-    return id;
-  }, []);
-  // When the user dismisses the mutation-error toast we also clear
-  // the underlying data-layer error so a subsequent failure with the
-  // same message can re-raise (setMutationError is a no-op when the
-  // new value matches the stale one).
-  const dismissToast = useCallback((id: string | number) => {
-    setToasts(prev => {
-      const toast = prev.find((t: Row) => t.id === id);
-      if (toast?.key === "mutation-error") clearMutationError?.();
-      return prev.filter((t: Row) => t.id !== id);
-    });
-  }, [clearMutationError]);
-  const showSuccess = useCallback((msg: string) => {
-    if (!msg) return;
-    showToast(msg, "success");
-  }, [showToast]);
+  // Single toast channel (state + push/dismiss API + the data-layer
+  // error→toast wiring). Extracted to useToastQueue so the shell stops
+  // owning the queue plumbing; unit-tested in isolation.
+  const { toasts, showToast, showSuccess, dismissToast } = useToastQueue({
+    mutationError, fetchError, clearMutationError, refresh, t,
+  });
 
   /* QuickScheduleSheet at the App level — renders once, opened from
      anywhere via openQuickSchedule(patient) on the cardigan context.
@@ -950,45 +906,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // showToast de-dup: re-raising replaces the existing entry rather
   // than stacking. When mutationError clears, strip any lingering
   // entry with that key.
-  // Surface mutation errors as a persistent toast; clear it when the
-  // error resolves.
-  useEffect(() => {
-    if (mutationError) {
-      showToast(mutationError, "error", {
-        persistent: true,
-        onRetry: refresh,
-        key: "mutation-error",
-      });
-    } else {
-      // Functional updater returns `prev` unchanged when there's
-      // nothing to remove, so React bails out — no cascading render.
-      // (set-state-in-effect lint rule no longer flags this pattern;
-      // the previous eslint-disable directive was reported as unused.)
-      setToasts(prev => prev.some(t => t.key === "mutation-error")
-        ? prev.filter(t => t.key !== "mutation-error")
-        : prev);
-    }
-  }, [mutationError, showToast, refresh]);
-  // Surface a FAILED initial data load (e.g. launched in airplane mode,
-  // or the network dropped during the parallel fetch). Without this the
-  // app paints empty "no data yet" states with no hint that the load
-  // failed and no way to retry — which reads as a broken app (and App
-  // Store reviewers test offline launches). Mirrors the mutationError
-  // toast: persistent, retry-able, de-duped by key. fetchError resets to
-  // "" at the start of each fetch, so a successful refresh clears it.
-  useEffect(() => {
-    if (fetchError) {
-      showToast(t("loadFailed"), "error", {
-        persistent: true,
-        onRetry: refresh,
-        key: "fetch-error",
-      });
-    } else {
-      setToasts(prev => prev.some(entry => entry.key === "fetch-error")
-        ? prev.filter(entry => entry.key !== "fetch-error")
-        : prev);
-    }
-  }, [fetchError, showToast, refresh, t]);
+  // (mutation/fetch error → toast wiring lives in useToastQueue above)
   // Online/offline state — useConnectivity is the canonical hook now
   // (also consumed by OfflineBanner). Kept in the App-level context
   // for any consumer that branches on it (e.g. action gating).
