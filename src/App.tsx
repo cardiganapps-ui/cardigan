@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback, lazy, Suspense } from "react";
+import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useToastQueue } from "./hooks/useToastQueue";
 import { useEngagementPrompts } from "./hooks/useEngagementPrompts";
@@ -11,6 +11,8 @@ import { useNoteCrypto } from "./hooks/useNoteCrypto";
 import { useActionSheets } from "./hooks/useActionSheets";
 import { useProGatedNav } from "./hooks/useProGatedNav";
 import { useUndoableDelete } from "./hooks/useUndoableDelete";
+import { useGroupsEnabled } from "./hooks/useGroupsEnabled";
+import { useForegroundToasts } from "./hooks/useForegroundToasts";
 import { AppOverlays } from "./components/app/AppOverlays";
 import { AppBanners } from "./components/app/AppBanners";
 import { AppTopbar } from "./components/app/AppTopbar";
@@ -90,7 +92,7 @@ import { setSentryProfession } from "./lib/sentry";
 import { identify as analyticsIdentify, reset as analyticsReset } from "./lib/analytics";
 import MfaChallengeGate from "./components/MfaChallengeGate";
 import { PasswordRecoveryScreen } from "./components/PasswordRecoveryScreen";
-import { UpdatePrompt, consumePostUpdateToast } from "./components/UpdatePrompt";
+import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useTheme } from "./hooks/useTheme";
 import { useNotifications } from "./hooks/useNotifications";
 import { useSubscription } from "./hooks/useSubscription";
@@ -430,22 +432,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // Lets a screen hide the bottom-tab pill (e.g. Agenda bulk-select mode,
   // which puts its own action bar at the bottom). Reset by the screen on exit.
   const [localHideBottomTabs, setHideBottomTabs] = useState(false);
-  // Groups feature toggle (Settings → Funciones). Per-user, persisted in
-  // localStorage. Default ON. When OFF the entire Groups surface is hidden
-  // and the app behaves exactly as it did pre-Groups. Users can only turn it
-  // OFF when they have zero groups (enforced in Settings).
-  const [groupsEnabled, setGroupsEnabledState] = useState(true);
-  useEffect(() => {
-    if (!user?.id) { setGroupsEnabledState(true); return; }
-    try {
-      const v = localStorage.getItem(`cardigan.groupsEnabled.${user.id}`);
-      setGroupsEnabledState(v === null ? true : v !== "false");
-    } catch { setGroupsEnabledState(true); }
-  }, [user?.id]);
-  const setGroupsEnabled = useCallback((val: boolean) => {
-    setGroupsEnabledState(val);
-    try { if (user?.id) localStorage.setItem(`cardigan.groupsEnabled.${user.id}`, String(val)); } catch { /* private mode */ }
-  }, [user?.id]);
+  // Groups feature toggle (Settings → Funciones) — per-user, localStorage-
+  // persisted, default ON. Extracted to useGroupsEnabled.
+  const { groupsEnabled, setGroupsEnabled } = useGroupsEnabled(user?.id);
   const [bugReportOpen, setBugReportOpen] = useState(false);
   // Activation-complete share sheet — opens when ActivationChecklist
   // crosses 0→all-done. Reuses the user's referral code so the user
@@ -583,33 +572,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
      The end-of-visit toast (fired below from onMarkCompleted) routes
      into this so the user can schedule the next consult with one tap
      from the toast, regardless of which screen they're on. */
-  // Post-reload "Actualizado correctamente" toast — UpdatePrompt
-  // stamps localStorage right before the SW reload, and we surface
-  // the confirmation once the new build mounts. consumePostUpdateToast
-  // returns null when there's no recent apply or the stamp aged
-  // out, so this effect is a no-op for organic reloads.
-  useEffect(() => {
-    const msg = consumePostUpdateToast();
-    if (msg) showSuccess(msg);
-  // showSuccess is stable. Run once on mount only.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Native foreground push: the OS doesn't display the system tray
-  // banner when the app is in the foreground (Android suppresses it,
-  // iOS requires explicit opt-in via UNUserNotificationCenter delegate).
-  // src/lib/nativePush.js relays the FCM payload via a CustomEvent
-  // so we can surface it in-app via the existing Toast queue, keeping
-  // the foreground reminder reachable without leaving the running app.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent)?.detail || {};
-      const body = detail.body || detail.title || "Recordatorio";
-      showToast(body, "info");
-    };
-    window.addEventListener("cardigan-native-push-received", handler);
-    return () => window.removeEventListener("cardigan-native-push-received", handler);
-  }, [showToast]);
+  // Foreground toast surfacing — post-SW-reload confirmation + native
+  // foreground-push relay. Extracted to useForegroundToasts.
+  useForegroundToasts({ showSuccess, showToast });
   // Surface mutationError from the data layer as a persistent,
   // keyed entry in the toast queue. The `mutation-error` key makes
   // showToast de-dup: re-raising replaces the existing entry rather
