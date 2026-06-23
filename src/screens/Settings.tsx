@@ -8,7 +8,7 @@ import { DiagnosticsSheet } from "../components/sheets/DiagnosticsSheet";
 // Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
-import { IconUsers, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell } from "../components/Icons";
+import { IconUsers, IconX, IconCheck, IconSun, IconMoon, IconSmartphone } from "../components/Icons";
 import { AccountHeader } from "./settings/AccountHeader";
 import { MfaSheets } from "./settings/sheets/MfaSheets";
 import { ChangePasswordSheet } from "./settings/sheets/ChangePasswordSheet";
@@ -17,6 +17,7 @@ import { SignOutEverywhereSheet } from "./settings/sheets/SignOutEverywhereSheet
 import { ExportDataSheet } from "./settings/sheets/ExportDataSheet";
 import { DeleteAccountSheet } from "./settings/sheets/DeleteAccountSheet";
 import { EncryptionSheets } from "./settings/sheets/EncryptionSheets";
+import { NotificationsSheet } from "./settings/sheets/NotificationsSheet";
 import { PlanSheet } from "./settings/sheets/PlanSheet";
 import { SubscriptionPanel } from "./settings/SubscriptionPanel";
 import { AppearancePanel } from "./settings/AppearancePanel";
@@ -26,7 +27,6 @@ import { SecurityPanel } from "./settings/SecurityPanel";
 import { DataPrivacyPanel } from "./settings/DataPrivacyPanel";
 import { HelpPanel } from "./settings/HelpPanel";
 import { DangerZone } from "./settings/DangerZone";
-import { NextRemindersPreview } from "./settings/NextRemindersPreview";
 import { MONETIZATION_ENABLED } from "../config/monetization";
 
 // Spanish "hace X" relative time for the referral leaderboard. Days
@@ -59,9 +59,6 @@ import { AvatarPicker } from "../components/AvatarPicker";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { useMfa } from "../hooks/useMfa";
 import { usePasskeys } from "../hooks/usePasskeys";
-import { SegmentedControl } from "../components/SegmentedControl";
-import { Expando } from "../components/Expando";
-import { PushInstallCard } from "../components/PushInstallCard";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -77,17 +74,7 @@ import { formatMXNCents, formatDate } from "../utils/format";
 // so other surfaces (the activation-complete share sheet, etc.) can
 // reuse the exact same buttons and analytics taxonomy.
 import { ReferralShareBlock } from "../components/ReferralShareBlock";
-
-function notifErrorKey(code: string | undefined) {
-  switch (code) {
-    case "permission-denied": return "notifications.toastPermissionDenied";
-    case "install-required":  return "notifications.toastInstallRequired";
-    case "subscribe-failed":  return "notifications.toastSubscribeFailed";
-    case "server-error":      return "notifications.toastServerError";
-    case "unsupported":       return "notifications.toastUnsupported";
-    default:                  return "notifications.toastSubscribeFailed";
-  }
-}
+import { notifErrorKey } from "./settings/sheets/notifErrorKey";
 
 type SettingsProps = {
   user?: Row;
@@ -588,187 +575,18 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
          Branches on the same state machine the inline UI used to
          render directly on the Settings page (install gate / blocked /
          active toggle + reminder time). */}
-      {activeSheet === "notifications" && (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.notificationsRowTitle")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              {notifications?.needsInstall ? (
-                <PushInstallCard />
-              ) : notifications?.permission === "denied" ? (
-                <div className="push-amber-card" role="alert" style={{ margin:0 }}>
-                  <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
-                    <div style={{
-                      flexShrink:0, width:36, height:36, borderRadius:"50%",
-                      background:"var(--amber)", color:"var(--white)",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                    }}>
-                      <IconBell size={18} />
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{
-                        fontFamily:"var(--font-d)", fontWeight:800,
-                        fontSize:"var(--text-md)", color:"var(--charcoal)",
-                      }}>
-                        {t("notifications.blockedTitle")}
-                      </div>
-                      <div style={{
-                        fontSize:"var(--text-sm)", color:"var(--charcoal-md)",
-                        marginTop:4, lineHeight:1.4,
-                      }}>
-                        {t("notifications.blockedBody")}
-                      </div>
-                    </div>
-                  </div>
-                  <ol style={{
-                    listStyle:"none", margin:0, padding:0,
-                    display:"flex", flexDirection:"column", gap:6,
-                  }}>
-                    {[
-                      t("notifications.blockedStep1"),
-                      t("notifications.blockedStep2"),
-                      t("notifications.blockedStep3"),
-                    ].map((step, i) => (
-                      <li key={i} style={{
-                        display:"flex", gap:10, alignItems:"center",
-                        fontSize:"var(--text-sm)", color:"var(--charcoal)",
-                        padding:"6px 8px",
-                        background:"rgba(255,255,255,0.55)",
-                        borderRadius:8,
-                      }}>
-                        <span style={{
-                          flexShrink:0, width:20, height:20, borderRadius:"50%",
-                          background:"var(--amber)", color:"var(--white)",
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          fontSize:11, fontWeight:800,
-                        }}>{i + 1}</span>
-                        <span style={{ lineHeight:1.3 }}>{step}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              ) : (
-                <>
-                  {notifications?.reconciledOff && (
-                    <div className="push-inline-banner" style={{ marginBottom:12 }}>
-                      <div style={{
-                        flexShrink:0, width:22, height:22, borderRadius:"50%",
-                        background:"var(--amber)", color:"var(--white)",
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                        marginTop:2,
-                      }}>
-                        <IconBell size={12} />
-                      </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{
-                          fontFamily:"var(--font-d)", fontWeight:700,
-                          fontSize:"var(--text-sm)", color:"var(--charcoal)",
-                        }}>
-                          {t("notifications.reconciledBannerTitle")}
-                        </div>
-                        <div style={{ fontSize:12, color:"var(--charcoal-md)", marginTop:2, lineHeight:1.35 }}>
-                          {t("notifications.reconciledBannerBody")}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleReconcileReactivate}
-                          disabled={togglePending}
-                          style={{
-                            marginTop:8, height:28, padding:"0 12px",
-                            fontSize:12, fontWeight:700,
-                            background:"var(--amber)", color:"var(--white)",
-                            border:"none", borderRadius:6, cursor: togglePending ? "default" : "pointer",
-                            opacity: togglePending ? 0.7 : 1,
-                          }}
-                        >
-                          {t("notifications.reconciledBannerAction")}
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        aria-label={t("close")}
-                        onClick={() => notifications.clearReconciliationMessage?.()}
-                        style={{
-                          flexShrink:0, width:24, height:24, border:"none",
-                          background:"transparent", cursor:"pointer",
-                          color:"var(--charcoal-xl)",
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                        }}
-                      >
-                        <IconX size={12} />
-                      </button>
-                    </div>
-                  )}
-
-                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
-                    <div
-                      className={`settings-row-icon${bellFx ? " bell-ring bell-glow" : ""}`}
-                      style={{ color:"var(--teal-dark)" }}
-                    >
-                      <IconBell size={18} />
-                    </div>
-                    <div style={{ flex:1 }}>
-                      <div className="settings-row-title">{t("notifications.sessionReminders")}</div>
-                      <div className="settings-row-sub">
-                        {notifications?.enabled
-                          ? t("notifications.enabled")
-                          : t("notifications.sessionRemindersDesc")}
-                      </div>
-                    </div>
-                    <Toggle
-                      on={!!notifications?.enabled}
-                      onToggle={handleToggleNotifications}
-                      disabled={togglePending}
-                      ariaLabel={t("notifications.sessionReminders")}
-                    />
-                  </div>
-
-                  <Expando open={!!notifications?.enabled}>
-                    <div style={{ padding:"14px 0 4px" }}>
-                      <div style={{
-                        fontSize:12, fontWeight:700,
-                        color:"var(--charcoal-md)", letterSpacing:0.2,
-                        textTransform:"uppercase",
-                        margin:"0 2px 8px",
-                      }}>
-                        {t("notifications.reminderTime")}
-                      </div>
-                      <SegmentedControl
-                        role="group"
-                        ariaLabel={t("notifications.reminderTime")}
-                        items={[
-                          { k: 15, l: "15 min" },
-                          { k: 30, l: "30 min" },
-                          { k: 60, l: "1 hr" },
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- numeric keys; control compares with ===
-                        ] as any}
-                        value={notifications?.reminderMinutes}
-                        onChange={async (v: Row) => {
-                          if (v === notifications?.reminderMinutes) return;
-                          haptic.tap();
-                          const res = await notifications?.setReminderMinutes(v);
-                          if (res && !res.ok) {
-                            showToast(t(notifErrorKey(res.code)), "error");
-                          }
-                        }}
-                      />
-                    </div>
-                    {/* Próximas notificaciones — concrete preview of when
-                        reminders will fire over the next 24h based on
-                        scheduled sessions + the chosen offset. Closes
-                        the "what does my setting actually do" gap. */}
-                    <NextRemindersPreview minutes={notifications?.reminderMinutes || 30} />
-                  </Expando>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <NotificationsSheet
+        open={activeSheet === "notifications"}
+        notifications={notifications}
+        togglePending={togglePending}
+        bellFx={bellFx}
+        handleToggleNotifications={handleToggleNotifications}
+        handleReconcileReactivate={handleReconcileReactivate}
+        showToast={showToast}
+        setActiveSheet={setActiveSheet}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      />
 
       {/* ── CALENDAR SHEET ──
          Wraps the existing CalendarLinkPanel (multi-state component)
