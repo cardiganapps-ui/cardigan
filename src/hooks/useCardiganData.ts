@@ -752,7 +752,7 @@ export function useCardiganData(
     let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes;
     let tRes, tlRes, naRes, gRes, gmRes, nfRes;
     try {
-      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes] = await Promise.all([
+      const settled = await Promise.allSettled([
         q("patients").order("name"),
         fetchAllSessions(),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
@@ -784,7 +784,19 @@ export function useCardiganData(
         // activity. Read/cleared via the inbox actions below.
         q("notifications", 200).order("created_at", { ascending: false }),
       ]);
+      // allSettled (not all): a single REJECTED query — a connection
+      // dropped mid-flight, say — must not blank the entire hydration.
+      // The other 14 tables still load and the failure surfaces via
+      // tableErr below. Map a rejection to the same { data, error } shape
+      // a resolved-with-error query produces so the read path stays
+      // uniform (mapRows(null) → [], etc.).
+      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes] =
+        settled.map(r => r.status === "fulfilled"
+          ? r.value
+          : { data: null, error: { message: (r.reason as Error)?.message || "Error de red" } });
     } catch (err) {
+      // Defensive — allSettled itself never rejects; this only catches a
+      // synchronous throw while building the queries.
       setFetchError((err as Error)?.message || "Error al cargar datos");
       setLoading(false);
       return;

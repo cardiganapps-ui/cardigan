@@ -149,6 +149,29 @@ describe("useCardiganData — fetch → normalize → enrich", () => {
     expect(result.current.patients).toEqual([]);
   });
 
+  it("degrades gracefully when a single query rejects (allSettled)", async () => {
+    // The patients query rejects (e.g. a connection dropped mid-flight),
+    // but the other tables must still hydrate — the regression the
+    // Promise.allSettled change prevents (Promise.all would blank
+    // everything).
+    mock.setFallback("patients", () => Promise.reject(new Error("network dropped")));
+    mock.setFallback("sessions", sessionsPager([]));
+    mock.setFallback("payments", {
+      data: [{ id: "pay1", user_id: "u1", patient_id: "p1", amount: 500, date: "8-Abr", method: "transferencia", color_idx: 0 }],
+      error: null,
+    });
+
+    const { result } = renderHook(() => useCardiganData({ id: "u1" }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // The failure is surfaced…
+    expect(result.current.fetchError).toBe("network dropped");
+    // …the rejected table degrades to empty…
+    expect(result.current.patients).toEqual([]);
+    // …but the OTHER tables still loaded (this is the whole point).
+    expect(result.current.payments).toHaveLength(1);
+  });
+
   it("skips the fetch entirely when there is no user", async () => {
     const { result } = renderHook(() => useCardiganData(null));
     await waitFor(() => expect(result.current.loading).toBe(false));
