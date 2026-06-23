@@ -15,6 +15,8 @@ import { MfaSheets } from "./settings/sheets/MfaSheets";
 import { ChangePasswordSheet } from "./settings/sheets/ChangePasswordSheet";
 import { PasskeysSheet } from "./settings/sheets/PasskeysSheet";
 import { SignOutEverywhereSheet } from "./settings/sheets/SignOutEverywhereSheet";
+import { ExportDataSheet } from "./settings/sheets/ExportDataSheet";
+import { DeleteAccountSheet } from "./settings/sheets/DeleteAccountSheet";
 import { SubscriptionPanel } from "./settings/SubscriptionPanel";
 import { AppearancePanel } from "./settings/AppearancePanel";
 import { FeaturesPanel } from "./settings/FeaturesPanel";
@@ -57,7 +59,6 @@ import { AvatarPicker } from "../components/AvatarPicker";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { useMfa } from "../hooks/useMfa";
 import { usePasskeys } from "../hooks/usePasskeys";
-import { TurnstileWidget, TURNSTILE_ENABLED } from "../components/TurnstileWidget";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Expando } from "../components/Expando";
 import { PushInstallCard } from "../components/PushInstallCard";
@@ -507,135 +508,10 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
   };
 
   // ── Privacy / ARCO actions ─────────────────────────────────────────
-  const [exporting, setExporting] = useState(false);
-  const [exportPassword, setExportPassword] = useState("");
-  const [exportError, setExportError] = useState("");
-  const [exportCaptchaToken, setExportCaptchaToken] = useState<string | null>(null);
-  const exportTurnstileRef = useRef<Row>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
-  const [deleteCaptchaToken, setDeleteCaptchaToken] = useState<string | null>(null);
-  const deleteTurnstileRef = useRef<Row>(null);
+  // The export + delete reauth/captcha state and their handlers live in
+  // ExportDataSheet / DeleteAccountSheet now.
   // Sign-out confirmation, mirroring the Drawer pattern.
   const [confirmSignOut, setConfirmSignOut] = useState(false);
-
-  /* Map server-side reauth codes → user-facing Spanish messages so
-     the prompt knows what to say beyond a generic "wrong password". */
-  const reauthMessageFor = (code: string) => {
-    if (code === "wrong_password") return t("settings.privacyReauthWrong");
-    if (code === "password_required") return t("settings.privacyReauthRequired");
-    if (code === "oauth_only") return t("settings.privacyReauthOauthOnly");
-    if (code === "captcha_failed") return t("settings.privacyReauthCaptcha");
-    return t("settings.privacyReauthError");
-  };
-
-  const exportMyData = async () => {
-    if (exporting) return;
-    if (!exportPassword) { setExportError(t("settings.privacyReauthRequired")); return; }
-    setExporting(true);
-    setExportError("");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { setExportError(t("settings.privacyExportError")); return; }
-      const res = await fetch("/api/export-user-data", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          password: exportPassword,
-          captchaToken: exportCaptchaToken || undefined,
-        }),
-      });
-      if (!res.ok) {
-        // 401 with a code field → reauth issue; surface in the sheet so
-        // the user can re-enter without losing the modal context.
-        if (res.status === 401) {
-          let code = ""; try { const j = await res.json(); code = j.code || ""; } catch { /* ignore */ }
-          setExportError(reauthMessageFor(code));
-          setExportCaptchaToken(null);
-          exportTurnstileRef.current?.reset();
-          return;
-        }
-        let msg = t("settings.privacyExportError");
-        try { const j = await res.json(); if (j.hint) msg = j.hint; else if (j.error) msg = j.error; } catch { /* keep default */ }
-        showToast(msg, res.status === 429 ? "warning" : "error");
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const today = new Date().toISOString().slice(0, 10);
-      a.download = `cardigan-export-${today}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      showToast(t("settings.privacyExportDone"), "success");
-      setExportPassword("");
-      setActiveSheet(null);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const confirmDeleteAccount = async () => {
-    if (deleting) return;
-    if (!deletePassword) { setDeleteError(t("settings.privacyReauthRequired")); return; }
-    setDeleting(true);
-    setDeleteError("");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { setDeleteError(t("settings.privacyDeleteError")); return; }
-      // Normalize the confirmation phrase: iOS predictive keyboards
-      // can insert trailing spaces or lowercase characters even with
-      // autoCapitalize="characters". The server still requires exact
-      // "ELIMINAR" so we send the normalized value.
-      const normalizedConfirmation = deleteConfirm.trim().toUpperCase();
-      const res = await fetch("/api/delete-my-account", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          confirmation: normalizedConfirmation,
-          password: deletePassword,
-          captchaToken: deleteCaptchaToken || undefined,
-        }),
-      });
-      if (!res.ok) {
-        // 401 → reauth issue; keep the sheet open so the user can fix.
-        if (res.status === 401) {
-          let code = ""; try { const j = await res.json(); code = j.code || ""; } catch { /* ignore */ }
-          setDeleteError(reauthMessageFor(code));
-          // Captcha tokens are single-use; force a fresh challenge so a
-          // retry isn't immediately blocked by the same stale token.
-          setDeleteCaptchaToken(null);
-          deleteTurnstileRef.current?.reset();
-          return;
-        }
-        let msg = t("settings.privacyDeleteError");
-        try { const j = await res.json(); if (j.error) msg = j.error; } catch { /* keep default */ }
-        setDeleteError(msg);
-        return;
-      }
-      // Cascade completed — sign out to clear the (now-orphan) session.
-      await signOut();
-    } catch (err) {
-      // Surface network / unexpected errors so the user knows something
-      // happened (a silent failure looks like the button is broken).
-      setDeleteError((err as Error)?.message || t("settings.privacyDeleteError"));
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   // ── Derived row subtitles for the consolidated rows ─────────────
   // Notifications collapses 3 inline visual layouts into one row whose
@@ -736,8 +612,7 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
 
       <DataPrivacyPanel
         readOnly={readOnly}
-        exporting={exporting}
-        onOpenExport={() => { setExportPassword(""); setExportError(""); setActiveSheet("exportData"); }}
+        onOpenExport={() => setActiveSheet("exportData")}
         onOpenPrivacyPolicy={() => navigate("privacy")}
       />
 
@@ -753,7 +628,7 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         onOpenDiagnostics={() => setActiveSheet("diagnostics")}
         onSignOut={() => setConfirmSignOut(true)}
         onOpenSignOutEverywhere={() => setActiveSheet("signOutEverywhere")}
-        onOpenDeleteAccount={() => { setDeleteConfirm(""); setDeleteError(""); setActiveSheet("deleteAccount"); }}
+        onOpenDeleteAccount={() => setActiveSheet("deleteAccount")}
       />
 
       <div style={{ paddingBottom:24 }} />
@@ -1764,131 +1639,15 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         </div>
       )}
 
-      {/* ── DELETE ACCOUNT SHEET ── */}
-      {activeSheet === "deleteAccount" && (
-        <div className="sheet-overlay" onClick={() => !deleting && setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.privacyDelete")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => !deleting && setActiveSheet(null)} disabled={deleting}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
-                {t("settings.privacyDeleteExplain")}
-              </div>
-              <div style={{ background: "var(--red-pale, #fdecea)", color: "var(--red-dark, #922)", padding: "10px 14px", borderRadius: "var(--radius)", fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-                {t("settings.privacyDeleteWarning")}
-              </div>
-              {/* iOS Safari autofills the closest text field above any
-                  password input as the "username" side of a sign-in
-                  pair. To stop it from dumping the user's email into
-                  the confirmation field, we plant a hidden username
-                  input here that absorbs the pairing instead. The
-                  attributes also dissuade 1Password / LastPass / iOS
-                  Keychain. */}
-              <input
-                type="text"
-                name="absorb-username-autofill"
-                autoComplete="username"
-                tabIndex={-1}
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  width: 1, height: 1,
-                  opacity: 0, pointerEvents: "none",
-                  border: 0, padding: 0, margin: -1,
-                  overflow: "hidden", clip: "rect(0 0 0 0)",
-                }}
-                value=""
-                readOnly
-              />
-              <div className="input-group" style={{ marginBottom: 14 }}>
-                <label className="input-label">{t("settings.privacyDeleteConfirmLabel")}</label>
-                <input
-                  className="input"
-                  type="text"
-                  inputMode="text"
-                  // Distinct, non-standard name so password managers
-                  // don't try to autofill known credentials here.
-                  name="cardigan-eliminar-confirm"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  autoCapitalize="characters"
-                  data-1p-ignore
-                  data-lpignore="true"
-                  value={deleteConfirm}
-                  onChange={(e) => setDeleteConfirm(e.target.value)}
-                  placeholder="ELIMINAR"
-                  disabled={deleting}
-                />
-                {/* Inline hint when the value is non-empty but doesn't
-                    match. The user almost always lands here because of
-                    iOS autofill — a "Borrar" button gives them a
-                    one-tap recovery instead of having to manually
-                    delete their email character by character. */}
-                {deleteConfirm
-                  && deleteConfirm.trim().toUpperCase() !== "ELIMINAR" && (
-                  <div style={{
-                    display:"flex", alignItems:"center", justifyContent:"space-between",
-                    gap:8, marginTop:6, fontSize:12, color:"var(--charcoal-md)",
-                    lineHeight:1.45,
-                  }}>
-                    <span>{t("settings.privacyDeleteHint")}</span>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirm("")}
-                      style={{
-                        background:"none", border:"none", color:"var(--teal-dark)",
-                        fontWeight:700, fontSize:12, cursor:"pointer", padding:"2px 6px",
-                      }}
-                    >
-                      {t("settings.privacyDeleteClear")}
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="input-group" style={{ marginBottom: 14 }}>
-                <label className="input-label">{t("settings.privacyReauthLabel")}</label>
-                <PasswordInput
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  placeholder={t("settings.privacyReauthPlaceholder")}
-                  autoComplete="current-password"
-                  disabled={deleting}
-                />
-              </div>
-              {/* Captcha verification — see export sheet above for context. */}
-              {TURNSTILE_ENABLED && (
-                <div style={{ display:"flex", justifyContent:"center", marginBottom: 12 }}>
-                  <TurnstileWidget ref={deleteTurnstileRef} onToken={setDeleteCaptchaToken} />
-                </div>
-              )}
-              {deleteError && (
-                <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{deleteError}</div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={confirmDeleteAccount}
-                  disabled={deleting
-                    || deleteConfirm.trim().toUpperCase() !== "ELIMINAR"
-                    || !deletePassword
-                    || (TURNSTILE_ENABLED && !deleteCaptchaToken)}
-                  style={{ background: "var(--red)", color: "var(--white)" }}
-                >
-                  {deleting ? t("loading") : t("settings.privacyDeleteCta")}
-                </button>
-                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={deleting}>
-                  {t("cancel")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete-account (ARCO Cancelación) — confirm/reauth/captcha state +
+          handler extracted to DeleteAccountSheet. */}
+      <DeleteAccountSheet
+        open={activeSheet === "deleteAccount"}
+        onClose={() => setActiveSheet(null)}
+        signOut={signOut}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      />
 
       {/* MFA enroll + manage sheets (state + JSX extracted to MfaSheets;
           the shared `mfa` instance + sheet-trap wiring are passed in). */}
@@ -1934,62 +1693,15 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         sheetPanelHandlers={sheetPanelHandlers}
       />
 
-      {/* ── EXPORT DATA SHEET ──
-         Step-up password gate before issuing the export. The session
-         JWT alone isn't enough: a stolen token shouldn't be able to
-         one-shot the entire data export. */}
-      {activeSheet === "exportData" && (
-        <div className="sheet-overlay" onClick={() => !exporting && setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.privacyExport")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => !exporting && setActiveSheet(null)} disabled={exporting}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
-                {t("settings.privacyExportExplain")}
-              </div>
-              <div className="input-group" style={{ marginBottom: 14 }}>
-                <label className="input-label">{t("settings.privacyReauthLabel")}</label>
-                <PasswordInput
-                  value={exportPassword}
-                  onChange={(e) => setExportPassword(e.target.value)}
-                  placeholder={t("settings.privacyReauthPlaceholder")}
-                  autoComplete="current-password"
-                  disabled={exporting}
-                />
-              </div>
-              {/* Captcha verification — Supabase Auth has security_captcha_enabled
-                  on, so signInWithPassword (used by the server-side reauth)
-                  rejects without a fresh Turnstile token. The widget is
-                  invisible/managed and resolves on its own; we just hold the
-                  token and forward it on submit. */}
-              {TURNSTILE_ENABLED && (
-                <div style={{ display:"flex", justifyContent:"center", marginBottom: 12 }}>
-                  <TurnstileWidget ref={exportTurnstileRef} onToken={setExportCaptchaToken} />
-                </div>
-              )}
-              {exportError && (
-                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{exportError}</div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={exportMyData}
-                  disabled={exporting || !exportPassword || (TURNSTILE_ENABLED && !exportCaptchaToken)}
-                >
-                  {exporting ? t("loading") : t("settings.privacyExportCta")}
-                </button>
-                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={exporting}>
-                  {t("cancel")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Export-my-data (ARCO Acceso) — reauth/captcha state + handler
+          extracted to ExportDataSheet. */}
+      <ExportDataSheet
+        open={activeSheet === "exportData"}
+        onClose={() => setActiveSheet(null)}
+        showToast={showToast}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      />
 
       <ConfirmDialog
         open={confirmSignOut}
