@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useToastQueue } from "./hooks/useToastQueue";
+import { useEngagementPrompts } from "./hooks/useEngagementPrompts";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { LoadingSkeleton, SkeletonCrossfade } from "./components/LoadingSkeleton";
 import { isNative, isIOS } from "./lib/platform";
-import { supabase } from "./supabaseClient";
-import { passkeysAvailable, passkeyPlatformAuthenticatorAvailable } from "./config/passkeys";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
 // Conditionally rendered after first paint by various gates (one-time
 // prompts, encryption unlock, post-subscribe celebration, etc.). Lazy
@@ -18,8 +17,6 @@ const RatingSheet = lazy(() => import("./components/RatingSheet").then(m => ({ d
 // Conditionally rendered by activeSheet === "shareFolder" — lazy
 // keeps its (and its date-picker / preview deps') bytes off cold start.
 const ShareFolderSheet = lazy(() => import("./components/sheets/ShareFolderSheet").then(m => ({ default: m.ShareFolderSheet })));
-import { shouldShowDay14Prompt } from "./utils/ratingPrompt";
-import { shouldShowTrialReminder, shouldPromptPasskey, todayDateKey, PASSKEY_PROMPT_MAX_ASKS } from "./utils/modalGates";
 // Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
 // user actually opens the welcome-modal subscribe flow.
 const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet"));
@@ -146,15 +143,13 @@ import "./styles/index.css";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
 
-// Days-remaining thresholds at which we surface the trial reminder
-// modal. Module-level so the dependency array of the gating effect
-// stays stable across renders. Cadence is intentionally light — three
-// nudges across the 30-day window respects the user's attention much
-// more than a daily-during-the-final-week barrage. Each modal is also
-// suppressed if the user opened the plan sheet within the last 3 days.
-// The cadence constants + the eligibility decision now live in
-// utils/modalGates (pure + unit-tested); this shell only fires the side
-// effects (localStorage read/write, setTimeout, setState).
+// The trial-reminder cadence is intentionally light — a few nudges across
+// the 30-day window respects the user's attention more than a daily
+// final-week barrage, and each modal is suppressed if the user opened the
+// plan sheet within the last 3 days. The cadence constants + the
+// eligibility decisions live in utils/modalGates (pure + unit-tested);
+// the side-effect orchestration (localStorage read/write, setTimeout,
+// setState) lives in hooks/useEngagementPrompts.
 
 // AuthSplash is the single brand-loading surface for the entire boot
 // sequence (Suspense fallbacks, auth/role gates, and the MFA gate). It
@@ -163,7 +158,8 @@ type Row = any;
 
 // Passkey enrollment-nudge cadence (respectful but persistent) lives in
 // utils/modalGates (PASSKEY_PROMPT_MAX_ASKS / _COOLDOWN_MS + the
-// shouldPromptPasskey decision); imported above.
+// shouldPromptPasskey decision); the nudge effect itself is in
+// hooks/useEngagementPrompts.
 
 function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signInWithMagicLink, signInWithPasskey, signInWithProvider, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
@@ -496,16 +492,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // can share with a colleague at the moment they feel best about
   // having finished setup.
   const [activationShareOpen, setActivationShareOpen] = useState(false);
-  // In-app rating sheet (day14_v1 / day30_v1). Triggered either by
-  // the day-14 lifecycle email's deep link (#rating hash) or by the
-  // organic shouldShowDay14Prompt eligibility check below.
-  const [ratingSheetOpen, setRatingSheetOpen] = useState(false);
-  // App.jsx mount timestamp — the rating-sheet gate uses this as a
-  // "settle in" cooldown so a fresh sign-in / TestFlight-first-launch
-  // doesn't trigger the ask before the user has done anything in the
-  // current session. Lives in a ref-equivalent useState so its value
-  // is stable across renders without re-firing effects.
-  const [sessionStartedAt] = useState(() => Date.now());
   // Web Share Target receiver state. When the user shares a folder
   // URL into Cardigan from the OS share sheet, the browser routes
   // to /?share_folder=1&url=…&text=…&title=… — we capture the URL
@@ -516,13 +502,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // encrypted notes still render as "[cifrado]" since noteCrypto.canEncrypt
   // stays false.
   const [cryptoGateDismissed, setCryptoGateDismissed] = useState(false);
-  // Track whether we've already evaluated the welcome-to-Pro prompt
-  // for this session. Local-storage handles the persistent "show
-  // once" rule; this state controls whether the modal is currently
-  // visible. The modal hands itself either dismissal path
-  // (continueTrial / startCheckout) and we record the local flag
-  // synchronously inside both handlers.
-  const [welcomeProOpen, setWelcomeProOpen] = useState(false);
   const admin = !demo && isAdmin(user);
 
   // Note encryption — opt-in, per-user. The hook self-fetches status
@@ -799,59 +778,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // Settings → plan reads from there at checkout time. No further
   // work needed at this layer.
 
-  // ── Rating sheet deep-link (#rating) ──
-  // The day-14 lifecycle email's CTA links here — opening the
-  // rating sheet directly. Strip the hash so a refresh doesn't
-  // re-open it. Skipped in demo + read-only flows.
-  useEffect(() => {
-    if (demo || readOnly) return;
-    if (!user) return;
-    if (typeof window === "undefined") return;
-    if (window.location.hash !== "#rating") return;
-    history.replaceState({}, "", window.location.pathname + window.location.search);
-    setRatingSheetOpen(true);
-  // run only on mount; the early returns gate non-eligible states.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
-  // Organic day-14 trigger: when the user has hit the eligibility
-  // bar (≥14d signup, ≥1 session OR ≥2 patients), open the sheet
-  // automatically the first time the user lands on Home in that
-  // window. Dedupe via the same dismiss-key the sheet writes when
-  // closed without submission.
-  useEffect(() => {
-    if (demo || readOnly) return;
-    if (!user) return;
-    if (ratingSheetOpen) return;
-    const promptKind = "day14_v1";
-    let hasDismissed = false;
-    let hasSubmitted = false;
-    try {
-      hasDismissed = localStorage.getItem(`cardigan.rating.${promptKind}.dismissed.${user.id}`) === "1";
-      hasSubmitted = localStorage.getItem(`cardigan.rating.${promptKind}.submitted.${user.id}`) === "1";
-    } catch { /* ignore */ }
-    // Compute days since signup from auth.users.created_at — same
-    // signal the cron uses on the email side. NaN-safe.
-    const created = user?.created_at ? new Date(user.created_at).getTime() : NaN;
-    const daysSinceSignup = Number.isFinite(created)
-      ? Math.floor((Date.now() - created) / 86_400_000)
-      : 0;
-    const eligible = shouldShowDay14Prompt({
-      accessState: subscription.accessState,
-      daysSinceSignup,
-      sessionsCount: (upcomingSessions || []).length,
-      patientsCount: (patients || []).length,
-      hasSubmitted,
-      hasDismissed,
-      // Seconds since this App.jsx instance mounted — see ratingPrompt's
-      // per-session cooldown rationale. Stops the ask from firing on
-      // first home open for users who satisfy the time/usage gate but
-      // haven't actually engaged with the app in the current session.
-      secondsSinceSessionStart: (Date.now() - sessionStartedAt) / 1000,
-    });
-    if (eligible) setRatingSheetOpen(true);
-  }, [demo, readOnly, user, subscription.accessState, upcomingSessions, patients, ratingSheetOpen, sessionStartedAt]);
-
   const tutorial = useTutorial({ user, demo, readOnly, screen });
   // The carousel is a full-screen overlay with its own scrim, so the FAB
   // just hides while the tutorial (welcome gate or carousel) is up.
@@ -879,55 +805,24 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   const hideBottomTabs = screen === "admin" || localHideBottomTabs;
   const notifications = useNotifications(demo ? null : user);
 
-  // Welcome-to-Pro prompt: fires once for real trial users (not
-  // subscribed, not comp, not admin). Persistent dismissal lives in
-  // localStorage so a refresh doesn't replay the modal.
-  //
-  // Timing: previously gated strictly on `tutorial.state === "done"`,
-  // which meant users who never engaged with the tutorial welcome at
-  // all (closed the tab, backgrounded the PWA, refreshed mid-onboard)
-  // never saw the trial prompt EVER. Now we have two paths:
-  //   • Tutorial reached "done" → fire after 600ms hand-off grace
-  //   • Tutorial sits in idle/welcome past a 10s ceiling → fire anyway
-  //   • Tutorial actively "running" → wait (don't interrupt)
-  // The effect re-runs on tutorial.state transitions, so a user who
-  // starts the tutorial 9s in still gets clean handoff at "done".
-  useEffect(() => {
-    if (demo || viewAsUserId) return;
-    if (!user?.id) return;
-    if (subscription.accessState !== "trial") return;
-    if (tutorial?.state === "running") return;
-    let stored = null;
-    try { stored = localStorage.getItem(`cardigan.welcomePro.shown.v1.${user.id}`); }
-    catch { /* private mode — fall through and show; worst case it shows twice */ }
-    if (stored) return;
-    const delay = tutorial?.state === "done" ? 600 : 10000;
-    const id = setTimeout(() => setWelcomeProOpen(true), delay);
-    return () => clearTimeout(id);
-  }, [demo, viewAsUserId, user?.id, subscription.accessState, tutorial?.state]);
-
-  const persistWelcomeProSeen = useCallback(() => {
-    if (!user?.id) return;
-    try { localStorage.setItem(`cardigan.welcomePro.shown.v1.${user.id}`, "1"); }
-    catch { /* private mode — best effort */ }
-  }, [user?.id]);
-
-  const closeWelcomePro = useCallback(() => {
-    persistWelcomeProSeen();
-    setWelcomeProOpen(false);
-  }, [persistWelcomeProSeen]);
-
-  // Welcome-modal "Subscribe now" → close the modal and pop the native
-  // payment sheet inline. We keep a separate paymentSheet state on App
-  // so the sheet survives the modal closing (and so the same component
-  // doesn't end up double-mounted from Settings if the user lands there
-  // while the welcome modal flow is still active).
-  const [welcomePaymentOpen, setWelcomePaymentOpen] = useState(false);
-  const subscribeFromWelcomePro = useCallback(() => {
-    persistWelcomeProSeen();
-    setWelcomeProOpen(false);
-    setWelcomePaymentOpen(true);
-  }, [persistWelcomeProSeen]);
+  // The five lifecycle / engagement prompts (rating sheet, welcome-to-Pro,
+  // trial reminder, passkey enroll nudge, subscription-success celebration)
+  // and their localStorage-dedup + setTimeout orchestration live in
+  // useEngagementPrompts; the shell just consumes the open-flags + handlers.
+  const {
+    ratingSheetOpen, setRatingSheetOpen,
+    welcomeProOpen, closeWelcomePro, subscribeFromWelcomePro,
+    welcomePaymentOpen, setWelcomePaymentOpen,
+    trialReminderOpen, setTrialReminderOpen, trialReminderDays,
+    trialReminderPaymentOpen, setTrialReminderPaymentOpen, subscribeFromTrialReminder,
+    passkeyPromptOpen, passkeyCreating, dismissPasskeyPrompt, createPasskeyFromPrompt,
+    subscriptionSuccessOpen, closeSubscriptionSuccess,
+  } = useEngagementPrompts({
+    demo, viewAsUserId, user, readOnly,
+    subscription, tutorialState: tutorial?.state,
+    upcomingSessions, patients,
+    showSuccess, showToast, t,
+  });
 
   // ── Pro feature gating ──
   // Centralized "open the upgrade sheet" so any screen can call
@@ -962,163 +857,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
     }
     setScreen(id);
   }, [subscription.isPro, requirePro, setScreen]);
-
-  // ── Trial reminder prompt (15 / 10 / 5 / 3 / 2 / 1 days left) ──
-  // Fires at most once per (user, day) combination so the user isn't
-  // pestered if they reload mid-day, and doesn't fire at all once
-  // they've subscribed or been comp'd. Dedupe key encodes the YYYY-MM-DD
-  // local date — a fresh login the next morning re-evaluates.
-  const [trialReminderOpen, setTrialReminderOpen] = useState(false);
-  const [trialReminderDays, setTrialReminderDays] = useState<number | null>(null);
-  const [trialReminderPaymentOpen, setTrialReminderPaymentOpen] = useState(false);
-
-  // ── Post-login passkey enrollment nudge ──
-  // FIDO best practice: the post-login auto-prompt drives ~75% of all
-  // passkey enrollments. Cadence is "respectful but persistent" — re-ask
-  // on a LATER session (never the same one), after a cooldown, capped at
-  // a few asks, then stop forever. Enrolling (here or anywhere) silences
-  // it permanently. We only prompt on devices with a real platform
-  // authenticator (Face ID / Touch ID), and defer ~1.6s so it doesn't
-  // collide with first paint or stack on the trial reminder.
-  //
-  // State is a per-user JSON blob `{ n, t, enrolled }`:
-  //   n = times shown, t = last-shown ms, enrolled = done forever.
-  const [passkeyPromptOpen, setPasskeyPromptOpen] = useState(false);
-  const [passkeyCreating, setPasskeyCreating] = useState(false);
-  const passkeyPromptKey = user?.id ? `cardigan.passkeyPrompt.v2.${user.id}` : null;
-  useEffect(() => {
-    if (demo || viewAsUserId) return;
-    if (!user?.id || !passkeyPromptKey) return;
-    if (!passkeysAvailable()) return;
-    let state;
-    try { state = JSON.parse(localStorage.getItem(passkeyPromptKey) || "null"); } catch { state = null; }
-    state = state || { n: 0, t: 0, enrolled: false };
-    // Synchronous cadence gate (enrolled / cap / cooldown) — see
-    // utils/modalGates. The async hardware + credential-list checks below
-    // still decide whether the device can actually create a passkey.
-    if (!shouldPromptPasskey(state, { now: Date.now() })) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    (async () => {
-      try {
-        // Only nudge devices that can actually create a passkey.
-        const hw = await passkeyPlatformAuthenticatorAvailable();
-        if (cancelled || !hw) return;
-        const { data, error } = await supabase.auth.passkey.list();
-        if (cancelled || error) return;
-        const list = Array.isArray(data) ? data : ((data as Row)?.passkeys || []);
-        if (list.length > 0) {
-          // Already enrolled (another device) — never prompt again.
-          try { localStorage.setItem(passkeyPromptKey, JSON.stringify({ ...state, enrolled: true })); } catch { /* private mode */ }
-          return;
-        }
-        timer = setTimeout(() => {
-          if (cancelled) return;
-          setPasskeyPromptOpen(true);
-          // Count the ask the moment it's actually shown.
-          try { localStorage.setItem(passkeyPromptKey, JSON.stringify({ ...state, n: (state.n || 0) + 1, t: Date.now() })); } catch { /* private mode */ }
-        }, 1600);
-      } catch { /* beta API hiccup — just skip the nudge */ }
-    })();
-    return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [user?.id, demo, viewAsUserId, passkeyPromptKey]);
-
-  const dismissPasskeyPrompt = useCallback(() => {
-    // The ask was already recorded when shown; the cooldown + cap handle
-    // re-prompting on a later session, so just close here.
-    setPasskeyPromptOpen(false);
-  }, []);
-
-  const createPasskeyFromPrompt = useCallback(async () => {
-    if (passkeyCreating) return;
-    setPasskeyCreating(true);
-    try {
-      const { error } = await supabase.auth.registerPasskey();
-      if (!error) {
-        showSuccess(t("settings.passkeyPromptDone"));
-        setPasskeyPromptOpen(false);
-        try { if (passkeyPromptKey) localStorage.setItem(passkeyPromptKey, JSON.stringify({ enrolled: true, n: PASSKEY_PROMPT_MAX_ASKS, t: Date.now() })); } catch { /* private mode */ }
-      } else if (!/NotAllowed|AbortError|cancel/i.test(error.name || error.message || "")) {
-        // Real failure (not a user cancel) — surface a toast but keep the
-        // prompt open so they can retry.
-        showToast(t("settings.passkeyAddError"), "error");
-      }
-    } catch (e: Row) {
-      if (!/NotAllowed|AbortError|cancel/i.test(e?.name || e?.message || "")) {
-        showToast(t("settings.passkeyAddError"), "error");
-      }
-    } finally {
-      setPasskeyCreating(false);
-    }
-  }, [passkeyCreating, passkeyPromptKey, showSuccess, showToast, t]);
-  useEffect(() => {
-    // Read the side-effect inputs (plan-sheet grace stamp + last-shown
-    // day) from localStorage; the pure eligibility decision lives in
-    // shouldShowTrialReminder (utils/modalGates). The plan sheet stamps
-    // `cardigan.planSheetSeen.<userId>` on open (Settings activeSheet ===
-    // "plan"); we skip the nudge within its grace window.
-    const uid = user?.id;
-    const days = subscription.daysLeftInTrial;
-    const dateKey = todayDateKey();
-    const lsKey = uid ? `cardigan.trialReminder.lastShown.${uid}` : "";
-    let planSheetSeenAt = 0;
-    let last: string | null = null;
-    if (uid) {
-      try { const seen = localStorage.getItem(`cardigan.planSheetSeen.${uid}`); planSheetSeenAt = seen ? Number(seen) : 0; }
-      catch { /* private mode — fall through */ }
-      try { last = localStorage.getItem(lsKey); }
-      catch { /* private mode — show anyway */ }
-    }
-    if (!shouldShowTrialReminder({
-      demo: !!demo, viewingAsUser: !!viewAsUserId, hasUser: !!uid,
-      accessState: subscription.accessState, daysLeft: days,
-      planSheetSeenAt, lastShownDateKey: last, todayKey: dateKey, now: Date.now(),
-    })) return;
-
-    // Defer slightly so the modal doesn't compete with the welcome-to-
-    // Pro modal on a brand-new user's first session — and so it lands
-    // a beat after auth/loading settles. Anything earlier feels jumpy.
-    const timer = setTimeout(() => {
-      setTrialReminderDays(days as number);
-      setTrialReminderOpen(true);
-      try { localStorage.setItem(lsKey, dateKey); }
-      catch { /* fall through */ }
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [demo, viewAsUserId, user?.id, subscription.accessState, subscription.daysLeftInTrial]);
-  const subscribeFromTrialReminder = useCallback(() => {
-    setTrialReminderOpen(false);
-    setTrialReminderPaymentOpen(true);
-  }, []);
-
-  // ── "Welcome to Pro" celebration ──
-  // Fires once per user on the first transition from non-active →
-  // active (paid sub or comp). Persisted via localStorage so a refresh
-  // won't replay it. Comp-granted accounts get the same celebration —
-  // the moment is "you have Pro now" regardless of whether money
-  // changed hands.
-  const [subscriptionSuccessOpen, setSubscriptionSuccessOpen] = useState(false);
-  const prevSubActiveRef = useRef(false);
-  useEffect(() => {
-    if (demo || viewAsUserId) return;
-    if (!user?.id) return;
-    const isActiveNow = !!(subscription.subscribedActive || subscription.compGranted);
-    const wasActive = prevSubActiveRef.current;
-    prevSubActiveRef.current = isActiveNow;
-    if (!isActiveNow || wasActive) return;
-    let shown = null;
-    try { shown = localStorage.getItem(`cardigan.welcomedPro.${user.id}`); }
-    catch { /* private mode — fall through and show; one extra modal isn't a big deal */ }
-    if (shown) return;
-    setSubscriptionSuccessOpen(true);
-  }, [demo, viewAsUserId, user?.id, subscription.subscribedActive, subscription.compGranted]);
-  const closeSubscriptionSuccess = useCallback(() => {
-    if (user?.id) {
-      try { localStorage.setItem(`cardigan.welcomedPro.${user.id}`, "1"); }
-      catch { /* private mode — fine */ }
-    }
-    setSubscriptionSuccessOpen(false);
-  }, [user?.id]);
 
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
