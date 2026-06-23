@@ -4,7 +4,7 @@ import { isTutorSession, isInterviewSession, statusClass } from "../../utils/ses
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { usesVisitTypes, VISIT_TYPES } from "../../data/constants";
 import { EmptyState } from "../../components/EmptyState";
 
@@ -77,7 +77,7 @@ export function SesionesTab({
   onOpenNote?: (s: Row) => void;
 }) {
   const { t } = useT();
-  const { profession, updateSessionVisitType, readOnly, showSuccess } = useCardigan();
+  const { profession, updateSessionVisitType, readOnly, showSuccess } = useCardiganMain();
   const showVisitTypes = usesVisitTypes(profession);
   /* Cycle through visit types on tap: null → intake → followup →
      maintenance → null. Practitioner override; the auto-tag at create

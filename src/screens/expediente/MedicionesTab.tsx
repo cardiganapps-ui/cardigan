@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { SwipeableRow } from "../../components/SwipeableRow";
 import { EmptyState } from "../../components/EmptyState";
 import { MeasurementSheet } from "../../components/sheets/MeasurementSheet";
@@ -20,7 +20,7 @@ import { IconTrendingUp } from "../../components/Icons";
        FinanzasTab + Notes patterns).
      - Slide-up MeasurementSheet for add / edit.
 
-   Mutations live on useCardigan() (createMeasurement /
+   Mutations live on useCardiganMain() (createMeasurement /
    updateMeasurement / deleteMeasurement) and are guarded against
    read-only mode at the data layer. */
 
@@ -128,7 +128,7 @@ const METRICS = [
 
 export function MedicionesTab({ patient }: { patient: Row }) {
   const { t } = useT();
-  const { measurements, createMeasurement, updateMeasurement, deleteMeasurement, readOnly, showSuccess } = useCardigan();
+  const { measurements, createMeasurement, updateMeasurement, deleteMeasurement, readOnly, showSuccess } = useCardiganMain();
 
   // Newest first by date, then by created_at as tiebreaker.
   const ordered = useMemo(() => {

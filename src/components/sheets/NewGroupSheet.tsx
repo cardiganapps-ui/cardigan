@@ -5,7 +5,7 @@ import { MoneyInput } from "../MoneyInput";
 import { Avatar } from "../Avatar";
 import { SegmentedControl } from "../SegmentedControl";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
@@ -35,7 +35,7 @@ type Row = any;
 
 export function NewGroupSheet({ onClose }: { onClose: () => void }) {
   const { t } = useT();
-  const { profession, patients, createGroup, mutating } = useCardigan();
+  const { profession, patients, createGroup, mutating } = useCardiganMain();
   const modalities = getModalitiesForProfession(profession);
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(mutating ? () => {} : animatedClose);

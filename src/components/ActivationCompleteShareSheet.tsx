@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useT } from "../i18n/index";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -32,7 +32,7 @@ export function ActivationCompleteShareSheet({ open, onClose, code }: {
   code?: string;
 }) {
   const { t } = useT();
-  const { setHideFab } = useCardigan();
+  const { setHideFab } = useCardiganMain();
 
   // Hide the global FAB while open — same pattern other sheets use.
   useEffect(() => {

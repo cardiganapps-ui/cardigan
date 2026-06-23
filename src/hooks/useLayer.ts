@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 
 /**
  * Hook for modal/overlay components to register with the navigation layer stack.
@@ -10,7 +10,7 @@ import { useCardigan } from "../context/CardiganContext";
  *   useLayer("expediente", onClose);
  */
 export function useLayer(key: string | null | undefined, closeFn: (() => void) | null | undefined) {
-  const { pushLayer, removeLayer } = useCardigan();
+  const { pushLayer, removeLayer } = useCardiganMain();
   // Capture the latest closeFn in a ref so the registered layer always
   // calls the current closure, without re-registering on every render.
   const closeRef = useRef(closeFn);

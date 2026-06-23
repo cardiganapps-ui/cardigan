@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useRef } from "react";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 import { track as analyticsTrack } from "../lib/analytics";
@@ -25,7 +25,7 @@ export function ActivationChecklist({ userId, accessState, onNavigate }: {
   onNavigate?: (nav: string) => void;
 }) {
   const { t } = useT();
-  const ctx = useCardigan() || {};
+  const ctx = useCardiganMain() || {};
   const { patients, sessions, payments, notes, subscription, showSuccess } = ctx;
 
   const dismissed = useMemo(() => {

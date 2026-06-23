@@ -3,7 +3,7 @@ import { IconDocument, IconX, IconClipboard } from "./Icons";
 import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useT } from "../i18n/index";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
 import { haptic } from "../utils/haptics";
 import { parseFolderLink, shortenForDisplay } from "../utils/folderLinks";
@@ -151,7 +151,7 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }: {
   readOnly?: boolean;
 }) {
   const { t } = useT();
-  const { showToast, user } = useCardigan();
+  const { showToast, user } = useCardiganMain();
   const ctxMenu = useContextMenu();
 
   // editing = true → render the input form. When false, the card

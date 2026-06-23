@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
@@ -57,7 +57,7 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }: {
   onRestore?: (snapshot: { title?: string; content?: string }) => void | Promise<unknown>;
 }) {
   const { t } = useT();
-  const { noteCrypto, showToast, setHideFab } = useCardigan();
+  const { noteCrypto, showToast, setHideFab } = useCardiganMain();
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);

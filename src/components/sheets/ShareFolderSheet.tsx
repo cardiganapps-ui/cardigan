@@ -4,7 +4,7 @@ import { Avatar } from "../Avatar";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { IconX, IconSearch } from "../Icons";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
@@ -48,7 +48,7 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }: {
   onLinked?: (patient: Row) => void;
 }) {
   const { t } = useT();
-  const { patients, updatePatient, showToast, setHideFab, openExpediente } = useCardigan();
+  const { patients, updatePatient, showToast, setHideFab, openExpediente } = useCardiganMain();
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

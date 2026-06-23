@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 
 /* ── useProGate ───────────────────────────────────────────────────────
    Helper for screens / components that gate a Pro-only action behind
@@ -19,7 +19,7 @@ import { useCardigan } from "../context/CardiganContext";
      <button onClick={pro.guard("documents", handleUpload)}>Subir</button>
      <ProUpgradeSheet open={pro.sheetOpen} feature={pro.sheetFeature} onClose={pro.closeSheet} /> */
 export function useProGate() {
-  const { subscription } = useCardigan();
+  const { subscription } = useCardiganMain();
   const isPro = !!subscription?.isPro;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetFeature, setSheetFeature] = useState<string | null>(null);

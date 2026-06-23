@@ -9,7 +9,7 @@ import { avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
 import { haptic } from "../utils/haptics";
 import { invalidateAvatarUrl, setAvatarUrl, useAvatarUrl } from "../hooks/useAvatarUrl";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { AVATAR_PRESETS, presetUrl, isPresetId } from "../data/avatarPresets";
 import { AvatarCropEditor } from "./AvatarCropEditor";
 
@@ -59,7 +59,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }: {
   // Pulled from context so the upload-path can fire toasts AFTER the
   // sheet closes (the optimistic-close flow leaves no UI behind in
   // the AvatarPicker itself for inline error display).
-  const { showSuccess, showToast } = useCardigan() || {};
+  const { showSuccess, showToast } = useCardiganMain() || {};
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
   // Conditionally MOUNTED by the parent — visible for its whole

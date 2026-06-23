@@ -2,7 +2,7 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { IconX, IconSparkle, IconLock, IconCalendar, IconDocument } from "./Icons";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { isNative, isIOS } from "../lib/platform";
 
@@ -33,7 +33,7 @@ const FEATURE_ICON: Record<string, typeof IconSparkle> = {
 
 export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; feature?: string; onClose?: () => void }) {
   const { t } = useT();
-  const { subscription } = useCardigan();
+  const { subscription } = useCardiganMain();
   const [paymentOpen, setPaymentOpen] = useState(false);
   const panelRef = useFocusTrap(!!open);
 

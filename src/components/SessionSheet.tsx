@@ -11,7 +11,7 @@ import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useSheetExit } from "../hooks/useSheetExit";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, SESSION_STATUS } from "../data/constants";
 import { formatMXN } from "../utils/format";
 
@@ -37,7 +37,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
   initialMode?: string;
 }) {
   const { t } = useT();
-  const { openExpediente, profession } = useCardigan();
+  const { openExpediente, profession } = useCardiganMain();
   const modalities = getModalitiesForProfession(profession);
   // Animated close — see useSheetExit for the pattern. Drag-to-
   // dismiss (useSheetDrag) keeps its own raw onClose because it

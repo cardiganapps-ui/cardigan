@@ -12,7 +12,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { parseFolderLink } from "../../utils/folderLinks";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
 
@@ -62,7 +62,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   initialMode?: string;
 }) {
   const { t } = useT();
-  const { profession } = useCardigan();
+  const { profession } = useCardiganMain();
   const modalities = getModalitiesForProfession(profession);
   // Animated close — same pattern as SessionSheet. useSheetDrag
   // stays on raw onClose because it owns its own slide-down anim.

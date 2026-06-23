@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { IconPlus, IconSearch } from "./Icons";
 import { QUICK_ACTIONS } from "./QuickActions";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
 import { useT } from "../i18n/index";
 
@@ -9,7 +9,7 @@ const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/i.test(n
 
 export default function TopbarActions({ onOpenPalette }: { onOpenPalette?: () => void }) {
   const { t } = useT();
-  const { requestFabAction, readOnly } = useCardigan();
+  const { requestFabAction, readOnly } = useCardiganMain();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 

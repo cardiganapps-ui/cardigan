@@ -2,7 +2,7 @@ import { useState } from "react";
 import { IconX } from "../Icons";
 import { Avatar } from "../Avatar";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
@@ -33,7 +33,7 @@ export function GroupOccurrenceSheet({ group, occurrence, onClose }: {
   onClose: () => void;
 }) {
   const { t } = useT();
-  const { upcomingSessions, patients, updateSessionStatus, cancelGroupOccurrence, mutating } = useCardigan();
+  const { upcomingSessions, patients, updateSessionStatus, cancelGroupOccurrence, mutating } = useCardiganMain();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
   useLayer("group-occurrence", animatedClose);

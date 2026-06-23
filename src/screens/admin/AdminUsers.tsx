@@ -5,7 +5,7 @@ import {
   adminGrantComp,
 } from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { Avatar } from "../../components/Avatar";
 import { TierBadge } from "./parts/TierBadge";
 import { downloadCsv } from "./parts/csv";
@@ -71,7 +71,7 @@ export function AdminUsers({ selectedId, onSelect, onClearSelection, onViewAs, c
   currentAdminId?: string | null;
 }) {
   const { t } = useT();
-  const { showToast } = useCardigan();
+  const { showToast } = useCardiganMain();
   const [search, setSearch] = useState("");
   const [tier, setTier] = useState("all");
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(() => new Set());

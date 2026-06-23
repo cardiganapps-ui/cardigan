@@ -11,7 +11,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useLayer } from "../../hooks/useLayer";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import {
   getModalitiesForProfession, MODALITY_I18N_KEY,
   SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics,
@@ -52,7 +52,7 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
   mutating?: boolean;
 }) {
   const { t } = useT();
-  const { profession } = useCardigan();
+  const { profession } = useCardiganMain();
   const modalities = getModalitiesForProfession(profession);
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);

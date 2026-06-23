@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { IconSearch, IconX, IconUsers, IconCalendar, IconDollar, IconClipboard, IconDocument, IconHome, IconUserPlus, IconCalendarPlus, IconShield, IconBarChart, IconTrendingUp, IconTag, IconBug, IconActivity } from "./Icons";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useViewport } from "../hooks/useViewport";
@@ -45,7 +45,7 @@ const ACTION_COMMANDS = [
 ];
 
 // Note/patient rows arrive through the loosely-typed Cardigan data
-// layer (useCardigan returns Record<string, any>); model them as Row
+// layer (useCardiganMain returns Record<string, any>); model them as Row
 // at the callback boundary rather than threading a precise shape.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration bridge for loosely-typed data rows
 type Row = any;
@@ -89,7 +89,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
   // breakpoint. iPad portrait + landscape still show them since a
   // Magic Keyboard / external BT keyboard is common there.
   const { isTablet } = useViewport();
-  const { navigate, patients, notes, requestFabAction, openExpediente, openNoteById, noteCrypto, isAdminUser, showToast } = useCardigan();
+  const { navigate, patients, notes, requestFabAction, openExpediente, openNoteById, noteCrypto, isAdminUser, showToast } = useCardiganMain();
   // Admin features are web-only — see the rationale on the topbar
   // admin button in App.jsx. The palette's admin commands (Open
   // user / Grant comp / View as / etc.) operate on routes that

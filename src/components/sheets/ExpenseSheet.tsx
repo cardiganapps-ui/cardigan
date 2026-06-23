@@ -6,7 +6,7 @@ import {
 } from "../../data/constants";
 import { IconX, IconPaperclip, IconCheck, IconTrash, IconRepeat, IconSparkle } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
@@ -40,7 +40,7 @@ export function ExpenseSheet({ editingExpense, onClose }: { editingExpense?: Row
     createRecurringTemplate, mutating, mutationError,
     uploadDocument, deleteDocument, getDocumentUrl,
     documents = [], subscription, showToast,
-  } = useCardigan();
+  } = useCardiganMain();
   const { t } = useT();
   const isEditing = !!editingExpense;
 

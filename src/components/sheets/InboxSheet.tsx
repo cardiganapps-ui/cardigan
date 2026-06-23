@@ -5,7 +5,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 
 /* In-app notification inbox. Lists durable notification rows (migration
    077) newest-first, lets the user read (tap → mark read + jump to the
@@ -25,7 +25,7 @@ export function InboxSheet({ onClose }: { onClose: () => void }) {
     deleteNotification,
     clearNotifications,
     navigate,
-  } = useCardigan();
+  } = useCardiganMain();
   const [confirmClear, setConfirmClear] = useState(false);
 
   const { exiting, animatedClose } = useSheetExit(true, onClose);

@@ -10,7 +10,7 @@ import { GroupScheduleSheet } from "../components/sheets/GroupScheduleSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -36,7 +36,7 @@ export function GroupDetail({ group, onClose }: { group: Row; onClose: () => voi
     groups, groupMembers, patients, upcomingSessions, notes, documents, readOnly,
     deleteGroup, endGroup, removeMember, createNote, updateNote, deleteNote,
     uploadDocument, renameDocument, deleteDocument, getDocumentUrl, showToast, mutating,
-  } = useCardigan();
+  } = useCardiganMain();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
   useLayer("group-detail", animatedClose);

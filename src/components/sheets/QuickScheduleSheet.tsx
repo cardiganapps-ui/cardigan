@@ -5,7 +5,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { todayISO, isoToShortDate, parseShortDate } from "../../utils/dates";
 import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../../data/constants";
 import { haptic } from "../../utils/haptics";
@@ -17,7 +17,7 @@ import { haptic } from "../../utils/haptics";
    often than a specific calendar date, so the chip strip is the fast
    path; the date picker is the escape hatch.
 
-   Reuses createSession() from useCardigan() — same one-off insert
+   Reuses createSession() from useCardiganMain() — same one-off insert
    path NewSessionSheet uses (is_recurring=false hardcoded in
    useSessions.js:57). Defaults come from the patient's last session
    (time / duration / modality) so the practitioner usually doesn't
@@ -62,7 +62,7 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }: {
   onScheduled?: (info: { date: string; time: string }) => void;
 }) {
   const { t } = useT();
-  const { upcomingSessions, createSession, profession, showSuccess } = useCardigan();
+  const { upcomingSessions, createSession, profession, showSuccess } = useCardiganMain();
   // Animated close — see useSheetExit / SessionSheet for the pattern.
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);

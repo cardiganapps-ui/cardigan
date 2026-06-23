@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { shortDateToISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 
 /* Reads upcoming sessions from context, computes the wall-clock
    moment each reminder will fire (session_time − minutes), filters
@@ -11,7 +11,7 @@ import { useCardigan } from "../../context/CardiganContext";
    row's summary text alone can't. */
 export function NextRemindersPreview({ minutes }: { minutes: number }) {
   const { t } = useT();
-  const { upcomingSessions } = useCardigan();
+  const { upcomingSessions } = useCardiganMain();
   // `now` lives in state so React Compiler's purity rules accept the
   // useMemo below (Date.now() inside useMemo is flagged as impure).
   // It re-ticks once per minute while the sheet is open so a reminder

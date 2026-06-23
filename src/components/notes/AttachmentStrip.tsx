@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { IconX, IconTrash } from "../Icons";
@@ -31,7 +31,7 @@ export function AttachmentStrip({ tiles, retryTile, rows }: {
   rows?: Row[];
 }) {
   const { t } = useT();
-  const { deleteNoteAttachment, showToast } = useCardigan();
+  const { deleteNoteAttachment, showToast } = useCardiganMain();
 
   // The hook owner (NoteEditor) always passes these, but defaulting
   // here keeps the component safe if a future caller forgets — never

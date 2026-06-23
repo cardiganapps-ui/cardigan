@@ -3,7 +3,7 @@ import { IconStar, IconTrash, IconEdit, IconCheck, IconDocument, IconClipboard, 
 
 const IconSearchMenu = () => <IconSearch size={15} />;
 import { useT } from "../i18n/index";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
 import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { MarkdownEditor } from "./notes/MarkdownEditor";
@@ -93,7 +93,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
 }) {
   const inlineMode = layout === "inline";
   const { t } = useT();
-  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment, noteAttachments, noteCrypto, userName, setNoteCover } = useCardigan();
+  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment, noteAttachments, noteCrypto, userName, setNoteCover } = useCardiganMain();
   const noteTemplates = useNoteTemplates();
   const { isDesktop } = useViewport();
   // Attachment src hook — called once at the parent so the strip

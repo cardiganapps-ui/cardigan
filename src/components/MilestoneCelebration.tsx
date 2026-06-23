@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 
@@ -36,7 +36,7 @@ function markCelebrated(userId: string | undefined, key: string) {
 
 export function MilestoneCelebration({ userId, accessState }: { userId?: string; accessState?: string }) {
   const { t } = useT();
-  const ctx = useCardigan() || {};
+  const ctx = useCardiganMain() || {};
   // Mirror the latest showSuccess into a ref so the firing effect
   // doesn't need to re-run when the function identity changes (it's
   // unstable across renders since it closes over the toast queue).

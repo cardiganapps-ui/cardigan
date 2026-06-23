@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
@@ -32,7 +32,7 @@ type Row = any;
 
 export function SessionRequestsSheet({ onClose }: { onClose: () => void }) {
   const { t } = useT();
-  const { rescheduleRequests = [], patients, refresh, showToast } = useCardigan();
+  const { rescheduleRequests = [], patients, refresh, showToast } = useCardiganMain();
   const [actingId, setActingId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<Record<string, string | null>>({});
 

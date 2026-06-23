@@ -3,7 +3,7 @@ import { todayISO, isoToShortDate } from "../../utils/dates";
 import { IconX } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
@@ -43,7 +43,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   initialSessionType?: string;
 }) {
   const { t } = useT();
-  const { profession } = useCardigan();
+  const { profession } = useCardiganMain();
   const modalities = getModalitiesForProfession(profession);
   // Animated close — see useSheetExit / SessionSheet for the pattern.
   const { exiting, animatedClose } = useSheetExit(true, onClose);

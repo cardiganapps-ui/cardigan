@@ -6,7 +6,7 @@ import { AvatarContent } from "./Avatar";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { useT } from "../i18n/index";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { MONETIZATION_ENABLED } from "../config/monetization";
 
 const NAV_ICONS = {
@@ -47,7 +47,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   onReportBug?: () => void;
 }) {
   const { t } = useT();
-  const { subscription, groupsEnabled } = useCardigan();
+  const { subscription, groupsEnabled } = useCardiganMain();
   const principal = (navItems as NavItem[]).filter(n => n.section === "principal" && (n.id !== "groups" || groupsEnabled !== false));
   const cuenta    = (navItems as NavItem[]).filter(n => n.section === "cuenta");
   const handleNav = (id: string) => { setScreen(id); onClose(); };

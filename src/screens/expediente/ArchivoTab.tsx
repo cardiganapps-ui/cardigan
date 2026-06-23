@@ -5,7 +5,7 @@ import { DocumentList } from "../../components/DocumentList";
 import { ExternalFolderCard } from "../../components/ExternalFolderCard";
 import { isWordDoc } from "../../utils/files";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { EmptyState } from "../../components/EmptyState";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/note/session/doc rows
@@ -31,7 +31,7 @@ export function ArchivoTab({
   deleteDocument: (id: string) => void | Promise<void>;
 }) {
   const { t } = useT();
-  const { updatePatient, readOnly } = useCardigan();
+  const { updatePatient, readOnly } = useCardiganMain();
   const [docSort, setDocSort] = useState("newest");
   const [docFilter, setDocFilter] = useState("all");
 

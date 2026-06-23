@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { IconCalendar, IconX } from "./Icons";
 import { useT } from "../i18n/index";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useCalendarToken, setCalendarToken, isCalendarPromptDismissed, dismissCalendarPrompt } from "../hooks/useCalendarToken";
 import { track } from "../lib/analytics";
 
@@ -29,7 +29,7 @@ import { track } from "../lib/analytics";
 
 export function CalendarLinkPromptCard() {
   const { t } = useT();
-  const { showToast, readOnly, user } = useCardigan();
+  const { showToast, readOnly, user } = useCardiganMain();
   const { hasToken, url, loaded } = useCalendarToken();
   const [hidden, setHidden] = useState(() => isCalendarPromptDismissed(user?.id));
   const [busy, setBusy] = useState(false);

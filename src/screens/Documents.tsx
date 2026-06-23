@@ -3,7 +3,7 @@ import { IconSearch, IconUpload } from "../components/Icons";
 import { isWordDoc, isImageDoc, isPdfDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -12,7 +12,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 type Row = any;
 
 export function Documents() {
-  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, openExpediente, showToast, subscription, requirePro } = useCardigan();
+  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, openExpediente, showToast, subscription, requirePro } = useCardiganMain();
   const isPro = !!subscription?.isPro;
   const { t } = useT();
   const [search, setSearch] = useState("");

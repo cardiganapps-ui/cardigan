@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../supabaseClient";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 
 /* ── useAttachmentSrc(noteId) ───────────────────────────────────────
    Shared resolver for every surface that needs to render a note's
@@ -63,7 +63,7 @@ async function fetchPresigned(path: string, mime?: string) {
 }
 
 export function useAttachmentSrc(noteId?: string) {
-  const { noteAttachments, noteCrypto } = useCardigan();
+  const { noteAttachments, noteCrypto } = useCardiganMain();
 
   const rows = useMemo(
     () => (noteAttachments || []).filter((a: Row) => a.note_id === noteId),

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { getNoteTemplates } from "../data/noteTemplates";
 
 /* Returns the note template array for the active profession.
@@ -7,6 +7,6 @@ import { getNoteTemplates } from "../data/noteTemplates";
    AppShell). Memoized so React's referential-equality bailouts kick in
    for downstream useEffect deps. */
 export function useNoteTemplates() {
-  const { profession } = useCardigan();
+  const { profession } = useCardiganMain();
   return useMemo(() => getNoteTemplates(profession), [profession]);
 }

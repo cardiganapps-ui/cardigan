@@ -3,7 +3,7 @@ import { todayISO } from "../../utils/dates";
 import { IconX } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
@@ -27,7 +27,7 @@ type Row = any;
 
 export function GroupScheduleSheet({ group, onClose }: { group: Row; onClose: () => void }) {
   const { t } = useT();
-  const { profession, applyGroupScheduleChange, mutating } = useCardigan();
+  const { profession, applyGroupScheduleChange, mutating } = useCardiganMain();
   const modalities = getModalitiesForProfession(profession);
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(mutating ? () => {} : animatedClose);

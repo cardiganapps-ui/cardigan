@@ -5,7 +5,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { todayISO } from "../../utils/dates";
 import { DAY_ORDER } from "../../data/seedData";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, SCHEDULING_MODE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
@@ -39,7 +39,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }: {
   onSwitched?: () => void;
 }) {
   const { t } = useT();
-  const { profession, updatePatient, generateRecurringSessions, showSuccess } = useCardigan();
+  const { profession, updatePatient, generateRecurringSessions, showSuccess } = useCardiganMain();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
   const panelRef = useFocusTrap(true);

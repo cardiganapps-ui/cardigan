@@ -5,7 +5,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { parseInBodyCSV, parseInBodyXLSX } from "../../utils/inbody";
 import { haptic } from "../../utils/haptics";
 
@@ -38,7 +38,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }: {
   onImported?: (result: Row) => void;
 }) {
   const { t } = useT();
-  const { measurements, bulkCreateMeasurements, showSuccess } = useCardigan();
+  const { measurements, bulkCreateMeasurements, showSuccess } = useCardiganMain();
   const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(!!open);

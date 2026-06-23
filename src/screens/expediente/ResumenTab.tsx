@@ -7,7 +7,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SetWeeklySlotSheet } from "../../components/sheets/SetWeeklySlotSheet";
 import { DAY_ORDER } from "../../data/seedData";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { usesAnthropometrics, isEpisodic, SCHEDULING_MODE } from "../../data/constants";
 import { formatMXN, formatDate } from "../../utils/format";
 
@@ -134,7 +134,7 @@ export function ResumenTab({
   mutating?: boolean;
 }) {
   const { t } = useT();
-  const { profession, measurements, updatePatient, showSuccess, openQuickSchedule, readOnly } = useCardigan();
+  const { profession, measurements, updatePatient, showSuccess, openQuickSchedule, readOnly } = useCardiganMain();
   const patientIsEpisodic = isEpisodic(patient);
   const [confirmModeChange, setConfirmModeChange] = useState(false);
   const [modeChangeBusy, setModeChangeBusy] = useState(false);

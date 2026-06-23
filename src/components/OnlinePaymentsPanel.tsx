@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTherapistConnect } from "../hooks/useTherapistConnect";
 import { useT } from "../i18n/index";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { IconCreditCard, IconCheck, IconRefresh } from "./Icons";
 
 /* ── OnlinePaymentsPanel ──────────────────────────────────────────
@@ -22,7 +22,7 @@ import { IconCreditCard, IconCheck, IconRefresh } from "./Icons";
 
 export function OnlinePaymentsPanel({ user }: { user?: { id?: string } | null }) {
   const { t } = useT();
-  const { showToast } = useCardigan();
+  const { showToast } = useCardiganMain();
   const c = useTherapistConnect(user);
   const [refreshing, setRefreshing] = useState(false);
 

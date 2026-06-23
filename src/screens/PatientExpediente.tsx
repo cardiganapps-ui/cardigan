@@ -16,7 +16,7 @@ import { isWordDoc } from "../utils/files";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { HelpTip } from "../components/HelpTip";
 import { Avatar } from "../components/Avatar";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
 import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../hooks/swipeCoordinator";
 import { useT } from "../i18n/index";
@@ -63,7 +63,7 @@ export function PatientExpediente({
 }: PatientExpedienteProps) {
   const inline = layout === "inline";
   const { t } = useT();
-  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast, profession, groupMembers, groupsEnabled } = useCardigan();
+  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast, profession, groupMembers, groupsEnabled } = useCardiganMain();
   // The Grupos tab only appears when this patient actually belongs to a group
   // (keeps the tab bar lean for individual-only patients).
   const patientGroupCount = useMemo(

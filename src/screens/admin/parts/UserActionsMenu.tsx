@@ -3,7 +3,7 @@ import { IconTrash, IconChevron, IconKey } from "../../../components/Icons";
 import { useT } from "../../../i18n/index";
 import { haptic } from "../../../utils/haptics";
 import { PROFESSIONS } from "../../../data/constants";
-import { useCardigan } from "../../../context/CardiganContext";
+import { useCardiganMain } from "../../../context/CardiganContext";
 import {
   adminBlockUser,
   adminDeleteUser,
@@ -39,7 +39,7 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
   compact?: boolean;
 }) {
   const { t } = useT();
-  const { setProfessionLocal } = useCardigan();
+  const { setProfessionLocal } = useCardiganMain();
   const [mode, setMode] = useState<string>("default"); // default | confirmDelete | recoverShow
   const [moreOpen, setMoreOpen] = useState(false);
   const [busy, setBusy] = useState(false);

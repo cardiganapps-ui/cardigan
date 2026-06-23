@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IconX, IconRepeat, IconTrash, IconEdit } from "../Icons";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
@@ -43,7 +43,7 @@ export function RecurringExpenseSheet({ onClose }: { onClose: () => void }) {
   const {
     recurringExpenses, updateRecurringTemplate, deleteRecurringTemplate,
     mutating,
-  } = useCardigan();
+  } = useCardiganMain();
   const { t } = useT();
 
   const { exiting, animatedClose } = useSheetExit(true, onClose);

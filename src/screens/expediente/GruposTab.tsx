@@ -3,7 +3,7 @@ import { Avatar } from "../../components/Avatar";
 import { IconChevronRight } from "../../components/Icons";
 import { EmptyState } from "../../components/EmptyState";
 import { GroupDetail } from "../GroupDetail";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useT } from "../../i18n/index";
 import { getClientColor } from "../../data/seedData";
 import { activeMemberCount } from "../../utils/groups";
@@ -17,7 +17,7 @@ type Row = any;
 
 export function GruposTab({ patient }: { patient: Row }) {
   const { t } = useT();
-  const { groups, groupMembers } = useCardigan();
+  const { groups, groupMembers } = useCardiganMain();
   const [openId, setOpenId] = useState<string | null>(null);
 
   const myGroups = useMemo(() => {

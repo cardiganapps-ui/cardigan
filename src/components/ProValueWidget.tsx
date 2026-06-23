@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { computeProValue } from "../utils/proValue";
 import { IconSparkle } from "./Icons";
@@ -15,7 +15,7 @@ export function ProValueWidget() {
   // helper iterates raw rows looking at `status` + `date` only, so the
   // enrichment doesn't change its output but we still pass the same
   // array the rest of the UI consumes.
-  const { upcomingSessions, payments } = useCardigan() || {};
+  const { upcomingSessions, payments } = useCardiganMain() || {};
   const { t } = useT();
 
   const result = useMemo(

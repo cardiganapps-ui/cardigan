@@ -3,7 +3,7 @@ import { IconSearch, IconPlus, IconChevronRight } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { EmptyState } from "../components/EmptyState";
 import { GroupDetail } from "./GroupDetail";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { getClientColor } from "../data/seedData";
 import { activeMemberCount } from "../utils/groups";
@@ -19,7 +19,7 @@ type Row = any;
    group; the empty-state CTA routes to the same action. */
 export function Groups() {
   const { t } = useT();
-  const { groups, groupMembers, readOnly, requestFabAction } = useCardigan();
+  const { groups, groupMembers, readOnly, requestFabAction } = useCardiganMain();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<Row>(null);
 

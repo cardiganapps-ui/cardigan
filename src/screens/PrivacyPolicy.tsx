@@ -1,9 +1,9 @@
 import { POLICY_SECTIONS, POLICY_PUBLISHED, POLICY_VERSION } from "../data/privacy";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
 export function PrivacyPolicy() {
-  const { navigate } = useCardigan();
+  const { navigate } = useCardiganMain();
   const { t } = useT();
   return (
     <div className="page">

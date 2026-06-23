@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
@@ -33,7 +33,7 @@ type Row = any;
 
 export function InvitePatientSheet({ patient, onClose }: { patient?: Row; onClose?: () => void }) {
   const { t } = useT();
-  const { showToast, setHideFab } = useCardigan();
+  const { showToast, setHideFab } = useCardiganMain();
   const [busy, setBusy] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);

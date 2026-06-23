@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useT } from "../../i18n/index";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
@@ -33,7 +33,7 @@ export function QuickCaptureSheet({ open, onClose, onSaved }: {
   onSaved?: (note: Row, opts: { openInEditor: boolean }) => void;
 }) {
   const { t } = useT();
-  const { createNote, showToast } = useCardigan();
+  const { createNote, showToast } = useCardiganMain();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);

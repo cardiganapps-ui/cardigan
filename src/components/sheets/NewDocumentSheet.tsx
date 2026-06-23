@@ -6,7 +6,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed rows
 type Row = any;
@@ -18,7 +18,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
   uploadDocument: (args: Row) => Promise<unknown> | unknown;
 }) {
   const { t } = useT();
-  const { showToast } = useCardigan();
+  const { showToast } = useCardiganMain();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
   const panelRef = useFocusTrap(true);

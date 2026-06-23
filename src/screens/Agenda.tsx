@@ -14,7 +14,7 @@ import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus } from "../utils/sessions";
 import { useViewport } from "../hooks/useViewport";
 import { useCalendarToken, isCalendarPromptDismissed, dismissCalendarPrompt } from "../hooks/useCalendarToken";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { EmptyState } from "../components/EmptyState";
@@ -27,7 +27,7 @@ type Row = any;
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, groups, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, rescheduleGroupOccurrence, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, setHideFab, setHideBottomTabs, user } = useCardigan();
+  const { upcomingSessions, patients, groups, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, rescheduleGroupOccurrence, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, setHideFab, setHideBottomTabs, user } = useCardiganMain();
   const groupsById = useMemo(() => new Map<string, Row>((groups || []).map((g: Row) => [g.id, g])), [groups]);
   const { t } = useT();
   const { isTabletSplit } = useViewport();

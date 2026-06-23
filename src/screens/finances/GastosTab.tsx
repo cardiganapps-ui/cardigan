@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { IconPlus, IconRepeat, IconPaperclip } from "../../components/Icons";
 import { shortDateToISO, todayISO } from "../../utils/dates";
 import { formatMXN } from "../../utils/format";
-import { useCardigan } from "../../context/CardiganContext";
+import { useCardiganMain } from "../../context/CardiganContext";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { SwipeableRow } from "../../components/SwipeableRow";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
@@ -48,7 +48,7 @@ export function GastosTab({
   // Documents + presign helper come from context — receipt rows in
   // this list need a document lookup-by-id to get the file_path
   // before we can mint a presigned URL for the viewer.
-  const { documents = [], getDocumentUrl } = useCardigan();
+  const { documents = [], getDocumentUrl } = useCardiganMain();
   const [period, setPeriod] = useState("1m");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [pendingOnly, setPendingOnly] = useState(false);

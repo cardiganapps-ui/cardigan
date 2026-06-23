@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { IconCalendar } from "./Icons";
 import { useT } from "../i18n/index";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useCalendarToken, setCalendarToken } from "../hooks/useCalendarToken";
 import { isNative, isIOS } from "../lib/platform";
 import { launchUrl } from "../lib/nativeBrowser";
@@ -32,7 +32,7 @@ import { launchUrl } from "../lib/nativeBrowser";
 
 export function CalendarLinkPanel({ readOnly = false }: { readOnly?: boolean }) {
   const { t } = useT();
-  const { showToast } = useCardigan();
+  const { showToast } = useCardiganMain();
   const { hasToken, url } = useCalendarToken();
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);

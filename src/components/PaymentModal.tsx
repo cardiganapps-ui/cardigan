@@ -3,7 +3,7 @@ import { todayISO, isoToShortDate, shortDateToISO } from "../utils/dates";
 import { PAYMENT_METHOD } from "../data/constants";
 import { IconX } from "./Icons";
 import { MoneyInput } from "./MoneyInput";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -19,7 +19,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   initialAmount?: string | number;
   editingPayment?: { id?: string; patient?: string; amount?: number; method?: string; date?: string; note?: string } | null;
 }) {
-  const { patients, createPayment, updatePayment, mutating } = useCardigan();
+  const { patients, createPayment, updatePayment, mutating } = useCardiganMain();
   const { t } = useT();
   const isEditing = !!editingPayment;
   // Animated close — see useSheetExit / SessionSheet for the pattern.

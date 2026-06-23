@@ -6,7 +6,7 @@ import { SwipeableRow } from "../components/SwipeableRow";
 import { EmptyState } from "../components/EmptyState";
 import { TagFilterPills } from "../components/notes/TagFilterPills";
 import { NoteTagPicker } from "../components/notes/NoteTagPicker";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -22,7 +22,7 @@ type Row = any;
 const TEMPLATE_ICONS: Record<string, typeof IconEdit> = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
 export function Notes() {
-  const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente, consumePendingNoteOpen, tags, tagLinks, upsertTag, linkTag, unlinkTag } = useCardigan();
+  const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente, consumePendingNoteOpen, tags, tagLinks, upsertTag, linkTag, unlinkTag } = useCardiganMain();
   const noteTemplates = useNoteTemplates();
   const { t } = useT();
   const { isTabletSplit } = useViewport();
