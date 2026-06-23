@@ -17,6 +17,7 @@ const RatingSheet = lazy(() => import("./components/RatingSheet").then(m => ({ d
 // keeps its (and its date-picker / preview deps') bytes off cold start.
 const ShareFolderSheet = lazy(() => import("./components/sheets/ShareFolderSheet").then(m => ({ default: m.ShareFolderSheet })));
 import { shouldShowDay14Prompt } from "./utils/ratingPrompt";
+import { shouldShowTrialReminder, shouldPromptPasskey, todayDateKey, PASSKEY_PROMPT_MAX_ASKS } from "./utils/modalGates";
 // Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
 // user actually opens the welcome-modal subscribe flow.
 const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet"));
@@ -148,24 +149,19 @@ type Row = any;
 // stays stable across renders. Cadence is intentionally light — three
 // nudges across the 30-day window respects the user's attention much
 // more than a daily-during-the-final-week barrage. Each modal is also
-// suppressed if the user opened the plan sheet within the last 3 days
-// (see PLAN_SHEET_GRACE_MS below).
-const TRIAL_REMINDER_THRESHOLDS = [15, 7, 1];
-// If the user opened Settings → plan within this window, skip the
-// reminder modal — they're clearly aware of the trial and we don't
-// need to interrupt them again.
-const PLAN_SHEET_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
+// suppressed if the user opened the plan sheet within the last 3 days.
+// The cadence constants + the eligibility decision now live in
+// utils/modalGates (pure + unit-tested); this shell only fires the side
+// effects (localStorage read/write, setTimeout, setState).
 
 // AuthSplash is the single brand-loading surface for the entire boot
 // sequence (Suspense fallbacks, auth/role gates, and the MFA gate). It
 // lives in its own module so MfaChallengeGate can render the exact same
 // splash instead of a bare "Cargando" line — see components/AuthSplash.
 
-// Passkey enrollment-nudge cadence (FIDO best practice: respectful but
-// persistent). Re-ask on a later session after a cooldown, capped at a
-// few asks. Module-scope so they're stable references for the hooks.
-const PASSKEY_PROMPT_MAX_ASKS = 3;
-const PASSKEY_PROMPT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+// Passkey enrollment-nudge cadence (respectful but persistent) lives in
+// utils/modalGates (PASSKEY_PROMPT_MAX_ASKS / _COOLDOWN_MS + the
+// shouldPromptPasskey decision); imported above.
 
 function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signInWithMagicLink, signInWithPasskey, signInWithProvider, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
@@ -1313,9 +1309,10 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
     let state;
     try { state = JSON.parse(localStorage.getItem(passkeyPromptKey) || "null"); } catch { state = null; }
     state = state || { n: 0, t: 0, enrolled: false };
-    if (state.enrolled) return;                            // already has one
-    if ((state.n || 0) >= PASSKEY_PROMPT_MAX_ASKS) return; // asked enough, stop
-    if ((state.n || 0) > 0 && Date.now() - (state.t || 0) < PASSKEY_PROMPT_COOLDOWN_MS) return; // cooldown
+    // Synchronous cadence gate (enrolled / cap / cooldown) — see
+    // utils/modalGates. The async hardware + credential-list checks below
+    // still decide whether the device can actually create a passkey.
+    if (!shouldPromptPasskey(state, { now: Date.now() })) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     (async () => {
@@ -1371,36 +1368,34 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
     }
   }, [passkeyCreating, passkeyPromptKey, showSuccess, showToast, t]);
   useEffect(() => {
-    if (demo || viewAsUserId) return;
-    if (!user?.id) return;
-    if (subscription.accessState !== "trial") return;
+    // Read the side-effect inputs (plan-sheet grace stamp + last-shown
+    // day) from localStorage; the pure eligibility decision lives in
+    // shouldShowTrialReminder (utils/modalGates). The plan sheet stamps
+    // `cardigan.planSheetSeen.<userId>` on open (Settings activeSheet ===
+    // "plan"); we skip the nudge within its grace window.
+    const uid = user?.id;
     const days = subscription.daysLeftInTrial;
-    if (typeof days !== "number") return;
-    if (!TRIAL_REMINDER_THRESHOLDS.includes(days)) return;
-
-    // Skip if the user opened the plan sheet recently — they've already
-    // reviewed pricing this week, no need to nudge them again. The
-    // Settings sheet stamps `cardigan.planSheetSeen.<userId>` on open;
-    // see Settings.jsx::useEffect that watches activeSheet === "plan".
-    try {
-      const seen = localStorage.getItem(`cardigan.planSheetSeen.${user.id}`);
-      const seenAt = seen ? Number(seen) : 0;
-      if (seenAt && Date.now() - seenAt < PLAN_SHEET_GRACE_MS) return;
-    } catch { /* private mode — fall through */ }
-
-    const today = new Date();
-    const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    const lsKey = `cardigan.trialReminder.lastShown.${user.id}`;
-    let last = null;
-    try { last = localStorage.getItem(lsKey); }
-    catch { /* private mode — show anyway */ }
-    if (last === dateKey) return;
+    const dateKey = todayDateKey();
+    const lsKey = uid ? `cardigan.trialReminder.lastShown.${uid}` : "";
+    let planSheetSeenAt = 0;
+    let last: string | null = null;
+    if (uid) {
+      try { const seen = localStorage.getItem(`cardigan.planSheetSeen.${uid}`); planSheetSeenAt = seen ? Number(seen) : 0; }
+      catch { /* private mode — fall through */ }
+      try { last = localStorage.getItem(lsKey); }
+      catch { /* private mode — show anyway */ }
+    }
+    if (!shouldShowTrialReminder({
+      demo: !!demo, viewingAsUser: !!viewAsUserId, hasUser: !!uid,
+      accessState: subscription.accessState, daysLeft: days,
+      planSheetSeenAt, lastShownDateKey: last, todayKey: dateKey, now: Date.now(),
+    })) return;
 
     // Defer slightly so the modal doesn't compete with the welcome-to-
     // Pro modal on a brand-new user's first session — and so it lands
     // a beat after auth/loading settles. Anything earlier feels jumpy.
     const timer = setTimeout(() => {
-      setTrialReminderDays(days);
+      setTrialReminderDays(days as number);
       setTrialReminderOpen(true);
       try { localStorage.setItem(lsKey, dateKey); }
       catch { /* fall through */ }
