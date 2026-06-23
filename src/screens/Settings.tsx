@@ -12,6 +12,7 @@ const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet")
 import { IconUsers, IconStar, IconKey, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconLock, IconSparkle } from "../components/Icons";
 import { AccountHeader } from "./settings/AccountHeader";
 import { MfaSheets } from "./settings/sheets/MfaSheets";
+import { ChangePasswordSheet } from "./settings/sheets/ChangePasswordSheet";
 import { SubscriptionPanel } from "./settings/SubscriptionPanel";
 import { AppearancePanel } from "./settings/AppearancePanel";
 import { FeaturesPanel } from "./settings/FeaturesPanel";
@@ -108,23 +109,7 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
   // run their own WebAuthn ceremonies via the hook.
   const passkeys = usePasskeys();
   const [passkeyRemoveId, setPasskeyRemoveId] = useState<string | null>(null);
-  // Captcha state for the password-reset flow. Supabase enforces a
-  // captcha token on resetPasswordForEmail, so the in-app "Cambiar
-  // contraseña" affordance has to render its own Turnstile widget.
-  // pendingPasswordSubmit defers the click while the invisible
-  // Turnstile widget is still resolving — set true on click; a
-  // useEffect fires the actual request the moment the token arrives.
-  // Without this the user sees "Espera a que se complete la
-  // verificación" if they tap before the widget settles (typical on
-  // a cold sheet open).
-  const [passwordCaptchaToken, setPasswordCaptchaToken] = useState<string | null>(null);
-  const [passwordResetError, setPasswordResetError] = useState("");
-  const [pendingPasswordSubmit, setPendingPasswordSubmit] = useState(false);
-  // Imperative handle on the Turnstile widget so we can force a fresh
-  // challenge after each consumed token. Without an explicit reset the
-  // widget holds the issued token until natural expiry (~5 min) and
-  // subsequent submits look stuck verifying.
-  const turnstileRef = useRef<Row>(null);
+  // (The password-reset captcha flow lives in ChangePasswordSheet now.)
 
   // Toggle in-flight — prevents double-taps and shows the spinner knob
   // during the server round-trip for enable/disable.
@@ -356,42 +341,6 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
       setSaving(false);
     }
   };
-
-  const resetPassword = useCallback(async (token: string | null) => {
-    setSaving(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-        captchaToken: token || undefined,
-      });
-      if (error) {
-        setPasswordResetError(error.message || t("settings.emailError"));
-        return;
-      }
-      setMessage(t("settings.linkSent"));
-      setActiveSheet(null);
-      setTimeout(() => setMessage(""), 3000);
-    } catch {
-      setPasswordResetError(t("settings.emailError"));
-    } finally {
-      setSaving(false);
-      // Token is single-use; force the widget to issue a fresh one
-      // immediately so the next attempt isn't stuck waiting for natural
-      // expiry (~5 min in managed mode).
-      setPasswordCaptchaToken(null);
-      setPendingPasswordSubmit(false);
-      turnstileRef.current?.reset();
-    }
-  }, [userEmail, t]);
-
-  // Auto-fire submit once the captcha token arrives if the user clicked
-  // while the widget was still resolving. Eliminates the visible
-  // "Espera a que se complete la verificación" error during cold opens.
-  useEffect(() => {
-    if (!pendingPasswordSubmit) return;
-    if (!passwordCaptchaToken) return;
-    if (saving) return;
-    resetPassword(passwordCaptchaToken);
-  }, [pendingPasswordSubmit, passwordCaptchaToken, saving, resetPassword]);
 
   const openSheet = (key: string) => {
     setMessage("");
@@ -725,7 +674,7 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         message={message}
         activeSheet={activeSheet}
         onOpenSheet={openSheet}
-        onOpenChangePassword={() => { setPasswordResetError(""); setPasswordCaptchaToken(null); setActiveSheet("changePassword"); }}
+        onOpenChangePassword={() => setActiveSheet("changePassword")}
       />
 
       <AppearancePanel
@@ -2060,59 +2009,16 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         </div>
       )}
 
-      {/* ── CHANGE PASSWORD SHEET ──
-         Captcha-gated reset email. The Turnstile widget is invisible
-         on trusted browsers (non-interactive mode + appearance:"interaction-
-         only" — see TurnstileWidget.jsx); on the few cases it surfaces,
-         the user gets a brief challenge before the email goes out. */}
-      {activeSheet === "changePassword" && (
-        <div className="sheet-overlay" onClick={() => !saving && setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.changePassword")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => !saving && setActiveSheet(null)} disabled={saving}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
-                {t("settings.changePasswordExplain", { email: userEmail })}
-              </div>
-              {TURNSTILE_ENABLED && (
-                <div style={{ display:"flex", justifyContent:"center", marginBottom: 12 }}>
-                  <TurnstileWidget ref={turnstileRef} onToken={setPasswordCaptchaToken} />
-                </div>
-              )}
-              {passwordResetError && (
-                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{passwordResetError}</div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={saving || pendingPasswordSubmit}
-                  onClick={() => {
-                    if (saving || pendingPasswordSubmit) return;
-                    setPasswordResetError("");
-                    if (TURNSTILE_ENABLED && !passwordCaptchaToken) {
-                      // Captcha hasn't resolved yet — defer; the
-                      // useEffect above will fire resetPassword the
-                      // moment the token arrives.
-                      setPendingPasswordSubmit(true);
-                      return;
-                    }
-                    resetPassword(passwordCaptchaToken);
-                  }}
-                >
-                  {saving || pendingPasswordSubmit ? t("loading") : t("settings.changePasswordCta")}
-                </button>
-                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={saving}>
-                  {t("cancel")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Captcha-gated password-reset email (state + flow extracted to
+          ChangePasswordSheet; it owns its own saving/captcha state). */}
+      <ChangePasswordSheet
+        open={activeSheet === "changePassword"}
+        onClose={() => setActiveSheet(null)}
+        userEmail={userEmail}
+        setMessage={setMessage}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      />
 
       {/* ── EXPORT DATA SHEET ──
          Step-up password gate before issuing the export. The session
