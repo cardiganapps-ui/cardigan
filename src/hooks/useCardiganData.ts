@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { loadCachedData, saveCachedData } from "../lib/dataCache";
 import { supabase } from "../supabaseClient";
+import type { Database } from "../types/supabase";
 import { formatShortDate, normalizeShortDate, parseShortDate, toISODate } from "../utils/dates";
 import {
   ADMIN_EMAIL,
@@ -73,6 +74,15 @@ interface AdminAccount {
    at the only boundary that matters. Mirrors the CardiganContext bridge. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
+
+// The public tables that carry a user_id column — the only ones the
+// per-user fetch helper q() can filter on. Constrains q's table param so
+// a table without user_id can't be passed (which would silently filter
+// on a nonexistent column).
+type TableWithUserId = {
+  [K in keyof Database["public"]["Tables"]]:
+    "user_id" extends keyof Database["public"]["Tables"][K]["Row"] ? K : never;
+}[keyof Database["public"]["Tables"]];
 
 /** The localStorage snapshot shape hydrated on cold start. */
 interface CachedData {
@@ -525,7 +535,7 @@ export async function fetchSignupSources() {
   const counts: Record<string, number> = {};
   const otherDetails: { text: string; at: string }[] = [];
   for (const r of rows) {
-    counts[r.signup_source] = (counts[r.signup_source] || 0) + 1;
+    counts[r.signup_source as string] = (counts[r.signup_source as string] || 0) + 1;
     if (r.signup_source === "other" && r.signup_source_detail) {
       otherDetails.push({
         text: r.signup_source_detail,
@@ -703,10 +713,17 @@ export function useCardiganData(
     if (!userId) { setLoading(false); return; }
     setLoading(true);
     setFetchError("");
-    const q = (table: string, limit?: number) => {
-      let query = supabase.from(table).select("*").eq("user_id", userId);
-      if (limit) query = query.limit(limit);
-      return query;
+    // Generic over the table name so `.from(table)` validates the table
+    // exists and `.eq("user_id", …)` / `.select("*")` are checked against
+    // that table's columns at compile time. Avoid reassigning `query`
+    // (the limit() result is a different builder type) — branch instead.
+    const q = <T extends TableWithUserId>(table: T, limit?: number) => {
+      // Table name is validated at the call site (T is constrained to
+      // tables that HAVE user_id). The .eq column is cast because TS
+      // can't prove a column on an abstract generic body — safe here by
+      // that very constraint.
+      const base = supabase.from(table).select("*").eq("user_id" as never, userId as never);
+      return limit ? base.limit(limit) : base;
     };
     // Sessions are special: accounting sums over the patient's ENTIRE
     // history (every completed / charged / past-scheduled row), so unlike
@@ -771,7 +788,13 @@ export function useCardiganData(
         // the work. Caps roughly match what a user can sanely create
         // (1000 tags × hundreds of links is plenty headroom).
         q("note_tags", 1000).order("created_at", { ascending: false }),
-        q("note_tag_links", 5000),
+        // note_tag_links has NO user_id column — it's scoped by RLS via
+        // the tag relationship (note_tags.user_id = auth.uid()). The old
+        // q("note_tag_links") added .eq("user_id", …) on a nonexistent
+        // column, so PostgREST errored and tag links loaded EMPTY. Query
+        // it directly; RLS does the scoping. (Bug surfaced by typing the
+        // client against the generated schema.)
+        supabase.from("note_tag_links").select("*").limit(5000),
         // Note attachments (Phase 5). Live rows only — the
         // `deleted_at is null` partial index makes this filter cheap.
         q("note_attachments", 2000).is("deleted_at", null).order("created_at", { ascending: false }),
@@ -790,10 +813,17 @@ export function useCardiganData(
       // tableErr below. Map a rejection to the same { data, error } shape
       // a resolved-with-error query produces so the read path stays
       // uniform (mapRows(null) → [], etc.).
+      // Unwrap to a uniform { data, error } shape. data is intentionally
+      // loose here (the read path normalizes every row through mapRows and
+      // treats them dynamically — it was `any` before the client was
+      // typed); the typed-client value is concentrated at the .from(table)
+      // table check above and the .insert/.update shape checks in the
+      // domain hooks. Per-table read typing would fight the allSettled
+      // union for no real gain.
       [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes] =
         settled.map(r => r.status === "fulfilled"
-          ? r.value
-          : { data: null, error: { message: (r.reason as Error)?.message || "Error de red" } });
+          ? (r.value as { data: Row; error: Row })
+          : { data: null as Row, error: { message: (r.reason as Error)?.message || "Error de red" } as Row });
     } catch (err) {
       // Defensive — allSettled itself never rejects; this only catches a
       // synchronous throw while building the queries.
@@ -806,10 +836,13 @@ export function useCardiganData(
     const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, gRes, gmRes].find(r => r?.error);
     if (tableErr) setFetchError((tableErr.error as { message?: string })?.message || "Error al cargar datos");
 
-    let pData = mapRows(pRes.data);
-    let sData = mapRows(sRes.data);
-    const gData = mapRows(gRes?.data);
-    const gmData = gmRes?.data || [];
+    // Annotated Row[] (loose): the auto-extend + normalize code below
+    // treats these dynamically (it predates the typed client). The typed
+    // value is at the .from()/.insert() boundaries, not here.
+    let pData: Row[] = mapRows(pRes.data);
+    let sData: Row[] = mapRows(sRes.data);
+    const gData: Row[] = mapRows(gRes?.data);
+    const gmData: Row[] = gmRes?.data || [];
 
     // Auto-extend recurring sessions (skip in read-only or if already extending).
     // The decision logic — which dates to insert for which schedule —
@@ -850,7 +883,7 @@ export function useCardiganData(
           const rows = computeAutoExtendRows({ patient, allPSess, today, threshold, extendEnd, userId });
           if (rows.length === 0) continue;
 
-          const { data, error } = await supabase.from("sessions").insert(rows).select();
+          const { data, error } = await supabase.from("sessions").insert(rows as Database["public"]["Tables"]["sessions"]["Insert"][]).select();
           if (!error && data) {
             insertedRows.push(...data);
             // patient.sessions and patient.billed are maintained by the
@@ -901,7 +934,7 @@ export function useCardiganData(
           const groupSessions = sData.filter(s => s.group_id === group.id);
           const rows = computeGroupAutoExtendRows({ group, members, patientsById, groupSessions, today, threshold, extendEnd, userId });
           if (rows.length === 0) continue;
-          const { data, error } = await supabase.from("sessions").insert(rows).select();
+          const { data, error } = await supabase.from("sessions").insert(rows as Database["public"]["Tables"]["sessions"]["Insert"][]).select();
           if (!error && data) {
             insertedRows.push(...data);
             data.forEach(r => {
@@ -927,8 +960,8 @@ export function useCardiganData(
     // pendientes" prompt on the Gastos tab, surfaced via the `pending`
     // count returned alongside the data. Per CLAUDE.md prime directive:
     // never silently insert money rows beyond the documented cap.
-    let eData = eRes?.data || [];
-    const reData = reRes?.data || [];
+    let eData: Row[] = eRes?.data || [];
+    const reData: Row[] = reRes?.data || [];
     if (userId && !readOnly && !_generatingExpenses && reData.length > 0) {
       _generatingExpenses = true;
       try {
@@ -936,7 +969,7 @@ export function useCardiganData(
         if (auto.length > 0) {
           const { data: insertedExpenses, error: insertErr } = await supabase
             .from("expenses")
-            .upsert(auto, {
+            .upsert(auto as Database["public"]["Tables"]["expenses"]["Insert"][], {
               onConflict: "recurring_id,period_year,period_month",
               ignoreDuplicates: true,
             })

@@ -147,7 +147,7 @@ export function useNotifications(user: { id?: string } | null | undefined) {
       const { data } = await supabase
         .from("notification_preferences")
         .select("enabled, reminder_minutes")
-        .eq("user_id", user.id)
+        .eq("user_id", user.id!)
         .maybeSingle();
 
       if (cancelled) return;
@@ -207,7 +207,7 @@ export function useNotifications(user: { id?: string } | null | undefined) {
             if (ok) setEnabled(true);
             else {
               await supabase.from("notification_preferences").upsert(
-                { user_id: user.id, enabled: false, updated_at: new Date().toISOString() },
+                { user_id: user.id!, enabled: false, updated_at: new Date().toISOString() },
                 { onConflict: "user_id" }
               );
               setEnabled(false);
@@ -221,7 +221,7 @@ export function useNotifications(user: { id?: string } | null | undefined) {
             // For "default" the NotificationsPrompt will re-offer the
             // native prompt; a scary banner there is misleading.
             await supabase.from("notification_preferences").upsert(
-              { user_id: user.id, enabled: false, updated_at: new Date().toISOString() },
+              { user_id: user.id!, enabled: false, updated_at: new Date().toISOString() },
               { onConflict: "user_id" }
             );
             setEnabled(false);
@@ -283,7 +283,7 @@ export function useNotifications(user: { id?: string } | null | undefined) {
       }
       await supabase.from("notification_preferences").upsert(
         {
-          user_id: user.id,
+          user_id: user.id!,
           enabled: true,
           reminder_minutes: reminderMinutes,
           updated_at: new Date().toISOString(),
@@ -335,7 +335,7 @@ export function useNotifications(user: { id?: string } | null | undefined) {
 
     await supabase.from("notification_preferences").upsert(
       {
-        user_id: user.id,
+        user_id: user.id!,
         enabled: true,
         reminder_minutes: reminderMinutes,
         updated_at: new Date().toISOString(),
@@ -367,7 +367,7 @@ export function useNotifications(user: { id?: string } | null | undefined) {
     // they're harmless until the user re-enables or the token rotates.
     if (isNative()) {
       const { error } = await supabase.from("notification_preferences").upsert(
-        { user_id: user.id, enabled: false, updated_at: new Date().toISOString() },
+        { user_id: user.id!, enabled: false, updated_at: new Date().toISOString() },
         { onConflict: "user_id" }
       );
       if (error) {
@@ -394,7 +394,7 @@ export function useNotifications(user: { id?: string } | null | undefined) {
       }
 
       await supabase.from("notification_preferences").upsert(
-        { user_id: user.id, enabled: false, updated_at: new Date().toISOString() },
+        { user_id: user.id!, enabled: false, updated_at: new Date().toISOString() },
         { onConflict: "user_id" }
       );
 
@@ -495,7 +495,7 @@ export function useNotifications(user: { id?: string } | null | undefined) {
       setReminderMinutesState(minutes);
       const { error } = await supabase.from("notification_preferences").upsert(
         {
-          user_id: user.id,
+          user_id: user.id!,
           reminder_minutes: minutes,
           updated_at: new Date().toISOString(),
         },

@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
 import { getInitials, shortDateToISO, todayISO } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
+import type { TablesInsert, TablesUpdate } from "../types/db";
 import { track } from "../lib/analytics";
 import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants";
 
@@ -224,10 +225,10 @@ export function createPatientActions(
       // Optional cloud-folder link. Stored as null when blank so the
       // empty-state branch in ExternalFolderCard renders cleanly.
       external_folder_url: externalFolderUrl || null,
-    }).select().single();
+    } as TablesInsert<"patients">).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
-    const newPatient = { ...data, colorIdx: data.color_idx };
+    const newPatient = { ...data, colorIdx: data.color_idx } as Patient;
     let updatedPatient = newPatient;
 
     if (sessionSeeds.length > 0) {
@@ -288,10 +289,10 @@ export function createPatientActions(
     const patch: Record<string, unknown> = { ...updates };
     if (patch.name) patch.initials = getInitials(String(patch.name));
     const { data, error } = await supabase.from("patients")
-      .update(patch).eq("id", id).eq("user_id", userId).select().single();
+      .update(patch as TablesUpdate<"patients">).eq("id", id).eq("user_id", userId).select().single();
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setPatients(prev => prev.map(p => p.id === id ? { ...data, colorIdx: data.color_idx } : p));
+    setPatients(prev => prev.map(p => p.id === id ? ({ ...data, colorIdx: data.color_idx } as Patient) : p));
     return true;
   }
 
@@ -440,7 +441,7 @@ export function createPatientActions(
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
-    const newPatient = { ...patientRow, colorIdx: patientRow.color_idx };
+    const newPatient = { ...patientRow, colorIdx: patientRow.color_idx } as Patient;
     let updatedPatient = newPatient;
 
     const { data: sessRow, error: sessErr } = await supabase.from("sessions").insert({
@@ -679,7 +680,7 @@ export function createPatientActions(
     };
 
     const { data: updated, error } = await supabase.from("patients")
-      .update(patch).eq("id", id).eq("user_id", userId).select().single();
+      .update(patch as TablesUpdate<"patients">).eq("id", id).eq("user_id", userId).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
     // Insert the new session rows.
@@ -700,7 +701,7 @@ export function createPatientActions(
         if (sessData.length !== seedCount) {
           const fixed = await recalcPatientCounters(id);
           if (fixed) {
-            setPatients(prev => prev.map(p => p.id === id ? { ...updated, colorIdx: updated.color_idx, ...fixed } : p));
+            setPatients(prev => prev.map(p => p.id === id ? ({ ...updated, colorIdx: updated.color_idx, ...fixed } as Patient) : p));
             setMutating(false);
             return true;
           }
@@ -708,7 +709,7 @@ export function createPatientActions(
       } else {
         const fixed = await recalcPatientCounters(id);
         if (fixed) {
-          setPatients(prev => prev.map(p => p.id === id ? { ...updated, colorIdx: updated.color_idx, ...fixed } : p));
+          setPatients(prev => prev.map(p => p.id === id ? ({ ...updated, colorIdx: updated.color_idx, ...fixed } as Patient) : p));
           setMutating(false);
           return true;
         }
@@ -731,7 +732,7 @@ export function createPatientActions(
     ));
 
     setPatients(prev => prev.map(p => p.id === id
-      ? { ...updated, colorIdx: updated.color_idx }
+      ? ({ ...updated, colorIdx: updated.color_idx } as Patient)
       : p
     ));
     setMutating(false);

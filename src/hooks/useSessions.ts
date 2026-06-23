@@ -1,5 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
+import type { Database } from "../types/supabase";
+import type { TablesInsert, TablesUpdate } from "../types/db";
 import { DAY_ORDER } from "../data/seedData";
 import {
   PATIENT_STATUS,
@@ -99,7 +101,7 @@ type SetError = Dispatch<SetStateAction<string>>;
 // offline replays are last-write-wins by design (see migration 066
 // and lib/mutationQueue.js for the tradeoff).
 registerHandler("sessions.insert", async ({ row }: { row: Record<string, unknown> }) => {
-  return await supabase.from("sessions").insert(row).select().single();
+  return await supabase.from("sessions").insert(row as TablesInsert<"sessions">).select().single();
 });
 
 registerHandler("sessions.delete", async ({ id, userId }: { id: string; userId: string }) => {
@@ -120,7 +122,7 @@ registerHandler("sessions.update_status_atomic", async ({ id, newStatus, cancelR
     p_session_id: id,
     p_new_status: newStatus,
     p_cancel_reason: cancelReason,
-  });
+  } as Database["public"]["Functions"]["update_session_status_atomic"]["Args"]);
   if (result.error) return result;
   return { ...result, conflict };
 });
@@ -135,7 +137,7 @@ registerHandler("sessions.update", async ({ id, userId, patch, enqueuedVersion }
     const { data: current } = await supabase.from("sessions").select("version").eq("id", id).maybeSingle();
     if (current && current.version > enqueuedVersion) conflict = true;
   }
-  const result = await supabase.from("sessions").update(patch).eq("id", id).eq("user_id", userId);
+  const result = await supabase.from("sessions").update(patch as TablesUpdate<"sessions">).eq("id", id).eq("user_id", userId);
   if (result.error) return result;
   return { ...result, conflict };
 });
@@ -146,7 +148,7 @@ registerHandler("sessions.update", async ({ id, userId, patch, enqueuedVersion }
 // SQLSTATE 23505. Treat as success — the trigger already recomputed
 // counters on the original drain, retrying would just no-op.
 registerHandler("sessions.bulk_insert", async ({ rows }: { rows: Record<string, unknown>[] }) => {
-  const result = await supabase.from("sessions").insert(rows).select();
+  const result = await supabase.from("sessions").insert(rows as TablesInsert<"sessions">[]).select();
   if (result.error?.code === "23505") return { data: [], error: null };
   return result;
 });
@@ -173,10 +175,10 @@ registerHandler("sessions.apply_schedule_change", async ({ patientId, userId, to
     const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
     if (r1.error) return r1;
   }
-  const r2 = await supabase.from("patients").update(patientPatch).eq("id", patientId).eq("user_id", userId);
+  const r2 = await supabase.from("patients").update(patientPatch as TablesUpdate<"patients">).eq("id", patientId).eq("user_id", userId);
   if (r2.error) return r2;
   if (newRows && newRows.length > 0) {
-    const r3 = await supabase.from("sessions").insert(newRows).select();
+    const r3 = await supabase.from("sessions").insert(newRows as TablesInsert<"sessions">[]).select();
     if (r3.error?.code === "23505") return { data: [], error: null };
     return r3;
   }
@@ -367,7 +369,7 @@ export function createSessionActions(
     setMutating(true);
     let data, error;
     try {
-      const res = await supabase.from("sessions").insert(row).select().single();
+      const res = await supabase.from("sessions").insert(row as TablesInsert<"sessions">).select().single();
       data = res.data; error = res.error;
     } catch {
       // Transport-level failure mid-flight — queue with a temp row
@@ -391,7 +393,7 @@ export function createSessionActions(
     // state mirrors the same predicate-gated bump the SQL function
     // applies. newSessions / newBilled were computed above for the
     // offline path; same values land here.
-    setUpcomingSessions(prev => [...prev, { ...data, colorIdx: data.color_idx, modality: data.modality || "presencial" }]);
+    setUpcomingSessions(prev => [...prev, ({ ...data!, colorIdx: data!.color_idx, modality: data!.modality || "presencial" } as Session)]);
     setPatients(prev => prev.map(p => p.id === patient.id
       ? { ...p, sessions: newSessions, billed: newBilled } : p));
     setMutating(false);
@@ -490,7 +492,7 @@ export function createSessionActions(
           p_new_status: newStatus,
           p_cancel_reason: cancelReasonInput,
           p_expected_version: prevSession.version ?? null,
-        });
+        } as Database["public"]["Functions"]["update_session_status_atomic"]["Args"]);
         if (error) {
           setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
           if (error.code === "40001") {
@@ -691,7 +693,7 @@ export function createSessionActions(
         // returned data array reflect actual rows updated; a length-0
         // result means the version filter rejected us.
         const expectedVersion = prevSession.version ?? null;
-        let q = supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
+        let q = supabase.from("sessions").update(patch as TablesUpdate<"sessions">).eq("id", sessionId).eq("user_id", userId);
         if (expectedVersion != null) q = q.eq("version", expectedVersion);
         const { data, error } = await q.select("id");
         if (error) {
@@ -793,7 +795,7 @@ export function createSessionActions(
     setMutating(true);
     let data, error;
     try {
-      const res = await supabase.from("sessions").insert(allRows).select();
+      const res = await supabase.from("sessions").insert(allRows as TablesInsert<"sessions">[]).select();
       data = res.data; error = res.error;
     } catch {
       // Transport-level — same shape as the offline path: optimistic
@@ -930,7 +932,7 @@ export function createSessionActions(
       if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
 
       if (allRows.length > 0) {
-        const { data: sessData, error: sErr } = await supabase.from("sessions").insert(allRows).select();
+        const { data: sessData, error: sErr } = await supabase.from("sessions").insert(allRows as TablesInsert<"sessions">[]).select();
         if (sErr) { setMutating(false); setMutationError(sErr.message); return false; }
         // Counters maintained by trigger; replace local rows with the
         // server-assigned shape (real ids, server defaults).
@@ -1056,7 +1058,7 @@ export function createSessionActions(
       if (typeof onSuccess === "function") await onSuccess();
       return true;
     }
-    let q = supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
+    let q = supabase.from("sessions").update(patch as TablesUpdate<"sessions">).eq("id", sessionId).eq("user_id", userId);
     if (expectedVersion != null) q = q.eq("version", expectedVersion);
     let data, error;
     try {

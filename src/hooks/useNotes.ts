@@ -1,5 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
+import type { Database } from "../types/supabase";
+import type { TablesInsert, TablesUpdate } from "../types/db";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
 // ── Domain row types ────────────────────────────────────────────────
@@ -41,10 +43,10 @@ type SetError = Dispatch<SetStateAction<string>>;
 // while pending, the disk-bound payload is ciphertext for any user
 // who has encryption set up.
 registerHandler("notes.insert", async ({ row }: { row: Record<string, unknown> }) => {
-  return await supabase.from("notes").insert(row).select().single();
+  return await supabase.from("notes").insert(row as TablesInsert<"notes">).select().single();
 });
 registerHandler("notes.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
-  return await supabase.from("notes").update(patch).eq("id", id).eq("user_id", userId).select("updated_at").single();
+  return await supabase.from("notes").update(patch as TablesUpdate<"notes">).eq("id", id).eq("user_id", userId).select("updated_at").single();
 });
 registerHandler("notes.delete", async ({ id, userId }: { id: string; userId: string }) => {
   return await supabase.from("notes").delete().eq("id", id).eq("user_id", userId);
@@ -74,7 +76,7 @@ registerHandler("notes.snapshot", async ({ noteId, titleCt, contentCt, encrypted
   if (typeof debounceSeconds === "number" && debounceSeconds >= 0) {
     params.p_debounce_seconds = debounceSeconds;
   }
-  return await supabase.rpc("snapshot_note", params);
+  return await supabase.rpc("snapshot_note", params as Database["public"]["Functions"]["snapshot_note"]["Args"]);
 });
 
 // Module-level ref so the once-registered replay listener swaps temp
@@ -139,7 +141,7 @@ export function createNoteActions(
         pinned: false,
         _optimistic: true,
       };
-      setNotes(prev => [localRow, ...prev]);
+      setNotes(prev => [localRow as Note, ...prev]);
       await enqueue("notes.insert", { row },
         encrypted ? { tempId, plaintextContent: content || "" } : { tempId });
       return localRow;
@@ -171,16 +173,16 @@ export function createNoteActions(
     // Local state holds the plaintext content for display — the row
     // returned from the server has ciphertext when encrypted=true, so
     // we substitute the original plaintext back in.
-    const localRow = encrypted ? { ...data, content: content || "" } : data;
+    const localRow = (encrypted ? { ...data!, content: content || "" } : data!) as Note;
     setNotes(prev => [localRow, ...prev]);
     // Version snapshot (Phase 2). Fire-and-forget enqueue so the
     // returned note is the live row and the timeline gets a v1
     // captured at first save. Server RPC debounces + caps.
     enqueue("notes.snapshot", {
-      noteId: data.id,
-      titleCt: data.title || "",
-      contentCt: data.content || "",
-      encrypted: !!data.encrypted,
+      noteId: data!.id,
+      titleCt: data!.title || "",
+      contentCt: data!.content || "",
+      encrypted: !!data!.encrypted,
     }).catch(() => { /* snapshot is best-effort */ });
     return localRow;
   }
@@ -216,7 +218,7 @@ export function createNoteActions(
     if (error) { setMutationError(error.message); return false; }
     // Refine the optimistic updated_at with the server-stamped value.
     if (data?.updated_at) {
-      setNotes(prev => prev.map(n => n.id === id ? { ...n, updated_at: data.updated_at } : n));
+      setNotes(prev => prev.map(n => n.id === id ? ({ ...n, updated_at: data!.updated_at } as Note) : n));
     }
     // Version snapshot (Phase 2). Use the ciphertext we already
     // computed in `patch` so the snapshot matches what was just
@@ -244,7 +246,7 @@ export function createNoteActions(
     setMutating(true);
     let data, error;
     try {
-      const res = await supabase.from("notes").update(patch)
+      const res = await supabase.from("notes").update(patch as TablesUpdate<"notes">)
         .eq("id", id).eq("user_id", userId).select("updated_at").single();
       data = res.data; error = res.error;
     } catch {
@@ -255,7 +257,7 @@ export function createNoteActions(
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     if (data?.updated_at) {
-      setNotes(prev => prev.map(n => n.id === id ? { ...n, updated_at: data.updated_at } : n));
+      setNotes(prev => prev.map(n => n.id === id ? ({ ...n, updated_at: data!.updated_at } as Note) : n));
     }
     return true;
   }

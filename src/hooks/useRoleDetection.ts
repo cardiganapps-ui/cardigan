@@ -54,7 +54,7 @@ export function useRoleDetection(user: { id?: string } | null | undefined, versi
           supabase
             .from("user_profiles")
             .select("profession")
-            .eq("user_id", user.id)
+            .eq("user_id", user.id!)
             .maybeSingle(),
           supabase.rpc("get_therapists_for_patient"),
         ]);

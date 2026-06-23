@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { maybeConvertHeic } from "../utils/heicConvert";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
+import type { TablesUpdate } from "../types/db";
 
 // ── Domain row types ────────────────────────────────────────────────
 interface DocumentRow {
@@ -39,7 +40,7 @@ async function authHeaders() {
 // "necesitas conexión para subir archivos" error in the upload sheet
 // when offline.
 registerHandler("documents.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
-  return await supabase.from("documents").update(patch).eq("id", id).eq("user_id", userId).select("updated_at").maybeSingle();
+  return await supabase.from("documents").update(patch as TablesUpdate<"documents">).eq("id", id).eq("user_id", userId).select("updated_at").maybeSingle();
 });
 
 // Delete is two server-side ops: R2 object purge (via API endpoint)
@@ -166,7 +167,7 @@ export function createDocumentActions(
       }).catch(() => {});
       return null;
     }
-    setDocuments(prev => [data, ...prev]);
+    setDocuments(prev => [data as DocumentRow, ...prev]);
     return data;
   }
 
@@ -193,7 +194,7 @@ export function createDocumentActions(
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     if (data?.updated_at) {
-      setDocuments(prev => prev.map(d => d.id === id ? { ...d, updated_at: data.updated_at } : d));
+      setDocuments(prev => prev.map(d => d.id === id ? ({ ...d, updated_at: data.updated_at } as DocumentRow) : d));
     }
     return true;
   }
@@ -222,7 +223,7 @@ export function createDocumentActions(
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     if (data?.updated_at) {
-      setDocuments(prev => prev.map(d => d.id === id ? { ...d, updated_at: data.updated_at } : d));
+      setDocuments(prev => prev.map(d => d.id === id ? ({ ...d, updated_at: data.updated_at } as DocumentRow) : d));
     }
     return true;
   }

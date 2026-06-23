@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
+import type { TablesInsert, TablesUpdate } from "../types/db";
 import {
   GROUP_STATUS, SCHEDULING_MODE, SESSION_STATUS,
   RECURRENCE_WINDOW_WEEKS, DEFAULT_RECURRENCE_FREQUENCY,
@@ -88,7 +89,7 @@ type SetError = Dispatch<SetStateAction<string>>;
 // (group_members.update of left_at) + session deletes, never a hard
 // group_members delete.
 registerHandler("groups.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
-  return await supabase.from("groups").update(patch).eq("id", id).eq("user_id", userId);
+  return await supabase.from("groups").update(patch as TablesUpdate<"groups">).eq("id", id).eq("user_id", userId);
 });
 
 registerHandler("groups.delete", async ({ id, userId, scheduledIds }: { id: string; userId: string; scheduledIds?: string[] }) => {
@@ -102,20 +103,20 @@ registerHandler("groups.delete", async ({ id, userId, scheduledIds }: { id: stri
 });
 
 registerHandler("group_members.insert", async ({ rows }: { rows: Record<string, unknown>[] }) => {
-  const result = await supabase.from("group_members").insert(rows).select();
+  const result = await supabase.from("group_members").insert(rows as TablesInsert<"group_members">[]).select();
   if (result.error?.code === "23505") return { data: [], error: null };
   return result;
 });
 
 registerHandler("group_members.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
-  return await supabase.from("group_members").update(patch).eq("id", id).eq("user_id", userId);
+  return await supabase.from("group_members").update(patch as TablesUpdate<"group_members">).eq("id", id).eq("user_id", userId);
 });
 
 // Fan-out bulk insert (group session generation / member backfill / extend).
 // Idempotent via the 23505 swallow — a prior drain that already inserted the
 // rows trips uniq_sessions_patient_date_time and we treat it as success.
 registerHandler("groups.generate_sessions", async ({ rows }: { rows: Record<string, unknown>[] }) => {
-  const result = await supabase.from("sessions").insert(rows).select();
+  const result = await supabase.from("sessions").insert(rows as TablesInsert<"sessions">[]).select();
   if (result.error?.code === "23505") return { data: [], error: null };
   return result;
 });
@@ -128,10 +129,10 @@ registerHandler("groups.apply_schedule_change", async ({ groupId, userId, toDele
     const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
     if (r1.error) return r1;
   }
-  const r2 = await supabase.from("groups").update(groupPatch).eq("id", groupId).eq("user_id", userId);
+  const r2 = await supabase.from("groups").update(groupPatch as TablesUpdate<"groups">).eq("id", groupId).eq("user_id", userId);
   if (r2.error) return r2;
   if (newRows && newRows.length > 0) {
-    const r3 = await supabase.from("sessions").insert(newRows).select();
+    const r3 = await supabase.from("sessions").insert(newRows as TablesInsert<"sessions">[]).select();
     if (r3.error?.code === "23505") return { data: [], error: null };
     return r3;
   }
@@ -152,7 +153,7 @@ registerHandler("groups.cancel_occurrence", async ({ groupId, userId, date, time
 // Move a whole group occurrence to a new (date, time). Idempotent — a
 // replay filters on the OLD slot, which after the first run matches nothing.
 registerHandler("groups.reschedule_occurrence", async ({ groupId, userId, fromDate, fromTime, patch }: { groupId: string; userId: string; fromDate: string; fromTime: string; patch: Record<string, unknown> }) => {
-  return await supabase.from("sessions").update(patch)
+  return await supabase.from("sessions").update(patch as TablesUpdate<"sessions">)
     .eq("user_id", userId).eq("group_id", groupId)
     .eq("date", fromDate).eq("time", fromTime)
     .eq("status", "scheduled");
@@ -290,10 +291,10 @@ export function createGroupActions(
 
     setMutating(true);
     try {
-      const { data, error } = await supabase.from("sessions").insert(rows).select();
+      const { data, error } = await supabase.from("sessions").insert(rows as TablesInsert<"sessions">[]).select();
       if (error && error.code !== "23505") { setMutating(false); setMutationError(error.message); return false; }
       applyFanoutOptimistic(
-        (data || []).map(r => ({ ...r })),
+        (data || []).map(r => ({ ...r })) as Parameters<typeof applyFanoutOptimistic>[0],
         { asTemp: false }
       );
       setMutating(false);
@@ -353,7 +354,7 @@ export function createGroupActions(
     let memberRows: Record<string, unknown>[] = [];
     if (memberPatientIds.length > 0) {
       memberRows = memberPatientIds.map(pid => ({ user_id: userId, group_id: group.id, patient_id: pid }));
-      const { data: mData, error: mErr } = await supabase.from("group_members").insert(memberRows).select();
+      const { data: mData, error: mErr } = await supabase.from("group_members").insert(memberRows as TablesInsert<"group_members">[]).select();
       if (!mErr && mData) setGroupMembers(prev => [...prev, ...mData]);
     }
     setMutating(false);
@@ -388,7 +389,7 @@ export function createGroupActions(
       // matches 0 rows → surface a conflict instead of silently clobbering.
       // Offline replay (the catch's enqueue) is intentionally last-write-
       // wins, same tradeoff as sessions (migration 066).
-      let q = supabase.from("groups").update(dbPatch).eq("id", id).eq("user_id", userId);
+      let q = supabase.from("groups").update(dbPatch as TablesUpdate<"groups">).eq("id", id).eq("user_id", userId);
       if (prevVersion != null) q = q.eq("version", prevVersion);
       const { data, error } = await q.select("id");
       if (error) { setMutationError(error.message); return false; }
@@ -460,7 +461,7 @@ export function createGroupActions(
     }
 
     try {
-      const { error } = await supabase.from("group_members").update({ left_at: leftAt }).eq("id", member.id).eq("user_id", userId);
+      const { error } = await supabase.from("group_members").update({ left_at: leftAt } as TablesUpdate<"group_members">).eq("id", member.id!).eq("user_id", userId!);
       if (error) { setMutationError(error.message); }
       if (toDeleteIds.length > 0) {
         await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
@@ -494,7 +495,7 @@ export function createGroupActions(
     setMutationError("");
     setUpcomingSessions(p => p.map(s => ids.has(s.id) ? { ...s, ...patch } : s));
     try {
-      const { error } = await supabase.from("sessions").update(patch)
+      const { error } = await supabase.from("sessions").update(patch as TablesUpdate<"sessions">)
         .eq("user_id", userId).eq("group_id", groupId)
         .eq("date", fromDate).eq("time", fromTime).eq("status", SESSION_STATUS.SCHEDULED);
       if (error) {
@@ -662,7 +663,7 @@ export function createGroupActions(
       const { error: gErr } = await supabase.from("groups").update(groupPatch).eq("id", groupId).eq("user_id", userId);
       if (gErr) { setMutating(false); setMutationError(gErr.message); return false; }
       if (newRows.length > 0) {
-        const { error: sErr } = await supabase.from("sessions").insert(newRows).select();
+        const { error: sErr } = await supabase.from("sessions").insert(newRows as TablesInsert<"sessions">[]).select();
         if (sErr && sErr.code !== "23505") { setMutating(false); setMutationError(sErr.message); return false; }
       }
       setMutating(false);

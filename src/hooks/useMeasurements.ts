@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
+import type { TablesUpdate } from "../types/db";
 
 // ── Domain row types ────────────────────────────────────────────────
 interface Measurement {
@@ -77,7 +78,7 @@ export function createMeasurementActions(
     }).select().single();
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setMeasurements(prev => [data, ...prev]);
+    setMeasurements(prev => [data as Measurement, ...prev]);
     return data;
   }
 
@@ -92,10 +93,10 @@ export function createMeasurementActions(
       else if (k in patch) patch[k] = Number(patch[k]);
     }
     const { data, error } = await supabase.from("measurements")
-      .update(patch).eq("id", id).eq("user_id", userId).select().single();
+      .update(patch as TablesUpdate<"measurements">).eq("id", id).eq("user_id", userId).select().single();
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setMeasurements(prev => prev.map(m => m.id === id ? data : m));
+    setMeasurements(prev => prev.map(m => m.id === id ? (data as Measurement) : m));
     return true;
   }
 
@@ -162,7 +163,7 @@ export function createMeasurementActions(
       setMutationError(error.message);
       return { created: 0, skipped: rows.length };
     }
-    setMeasurements((prev) => [...(data || []), ...prev]);
+    setMeasurements((prev) => [...((data || []) as Measurement[]), ...prev]);
     const created = data?.length || 0;
     return { created, skipped: skippedLocal + (fresh.length - created) };
   }

@@ -42,7 +42,7 @@ export function useCardiConsent({ user, enabled }: { user?: { id?: string } | nu
         const { data, error: qErr } = await supabase
           .from("user_consents")
           .select("policy_version")
-          .eq("user_id", user.id)
+          .eq("user_id", user.id!)
           .eq("policy_version", CARDI_POLICY_VERSION)
           .maybeSingle();
         if (cancelled) return;

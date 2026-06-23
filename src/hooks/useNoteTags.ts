@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
+import type { TablesInsert } from "../types/db";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
 import { hashTagLabel, canonicalizeTagLabel } from "../lib/cryptoNotes";
 
@@ -35,7 +36,7 @@ type SetError = Dispatch<SetStateAction<string>>;
    case + diacritic variations. */
 
 registerHandler("note_tags.upsert", async ({ row }: { row: Record<string, unknown> }) => {
-  return await supabase.from("note_tags").upsert(row, { onConflict: "user_id,label_hash" }).select().single();
+  return await supabase.from("note_tags").upsert(row as TablesInsert<"note_tags">, { onConflict: "user_id,label_hash" }).select().single();
 });
 registerHandler("note_tags.delete", async ({ id, userId }: { id: string; userId: string }) => {
   return await supabase.from("note_tags").delete().eq("id", id).eq("user_id", userId);

@@ -59,14 +59,14 @@ describe("createNote offline path", () => {
     const row = await ctx.actions.createNote({ patientId: "pat-1", sessionId: null, title: "Plan", content: "Refer to PT" });
 
     expect(row).toBeTruthy();
-    expect(row.id.startsWith("temp-")).toBe(true);
+    expect(row!.id.startsWith("temp-")).toBe(true);
     expect(ctx.notes.get()).toHaveLength(1);
     expect(ctx.notes.get()[0]._optimistic).toBe(true);
     expect(queue.getEntries()).toHaveLength(1);
     expect(queue.getEntries()[0].op).toBe("notes.insert");
     expect(queue.getEntries()[0].args.row.title).toBe("Plan");
     expect(queue.getEntries()[0].args.row.content).toBe("Refer to PT");
-    expect(queue.getEntries()[0].optimisticMeta.tempId).toBe(row.id);
+    expect(queue.getEntries()[0].optimisticMeta.tempId).toBe(row!.id);
     expect(mock.calls).toHaveLength(0);
   });
 
@@ -88,7 +88,7 @@ describe("createNote offline path", () => {
     expect(ctx.notes.get()[0].content).toBe("X");
     // The local copy of `local` shouldn't be holding a stale id — the
     // setter replaced the entry. Sanity:
-    expect(local.id.startsWith("temp-")).toBe(true);
+    expect(local!.id.startsWith("temp-")).toBe(true);
   });
 });
 

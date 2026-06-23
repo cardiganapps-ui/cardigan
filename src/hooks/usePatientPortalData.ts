@@ -70,7 +70,7 @@ export function usePatientPortalData(user: { id?: string } | null | undefined) {
           supabase
             .from("patients")
             .select("id, name, rate, billed, paid, opening_balance, sessions, scheduling_mode, day, time, status, user_id, parent, birthdate, allergies, medical_conditions, height_cm, goal_weight_kg, patient_intake_completed_at")
-            .eq("patient_user_id", user.id),
+            .eq("patient_user_id", user.id!),
           supabase
             .from("sessions")
             .select("id, patient_id, date, time, duration, modality, status, rate, session_type, is_recurring, cancel_reason")

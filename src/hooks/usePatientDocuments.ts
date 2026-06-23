@@ -75,7 +75,7 @@ export function usePatientDocuments(patientId: string | null | undefined) {
       .select("id, name, file_path, file_type, file_size, created_at")
       .eq("patient_id", patientId)
       .order("created_at", { ascending: false });
-    setDocuments(data || []);
+    setDocuments((data || []) as PatientDocRow[]);
     setLoading(false);
   }, [patientId]);
 

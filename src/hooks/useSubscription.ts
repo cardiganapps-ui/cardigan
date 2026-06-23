@@ -98,7 +98,7 @@ export function useSubscription(user: { id?: string; created_at?: string } | nul
       // so the trial window still applies.
       console.warn("useSubscription:", error.message);
     }
-    setSubscription(data || null);
+    setSubscription((data || null) as SubRow | null);
     setLoading(false);
   }, [userId]);
 

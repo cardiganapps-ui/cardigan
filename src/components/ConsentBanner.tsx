@@ -55,7 +55,7 @@ export default function ConsentBanner({ user, onAccepted }: {
         const { data, error: qErr } = await supabase
           .from("user_consents")
           .select("policy_version")
-          .eq("user_id", user.id)
+          .eq("user_id", user.id!)
           .eq("policy_version", POLICY_VERSION)
           .maybeSingle();
         if (cancelled) return;

@@ -21,6 +21,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
+import type { TablesInsert, TablesUpdate } from "../types/db";
 import { computeRecurringExpenseRows } from "../utils/recurrence";
 import { shortDateToISO } from "../utils/dates";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
@@ -110,10 +111,10 @@ interface ExpenseActionsArgs {
 // createExpense, updateExpense, deleteExpense). Recurring-template
 // CRUD is admin-rare so stays online-only for now.
 registerHandler("expenses.insert", async ({ row }: { row: Record<string, unknown> }) => {
-  return await supabase.from("expenses").insert(row).select().single();
+  return await supabase.from("expenses").insert(row as TablesInsert<"expenses">).select().single();
 });
 registerHandler("expenses.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
-  return await supabase.from("expenses").update(patch).eq("id", id).eq("user_id", userId);
+  return await supabase.from("expenses").update(patch as TablesUpdate<"expenses">).eq("id", id).eq("user_id", userId);
 });
 registerHandler("expenses.delete", async ({ id, userId }: { id: string; userId: string }) => {
   return await supabase.from("expenses").delete().eq("id", id).eq("user_id", userId);
@@ -308,7 +309,7 @@ export function createExpenseActions({
 
     setMutating(true);
     try {
-      const { error } = await supabase.from("expenses").update(updatePayload)
+      const { error } = await supabase.from("expenses").update(updatePayload as TablesUpdate<"expenses">)
         .eq("id", id).eq("user_id", userId);
       setMutating(false);
       if (error) {
@@ -447,7 +448,7 @@ export function createExpenseActions({
     setRecurringExpenses(arr => arr.map(t => t.id === id ? { ...t, ...patch } : t));
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("recurring_expenses").update(patch)
+    const { error } = await supabase.from("recurring_expenses").update(patch as TablesUpdate<"recurring_expenses">)
       .eq("id", id).eq("user_id", userId);
     setMutating(false);
     if (error) {
@@ -491,7 +492,7 @@ export function createExpenseActions({
     // safely — the DB unique index is the source of truth. Supabase-js
     // exposes this via `.upsert(..., { onConflict, ignoreDuplicates })`.
     const { data, error } = await supabase.from("expenses")
-      .upsert(auto, {
+      .upsert(auto as TablesInsert<"expenses">[], {
         onConflict: "recurring_id,period_year,period_month",
         ignoreDuplicates: true,
       })
@@ -545,7 +546,7 @@ export function createExpenseActions({
     }
     if (rows.length === 0) return { inserted: 0 };
     const { data, error } = await supabase.from("expenses")
-      .upsert(rows, {
+      .upsert(rows as TablesInsert<"expenses">[], {
         onConflict: "recurring_id,period_year,period_month",
         ignoreDuplicates: true,
       })

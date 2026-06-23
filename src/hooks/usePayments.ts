@@ -4,6 +4,7 @@ import { PAYMENT_METHOD } from "../data/constants";
 import { formatShortDate, getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
+import type { TablesInsert } from "../types/db";
 import { track } from "../lib/analytics";
 
 // ── Domain row types ────────────────────────────────────────────────
@@ -75,7 +76,7 @@ const MISSING_MSG = "Este pago ya no existe.";
 // saw their offline state and expects it to persist. See migration 066
 // and the queue lib docblock for the full tradeoff.
 registerHandler("payments.insert", async ({ row }: { row: PaymentRow }) => {
-  return await supabase.from("payments").insert(row).select().single();
+  return await supabase.from("payments").insert(row as TablesInsert<"payments">).select().single();
 });
 
 registerHandler("payments.delete", async ({ id, userId }: { id: string; userId: string }) => {
@@ -198,7 +199,7 @@ export function createPaymentActions(
         // (migration 068) — the JS optimistic state already reflects the
         // expected value and will reconcile to the trigger's truth on
         // the next refetch.
-        setPayments(prev => prev.map(p => p.id === tempId ? { ...data, colorIdx: data.color_idx } : p));
+        setPayments(prev => prev.map(p => p.id === tempId ? ({ ...data!, colorIdx: data!.color_idx } as Payment) : p));
       } catch (e) {
         // Catch fires for transport-level failures (fetch threw, e.g.
         // network dropped mid-flight). Queue + return success so the
@@ -328,7 +329,7 @@ export function createPaymentActions(
         .maybeSingle();
       if (fresh) {
         setPayments(prev => prev.map(p => p.id === paymentId
-          ? { ...fresh, colorIdx: fresh.color_idx }
+          ? ({ ...fresh, colorIdx: fresh.color_idx } as Payment)
           : p));
         setMutationError(CONFLICT_MSG);
       } else {
@@ -381,7 +382,7 @@ export function createPaymentActions(
           await reconcileConflict();
           return;
         }
-        setPayments(prev => prev.map(p => p.id === paymentId ? { ...data, colorIdx: data.color_idx } : p));
+        setPayments(prev => prev.map(p => p.id === paymentId ? ({ ...data!, colorIdx: data!.color_idx } as Payment) : p));
 
         // patient.paid is maintained by trg_payments_recalc_paid
         // (migration 068). The trigger fires on the UPDATE we just
