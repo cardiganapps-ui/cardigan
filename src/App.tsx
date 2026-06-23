@@ -10,8 +10,8 @@ import { isNative } from "./lib/platform";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
 import { AppOverlays } from "./components/app/AppOverlays";
 import { AppBanners } from "./components/app/AppBanners";
+import { AppTopbar } from "./components/app/AppTopbar";
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
-import { AvatarContent } from "./components/Avatar";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { haptic } from "./utils/haptics";
 import { useDemoData } from "./hooks/useDemoData";
@@ -42,7 +42,6 @@ const ExpenseSheet = lazy(() => expenseSheetImport().then(m => ({ default: m.Exp
 const RecurringExpenseSheet = lazy(() => recurringExpenseSheetImport().then(m => ({ default: m.RecurringExpenseSheet })));
 const CommandPalette = lazy(commandPaletteImport);
 import { QuickActions } from "./components/QuickActions";
-import TopbarActions from "./components/TopbarActions";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useViewport } from "./hooks/useViewport";
 import { useEdgeSwipeGesture } from "./hooks/useEdgeSwipeGesture";
@@ -51,11 +50,7 @@ import { BottomTabs } from "./components/BottomTabs";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { useConnectivity } from "./hooks/useConnectivity";
-import { LogoIcon } from "./components/LogoMark";
 import { AuthSplash } from "./components/AuthSplash";
-import { HelpTip } from "./components/HelpTip";
-import { IconRefresh, IconSearch, IconBell } from "./components/Icons";
-import Tooltip from "./components/Tooltip";
 // Tutorial only runs on first sign-in (and on user-triggered replay
 // from Settings). Lazy so the ~30 KB tutorial chunk doesn't sit in
 // the main bundle for users who already finished it.
@@ -1116,109 +1111,22 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
             then disappearing) is the offline-recovery signal. */}
         <OfflineBanner />
 
-        <div className="topbar">
-          <button
-            className={`hamburger ${drawerOpen?"open":""}`}
-            onClick={() => setDrawerOpen(o=>!o)}
-            onMouseEnter={drawerImport}
-            onFocus={drawerImport}
-            aria-label={t("nav.menu")}
-          >
-            <div className="hamburger-line" />
-            <div className="hamburger-line" />
-            <div className="hamburger-line" />
-          </button>
-          {/* Mobile-only entry to the command palette / patient
-              search. Cmd-K is keyboard-gated and TopbarActions is
-              hidden below 768px, so without this iPhone users had
-              no way to fuzzy-jump to a patient in a 30+ list. Lives
-              on the LEFT next to the hamburger — the right side
-              already carries the admin chip, help, and avatar; an
-              extra circle there made the cluster feel cramped. */}
-          {!readOnly && (
-            <button
-              type="button"
-              className="topbar-search-mobile"
-              onClick={() => setPaletteOpen(true)}
-              aria-label={t("cmdp.open") || "Buscar"}
-            >
-              <IconSearch size={18} />
-            </button>
-          )}
-          <button type="button" className="topbar-brand" onClick={() => navigate("home")} aria-label={t("nav.home")} style={{ cursor:"pointer", background:"none", border:"none", padding:0 }}><LogoIcon size={20} color="currentColor" /><span>cardigan</span></button>
-          {/* Per-screen H1 — only visible on desktop (topbar-screen-name
-              is `display: none` below 768px), but always announced to
-              screen readers via aria-live=polite so an AT user knows
-              what page they just navigated to. Without this the topbar
-              had zero heading semantics and AT users had to infer the
-              current screen from URL hash or active nav item. */}
-          <h1 className="topbar-screen-name" aria-live="polite">{t(`nav.${screen}`)}</h1>
-          <div className="topbar-right">
-            {!readOnly && <TopbarActions onOpenPalette={() => setPaletteOpen(true)} />}
-            <Tooltip label={t("inbox.title")} placement="bottom">
-              <button
-                type="button"
-                className="topbar-refresh-btn"
-                onClick={() => setInboxOpen(true)}
-                aria-label={t("inbox.open")}
-                style={{ position: "relative" }}
-              >
-                <IconBell size={16} />
-                {inboxUnread > 0 && (
-                  <span aria-hidden style={{
-                    position: "absolute", top: 3, right: 3,
-                    width: 9, height: 9, borderRadius: 999,
-                    background: "var(--red)", border: "1.5px solid var(--white)",
-                  }} />
-                )}
-              </button>
-            </Tooltip>
-            <Tooltip label={t("retry")} placement="bottom">
-              <button className="topbar-refresh-btn" onClick={refresh} aria-label={t("retry")}><IconRefresh size={16} /></button>
-            </Tooltip>
-            {admin && !readOnly && (
-              <button
-                className="admin-btn"
-                onClick={async () => {
-                  // Admin lives on the web only. On native (iOS /
-                  // Android Capacitor) the button hands off to Safari
-                  // / Chrome via AppLauncher — the user's existing
-                  // session there means they land directly in the
-                  // admin view without re-authenticating. Rationale:
-                  // (1) admin is one-user, never used by regular
-                  // therapists — it doesn't justify the bundle weight
-                  // or attack surface on every install;
-                  // (2) admin features (impersonation, encryption
-                  // recovery, billing grants) are sensitive enough
-                  // that keeping them off the mobile binary is
-                  // defensive both for App Store review and against
-                  // IPA reverse-engineering;
-                  // (3) admin operations are deliberate / desk-shaped
-                  // work, not "while walking around" work — the phone
-                  // isn't the natural surface.
-                  if (isNative()) {
-                    const { launchUrl } = await import("./lib/nativeBrowser");
-                    await launchUrl("https://cardigan.mx/#admin");
-                  } else {
-                    navigate("admin");
-                  }
-                }}>
-                Admin
-              </button>
-            )}
-            {/* Contextual help for the current screen. Lives in the topbar
-                so it doesn't eat vertical space on each page. HelpTip
-                returns null when the screen's tip array is empty. */}
-            <HelpTip tipsKey={`help.${screen}`} />
-            <Tooltip label={t("nav.settings")} placement="bottom">
-              <button type="button" className="avatar-sm" onClick={() => navigate("settings")} aria-label={t("nav.settings")} style={{ cursor:"pointer", border:"none" }}>
-                <span className="avatar-sm-circle">
-                  <AvatarContent initials={userInitial} imageUrl={avatarImageUrl} />
-                </span>
-              </button>
-            </Tooltip>
-          </div>
-        </div>
+        <AppTopbar
+          drawerOpen={drawerOpen}
+          setDrawerOpen={setDrawerOpen}
+          prefetchDrawer={drawerImport}
+          readOnly={readOnly}
+          setPaletteOpen={setPaletteOpen}
+          navigate={navigate}
+          screen={screen}
+          setInboxOpen={setInboxOpen}
+          inboxUnread={inboxUnread}
+          refresh={refresh}
+          admin={admin}
+          userInitial={userInitial}
+          avatarImageUrl={avatarImageUrl}
+          t={t}
+        />
         <ToastStack toasts={toasts} onDismiss={dismissToast} />
         <PullToRefresh onRefresh={refresh}>
           <div style={{
