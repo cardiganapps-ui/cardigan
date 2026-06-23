@@ -204,7 +204,7 @@ export function createExpenseActions({
     setExpenses(prev => [optimisticRow, ...prev]);
     setMutationError("");
 
-    const row = {
+    const row: TablesInsert<"expenses"> = {
       user_id: userId,
       amount: parsedAmount,
       category, date,
@@ -280,7 +280,7 @@ export function createExpenseActions({
     setExpenses(arr => arr.map(e => e.id === id ? next : e));
     setMutationError("");
 
-    const updatePayload: Record<string, unknown> = {
+    const updatePayload: TablesUpdate<"expenses"> = {
       amount: next.amount,
       category: next.category,
       date: next.date,
@@ -309,7 +309,7 @@ export function createExpenseActions({
 
     setMutating(true);
     try {
-      const { error } = await supabase.from("expenses").update(updatePayload as TablesUpdate<"expenses">)
+      const { error } = await supabase.from("expenses").update(updatePayload)
         .eq("id", id).eq("user_id", userId);
       setMutating(false);
       if (error) {

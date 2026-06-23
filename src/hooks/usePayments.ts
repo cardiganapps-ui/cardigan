@@ -41,18 +41,11 @@ interface Payment {
   [key: string]: unknown;
 }
 
-/** Snake-cased insert/update payload sent to supabase. */
-interface PaymentRow {
-  user_id?: string;
-  patient_id: string | null;
-  patient: string;
-  initials: string;
-  amount: number;
-  date: string;
-  method: string;
-  note: string | null;
-  color_idx: number;
-}
+/** Snake-cased insert/update payload sent to supabase. Aliased to the
+    generated payments Insert shape so the row BUILDERS below are
+    column-checked at compile time (wrong/missing column → tsc error),
+    not just the .from() table name. */
+type PaymentRow = TablesInsert<"payments">;
 
 type SetPatients = Dispatch<SetStateAction<Patient[]>>;
 type SetPayments = Dispatch<SetStateAction<Payment[]>>;
@@ -76,7 +69,7 @@ const MISSING_MSG = "Este pago ya no existe.";
 // saw their offline state and expects it to persist. See migration 066
 // and the queue lib docblock for the full tradeoff.
 registerHandler("payments.insert", async ({ row }: { row: PaymentRow }) => {
-  return await supabase.from("payments").insert(row as TablesInsert<"payments">).select().single();
+  return await supabase.from("payments").insert(row).select().single();
 });
 
 registerHandler("payments.delete", async ({ id, userId }: { id: string; userId: string }) => {
@@ -164,7 +157,7 @@ export function createPaymentActions(
     // PII / amount in the payload.
     if (payments.length === 0) track("first_payment_recorded");
 
-    const row = {
+    const row: PaymentRow = {
       user_id: userId,
       patient_id: patient?.id || null,
       patient: patientName,

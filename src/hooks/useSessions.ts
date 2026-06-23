@@ -309,7 +309,7 @@ export function createSessionActions(
     // migration 023.
     const sessionInitials = isTutor
       ? getInitials(tutorName || patient.parent || "Tutor")
-      : patient.initials;
+      : (patient.initials || getInitials(patientName));
     // Accept any finite customRate >= 0 (pro-bono / sliding-scale sessions
     // legitimately use 0). Only fall back to patient.rate when the caller
     // didn't provide a rate or passed a non-numeric value. The final
@@ -322,7 +322,7 @@ export function createSessionActions(
     const sessionDuration = Number(duration) > 0 ? Number(duration) : 60;
 
     setMutationError("");
-    const row = {
+    const row: TablesInsert<"sessions"> = {
       user_id: userId, patient_id: patient.id,
       patient: patientName.trim(), initials: sessionInitials,
       time: time.trim(), day: dayName, date: date.trim(),
@@ -369,7 +369,7 @@ export function createSessionActions(
     setMutating(true);
     let data, error;
     try {
-      const res = await supabase.from("sessions").insert(row as TablesInsert<"sessions">).select().single();
+      const res = await supabase.from("sessions").insert(row).select().single();
       data = res.data; error = res.error;
     } catch {
       // Transport-level failure mid-flight — queue with a temp row

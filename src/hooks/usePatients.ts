@@ -201,14 +201,14 @@ export function createPatientActions(
       start_date: mode === "recurring" && recurring && startDate ? startDate : null,
       scheduling_mode: mode,
       birthdate: birthdate || null,
-      tutor_frequency: tutorFrequency || null,
+      tutor_frequency: (tutorFrequency || null) as number | null,
       // Anthropometric / health-history fields. Set for nutritionist
       // + trainer; null/empty for everyone else (the form doesn't
       // surface them, so the caller passes null/"").
-      height_cm: heightCm || null,
-      goal_weight_kg: goalWeightKg || null,
-      goal_body_fat_pct: goalBodyFatPct || null,
-      goal_skeletal_muscle_kg: goalSkeletalMuscleKg || null,
+      height_cm: (heightCm || null) as number | null,
+      goal_weight_kg: (goalWeightKg || null) as number | null,
+      goal_body_fat_pct: (goalBodyFatPct || null) as number | null,
+      goal_skeletal_muscle_kg: (goalSkeletalMuscleKg || null) as number | null,
       allergies: allergies || "",
       medical_conditions: medicalConditions || "",
       sessions: seedCount,
@@ -225,7 +225,7 @@ export function createPatientActions(
       // Optional cloud-folder link. Stored as null when blank so the
       // empty-state branch in ExternalFolderCard renders cleanly.
       external_folder_url: externalFolderUrl || null,
-    } as TablesInsert<"patients">).select().single();
+    }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
     const newPatient = { ...data, colorIdx: data.color_idx } as Patient;
