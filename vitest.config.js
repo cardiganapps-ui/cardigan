@@ -23,5 +23,26 @@ export default defineConfig({
     // throws when invoked outside the Playwright runner. Keep the
     // two test surfaces strictly separate.
     exclude: ["node_modules", "dist", "e2e/**", ".git"],
+    // ── Coverage gate (WS-4) ──
+    // Intentionally scoped to the financial kernel. accounting.ts carries
+    // the canonical amountDue formula (PRIME DIRECTIVE); enforcing full
+    // line/statement coverage here mechanically implements CLAUDE.md's
+    // rule that "any new accounting branch gets a test before shipping".
+    // Only active when `--coverage` is passed (see `npm run test:coverage`),
+    // so the default `npm test` run is unaffected. Branches floor sits just
+    // under today's 93.75% to allow an existing defensive path without
+    // forcing a contrived test, while still catching a real regression.
+    // Broaden `include` via the CLI for ad-hoc whole-app exploration.
+    coverage: {
+      provider: "v8",
+      include: ["src/utils/accounting.ts"],
+      reporter: ["text", "text-summary"],
+      thresholds: {
+        statements: 100,
+        lines: 100,
+        functions: 100,
+        branches: 90,
+      },
+    },
   },
 });
