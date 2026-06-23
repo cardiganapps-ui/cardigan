@@ -283,6 +283,9 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
       try { localStorage.setItem(`cardigan.planSheetSeen.${user.id}`, String(Date.now())); }
       catch { /* private mode — fine */ }
     }
+    // Funnel: viewing the plan/pricing sheet is the step before
+    // checkout_started. Lazy import keeps analytics off the hot path.
+    import("../lib/analytics").then(({ track }) => track("plan_sheet_opened")).catch(() => {});
     if (!subscription?.subscribedActive) return;
     if (subscription.invoices != null) return;
     subscription.fetchInvoices?.();

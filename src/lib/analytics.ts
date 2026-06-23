@@ -27,13 +27,15 @@
      - identify (sets context, doesn't fire an event)
      - trial_started                (method: email)
      - first_patient_created        (activation: the "aha" milestone)
+     - first_session_created        (activation: a booked session)
      - first_payment_recorded       (activation: money flowing)
      - activation_step_completed
      - activation_complete
      - activation_share_opened
-     - plan_sheet_opened
-     - checkout_started
-     - subscribe_success
+     - plan_sheet_opened            (funnel: viewed pricing)
+     - checkout_started             (plan: monthly|annual, has_referral, has_influencer)
+     - subscribe_success            (best-effort, Stripe redirect return)
+     - subscription_activated       (authoritative trial→paid; via: paid|comp)
      - checkout_cancelled
      - referral_share_initiated
      - referral_share              (channel: native|whatsapp|email|copy_link)

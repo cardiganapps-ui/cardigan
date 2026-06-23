@@ -12,6 +12,7 @@ import { recalcPatientCounters } from "../utils/patients";
 import { sessionCountsTowardBalance } from "../utils/accounting";
 import { getRecurringDates } from "../utils/recurrence";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
+import { track } from "../lib/analytics";
 
 // Re-export for callers that historically imported it from this module.
 export { getRecurringDates };
@@ -352,6 +353,11 @@ export function createSessionActions(
       { status: SESSION_STATUS.SCHEDULED, date: date.trim(), time: time.trim() },
     );
     const newBilled = willCountNew ? patient.billed + sessionRate : patient.billed;
+    // Activation funnel: scheduling the FIRST session is the milestone
+    // between "added a patient" and "money flowing". `upcomingSessions` is
+    // the pre-insert closure array, so length 0 means this is the user's
+    // first. Fired on each genuine-creation return path below (no PII).
+    const isFirstSession = upcomingSessions.length === 0;
 
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -363,6 +369,7 @@ export function createSessionActions(
       setPatients(prev => prev.map(p => p.id === patient.id
         ? { ...p, sessions: newSessions, billed: newBilled } : p));
       await enqueue("sessions.insert", { row }, { tempId });
+      if (isFirstSession) track("first_session_created");
       return true;
     }
 
@@ -384,6 +391,7 @@ export function createSessionActions(
         ? { ...p, sessions: newSessions, billed: newBilled } : p));
       await enqueue("sessions.insert", { row }, { tempId });
       setMutating(false);
+      if (isFirstSession) track("first_session_created");
       return true;
     }
     if (error) { setMutating(false); setMutationError(error.message); return false; }
@@ -397,6 +405,7 @@ export function createSessionActions(
     setPatients(prev => prev.map(p => p.id === patient.id
       ? { ...p, sessions: newSessions, billed: newBilled } : p));
     setMutating(false);
+    if (isFirstSession) track("first_session_created");
     return true;
   }
 

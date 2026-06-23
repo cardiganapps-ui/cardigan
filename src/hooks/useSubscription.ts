@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { isAdmin } from "./useCardiganData";
 import { MONETIZATION_ENABLED } from "../config/monetization";
+import { track } from "../lib/analytics";
 
 /* ── useSubscription ──────────────────────────────────────────────────
    Tracks the SaaS billing state for the current Cardigan user.
@@ -225,6 +226,14 @@ export function useSubscription(user: { id?: string; created_at?: string } | nul
     }
     if (ic) payload.influencer_code = ic;
     if (plan === "annual") payload.plan = "annual";
+    // Funnel: the user committed to checkout (the step before the Stripe
+    // hosted page). subscribe_success / subscription_activated close the
+    // loop on the way back. Flags only — no codes/PII in the payload.
+    track("checkout_started", {
+      plan: plan === "annual" ? "annual" : "monthly",
+      has_referral: !!referralCode,
+      has_influencer: !!ic,
+    });
     const res = await fetch("/api/stripe-checkout", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },

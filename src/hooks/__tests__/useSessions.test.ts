@@ -19,12 +19,16 @@ function pastDate() {
 
 const mock = makeSupabaseMock();
 const recalcPatientCounters = vi.fn(async (..._args: Row[]) => null);
+const trackSpy = vi.fn();
 
 vi.mock("../../supabaseClient", () => ({
   get supabase() { return mock.supabase; },
 }));
 vi.mock("../../utils/patients", () => ({
   recalcPatientCounters: (...args: Row[]) => recalcPatientCounters(...args),
+}));
+vi.mock("../../lib/analytics", () => ({
+  track: (...args: Row[]) => trackSpy(...args),
 }));
 
 const { createSessionActions } = await import("../useSessions");
@@ -64,6 +68,7 @@ beforeEach(() => {
   mock.reset();
   recalcPatientCounters.mockReset();
   recalcPatientCounters.mockResolvedValue(null);
+  trackSpy.mockReset();
 });
 
 // Tier-2 H: status updates now flow through update_session_status_atomic
@@ -313,5 +318,29 @@ describe("rescheduleSession", () => {
     expect(ctx.upcomingSessions.get()[0].date).toBe(originalDate);
     expect(ctx.upcomingSessions.get()[0].time).toBe("10:00");
     expect(ctx.mutationError.get()).toBe("Network down");
+  });
+});
+
+describe("createSession — activation funnel", () => {
+  it("fires first_session_created only when sessions start empty", async () => {
+    const ctx = seed({ sessions: [] });
+    mock.enqueue("sessions", { data: { id: "real-s1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, date: pastDate(), time: "10:00", color_idx: 0 }, error: null });
+
+    await ctx.actions.createSession({ patientName: "Ana López", date: pastDate(), time: "10:00" });
+    await flush();
+
+    expect(trackSpy).toHaveBeenCalledWith("first_session_created");
+    // No PII / patient name in the event payload.
+    expect(trackSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT fire first_session_created when a session already exists", async () => {
+    const ctx = seed({ sessions: [{ id: "s-0", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, date: pastDate(), time: "09:00" }] });
+    mock.enqueue("sessions", { data: { id: "real-s2", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, date: pastDate(), time: "10:00", color_idx: 0 }, error: null });
+
+    await ctx.actions.createSession({ patientName: "Ana López", date: pastDate(), time: "10:00" });
+    await flush();
+
+    expect(trackSpy).not.toHaveBeenCalled();
   });
 });

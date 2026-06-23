@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { passkeysAvailable, passkeyPlatformAuthenticatorAvailable } from "../config/passkeys";
 import { shouldShowDay14Prompt } from "../utils/ratingPrompt";
 import { shouldShowTrialReminder, shouldPromptPasskey, todayDateKey, PASSKEY_PROMPT_MAX_ASKS } from "../utils/modalGates";
+import { track } from "../lib/analytics";
 
 /* ── useEngagementPrompts ──────────────────────────────────────────────
    The five lifecycle / engagement prompts that used to live inline in
@@ -314,6 +315,13 @@ export function useEngagementPrompts({
     try { shown = localStorage.getItem(`cardigan.welcomedPro.${user.id}`); }
     catch { /* private mode — fall through and show; one extra modal isn't a big deal */ }
     if (shown) return;
+    // Funnel: the AUTHORITATIVE trial→paid (or comp) conversion signal —
+    // the first non-active → active transition, deduped per user by the
+    // same welcomedPro flag the celebration uses. The Stripe-return
+    // subscribe_success event is best-effort (the user may close the tab);
+    // this fires from the subscription state itself. `via` lets the
+    // dashboard separate real paid conversions from admin comp grants.
+    track("subscription_activated", { via: subscription.compGranted ? "comp" : "paid" });
     setSubscriptionSuccessOpen(true);
   }, [demo, viewAsUserId, user?.id, subscription.subscribedActive, subscription.compGranted]);
 
