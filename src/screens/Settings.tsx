@@ -22,6 +22,7 @@ import { PlanSheet } from "./settings/sheets/PlanSheet";
 import { ReferralSheet } from "./settings/sheets/ReferralSheet";
 import { ProfileSheet } from "./settings/sheets/ProfileSheet";
 import { AppearanceSheets } from "./settings/sheets/AppearanceSheets";
+import { PanelSheet } from "./settings/sheets/PanelSheet";
 import { SubscriptionPanel } from "./settings/SubscriptionPanel";
 import { AppearancePanel } from "./settings/AppearancePanel";
 import { FeaturesPanel } from "./settings/FeaturesPanel";
@@ -566,36 +567,26 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
       {/* ── CALENDAR SHEET ──
          Wraps the existing CalendarLinkPanel (multi-state component)
          so the Settings page only shows a single uniform row. */}
-      {activeSheet === "calendar" && (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.calendarLabel")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <CalendarLinkPanel readOnly={readOnly} />
-            </div>
-          </div>
-        </div>
-      )}
+      <PanelSheet
+        open={activeSheet === "calendar"}
+        title={t("settings.calendarLabel")}
+        onClose={() => setActiveSheet(null)}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      >
+        <CalendarLinkPanel readOnly={readOnly} />
+      </PanelSheet>
 
       {/* ── ONLINE PAYMENTS (STRIPE CONNECT) SHEET ── */}
-      {activeSheet === "onlinePayments" && (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.onlinePaymentsLabel")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <OnlinePaymentsPanel user={user} />
-            </div>
-          </div>
-        </div>
-      )}
+      <PanelSheet
+        open={activeSheet === "onlinePayments"}
+        title={t("settings.onlinePaymentsLabel")}
+        onClose={() => setActiveSheet(null)}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      >
+        <OnlinePaymentsPanel user={user} />
+      </PanelSheet>
 
       {/* ── PROFILE SHEET ── */}
       <ProfileSheet
