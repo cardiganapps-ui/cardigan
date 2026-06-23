@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { isEpisodic } from "../data/constants";
 import { shortDateToISO, todayISO as todayISOFn } from "../utils/dates";
 
@@ -91,6 +91,14 @@ export function useCardiganContextValue(deps: CardiganContextValueDeps) {
     pendingAgendaViewRef, pendingExpedienteRef, pendingNoteOpenRef,
     openQuickSchedule, updateSessionStatus, patients, upcomingSessions, t,
   } = deps;
+
+  // Latest-screen ref so openExpediente can record the origin screen
+  // WITHOUT taking `screen` as a memo dependency — that's what lets the
+  // nav callbacks live in the stable Main slice (below) instead of the
+  // churning UI slice. The callback reads screenRef.current at tap time,
+  // which is the current screen by construction (taps happen post-render).
+  const screenRef = useRef(screen);
+  useEffect(() => { screenRef.current = screen; }, [screen]);
 
   // ── Main slice ──
   // Data arrays + mutation actions + stable cross-cutting callbacks +
@@ -196,36 +204,28 @@ export function useCardiganContextValue(deps: CardiganContextValueDeps) {
       );
       return ok;
     },
-  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, showSuccess, showToast, online, withUndoableDelete, groupsEnabled, setGroupsEnabled]);
-
-  // ── UI slice ──
-  // The fast-changing navigation / UI state + the nav actions that pair
-  // with it. This value DOES change on navigation (that's the point);
-  // only components that read useCardiganUI() re-render then.
-  const uiValue = useMemo(() => ({
-    screen, drawerOpen, setDrawerOpen, navigate, setScreen,
-    pushLayer, popLayer, removeLayer,
-    tutorial, theme, notifications,
+    // ── Stable navigation actions ──
+    // None of these close over the fast-changing UI state (openExpediente
+    // reads the latest screen via screenRef), so they belong in the STABLE
+    // Main slice. That's what lets data screens which need them (Finances,
+    // Home, …) read only useCardiganMain() and stop re-rendering on nav.
+    navigate, setScreen, setDrawerOpen, pushLayer, popLayer, removeLayer,
     setHideFab, setHideBottomTabs,
-    pendingFabAction,
     requestFabAction: setPendingFabAction,
     consumeFabAction: () => setPendingFabAction(null),
     openActivationShareSheet: () => setActivationShareOpen(true),
     setAgendaView: (v: Row) => { pendingAgendaViewRef.current = v; },
     consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
     openExpediente: (patient: Row) => {
-      // Remember which screen the user came from so closing the
-      // expediente can take them back there instead of stranding them
-      // on Pacientes. Only set an origin when the caller isn't already
-      // on Pacientes — otherwise closing would navigate to itself.
-      pendingExpedienteRef.current = { patient, origin: screen !== "patients" ? screen : null };
+      // Remember which screen the user came from so closing the expediente
+      // can take them back there instead of stranding them on Pacientes.
+      // Only set an origin when the caller isn't already on Pacientes.
+      pendingExpedienteRef.current = { patient, origin: screenRef.current !== "patients" ? screenRef.current : null };
       setScreen("patients");
     },
     openNoteById: (id: Row) => {
-      // Navigate to Archivo (which routes to Notes tab by default) and
-      // stash the id; Notes screen reads it on mount and opens the
-      // editor with the matching note. Same pendingRef pattern as
-      // openExpediente / setAgendaView.
+      // Navigate to Archivo (Notes tab by default) and stash the id; the
+      // Notes screen reads it on mount. Same pendingRef pattern.
       pendingNoteOpenRef.current = id;
       setScreen("archivo");
     },
@@ -239,7 +239,15 @@ export function useCardiganContextValue(deps: CardiganContextValueDeps) {
       pendingExpedienteRef.current = null;
       return v;
     },
-  }), [screen, drawerOpen, setDrawerOpen, navigate, setScreen, pushLayer, popLayer, removeLayer, tutorial, theme, notifications, setHideFab, setHideBottomTabs, pendingFabAction, setPendingFabAction, setActivationShareOpen, pendingAgendaViewRef, pendingExpedienteRef, pendingNoteOpenRef]);
+  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, showSuccess, showToast, online, withUndoableDelete, groupsEnabled, setGroupsEnabled, navigate, setScreen, setDrawerOpen, pushLayer, popLayer, removeLayer, setHideFab, setHideBottomTabs, setPendingFabAction, setActivationShareOpen, pendingAgendaViewRef, pendingExpedienteRef, pendingNoteOpenRef]);
+
+  // ── UI slice ──
+  // ONLY the fast-changing navigation / UI STATE — the nav ACTIONS moved to
+  // the stable Main slice above. This value changes on navigation (that's
+  // the point); only components reading useCardiganUI() re-render then.
+  const uiValue = useMemo(() => ({
+    screen, drawerOpen, pendingFabAction, tutorial, theme, notifications,
+  }), [screen, drawerOpen, pendingFabAction, tutorial, theme, notifications]);
 
   return { mainValue, uiValue };
 }

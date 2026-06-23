@@ -7,7 +7,7 @@ import { ActivationChecklist } from "../components/ActivationChecklist";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { SessionSheet } from "../components/SessionSheet";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { NotificationsPrompt } from "../components/NotificationsPrompt";
@@ -84,7 +84,7 @@ type HomeProps = {
 };
 
 export function Home({ setScreen, userName }: HomeProps) {
-  const { patients, upcomingSessions, groups, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, createNote, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription, rescheduleRequests = [] } = useCardigan();
+  const { patients, upcomingSessions, groups, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, createNote, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription, rescheduleRequests = [] } = useCardiganMain();
   const groupsById = useMemo(() => new Map<string, Row>((groups || []).map((g: Row) => [g.id, g])), [groups]);
   const [rescheduleSheetOpen, setRescheduleSheetOpen] = useState(false);
   const { t, strings } = useT();

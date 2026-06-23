@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { getClientColor } from "../data/seedData";
 import { IconCheck, IconUsers, IconPlus, IconDollar } from "../components/Icons";
 import { formatMXN } from "../utils/format";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Avatar } from "../components/Avatar";
 import { AnimatedNumber } from "../components/AnimatedNumber";
@@ -26,7 +26,7 @@ export function Finances() {
     openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet,
     deleteExpense, generatePendingRecurringExpenses,
     mutating, openExpediente, requestFabAction, readOnly,
-  } = useCardigan();
+  } = useCardiganMain();
   const { t } = useT();
   const [tab, setTab] = useState("balances");
   const [balanceFilter, setBalanceFilter] = useState<string | null>(null); // null | "owing" | "paid"

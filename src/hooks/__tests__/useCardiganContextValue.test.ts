@@ -172,11 +172,12 @@ describe("useCardiganContextValue", () => {
   it("openExpediente stashes origin + navigates, consumeExpediente drains it", () => {
     const deps = baseDeps({ screen: "home" });
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    result.current.uiValue.openExpediente({ id: "p1" });
+    // openExpediente / consumeExpediente moved to the stable Main slice.
+    result.current.mainValue.openExpediente({ id: "p1" });
     expect(deps.setScreen).toHaveBeenCalledWith("patients");
-    const drained = result.current.uiValue.consumeExpediente();
+    const drained = result.current.mainValue.consumeExpediente();
     expect(drained).toEqual({ patient: { id: "p1" }, origin: "home" });
-    expect(result.current.uiValue.consumeExpediente()).toBeNull();
+    expect(result.current.mainValue.consumeExpediente()).toBeNull();
   });
 
   // ── WS-2 slice invariants ──

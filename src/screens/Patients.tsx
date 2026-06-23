@@ -17,7 +17,7 @@ import { MoneyInput } from "../components/MoneyInput";
 import { Avatar } from "../components/Avatar";
 import { PatientExpediente } from "./PatientExpediente";
 import { EmptyState } from "../components/EmptyState";
-import { useCardigan } from "../context/CardiganContext";
+import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic, isPotentialOrDiscarded, PATIENT_STATUS, SESSION_TYPE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../data/constants";
 import { PotentialProfileSheet } from "../components/sheets/PotentialProfileSheet";
@@ -166,7 +166,7 @@ function PatientRow({ p, i, swipeEnabled, isInterviewLane, isPotential, isDiscar
 }
 
 export function Patients() {
-  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, applyScheduleChange, finalizePatient, discardPotential, convertPotentialToActive, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate, profession } = useCardigan();
+  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, applyScheduleChange, finalizePatient, discardPotential, convertPotentialToActive, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate, profession } = useCardiganMain();
   const modalities = getModalitiesForProfession(profession);
   const { isTabletSplit } = useViewport();
   const ctxMenu = useContextMenu();
