@@ -73,17 +73,28 @@ function setup(opts: Partial<Row> = {}) {
 }
 
 describe("useEdgeSwipeGesture — drag behavior", () => {
+  // Deterministic clock: the events fire synchronously, so without
+  // pinning Date.now the touchstart→touchend elapsed is ~0–1ms and the
+  // velocity branch (dx/elapsed) fires randomly. Pin it and advance
+  // explicitly so each drag's speed is what the test intends.
+  let clock = 1_000_000;
   beforeEach(() => {
     document.body.innerHTML = "";
+    clock = 1_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => clock);
   });
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it("opens the drawer on a left-edge drag past the distance threshold", () => {
     const { shell, setDrawerOpen, setSwipeProgress } = setup();
     touch(shell, "touchstart", 8);   // inside the 32px edge band
     touch(shell, "touchmove", 60);   // dx 52 > 10 → engage + claim
     touch(shell, "touchmove", 140);  // tracking; progress updates
-    touch(shell, "touchend", 140);   // dx 132 > 100 → commit
+    clock += 250;                    // a normal ~250ms drag
+    touch(shell, "touchend", 140);   // dx 132 > 100 → commit on distance
 
     expect(setDrawerOpen).toHaveBeenCalledWith(true);
     expect(setSwipeProgress).toHaveBeenCalled(); // progress was driven mid-drag
@@ -93,15 +104,27 @@ describe("useEdgeSwipeGesture — drag behavior", () => {
     const { shell, setDrawerOpen } = setup();
     touch(shell, "touchstart", 8);
     touch(shell, "touchmove", 30);  // dx 22 > 10 → engages
+    clock += 2000;                  // slow drag → velocity 37/2000 ≪ 0.3
     touch(shell, "touchend", 45);   // dx 37 < 100, slow → no commit
 
     expect(setDrawerOpen).not.toHaveBeenCalled();
+  });
+
+  it("opens on a fast flick even if the distance is short", () => {
+    const { shell, setDrawerOpen } = setup();
+    touch(shell, "touchstart", 8);
+    touch(shell, "touchmove", 30);  // engages
+    clock += 50;                    // fast: dx 52 / 50ms = 1.04 px/ms > 0.3
+    touch(shell, "touchend", 60);   // dx 52 < 100 but velocity commits
+
+    expect(setDrawerOpen).toHaveBeenCalledWith(true);
   });
 
   it("ignores a drag that starts outside the edge band", () => {
     const { shell, setDrawerOpen, setSwipeProgress } = setup();
     touch(shell, "touchstart", 200); // well past the 32px band
     touch(shell, "touchmove", 320);
+    clock += 250;
     touch(shell, "touchend", 320);
 
     expect(setDrawerOpen).not.toHaveBeenCalled();
@@ -115,6 +138,7 @@ describe("useEdgeSwipeGesture — drag behavior", () => {
     const { shell, setDrawerOpen } = setup({ isTablet: true });
     touch(shell, "touchstart", 8);
     touch(shell, "touchmove", 140);
+    clock += 250;
     touch(shell, "touchend", 140);
 
     expect(setDrawerOpen).not.toHaveBeenCalled();
