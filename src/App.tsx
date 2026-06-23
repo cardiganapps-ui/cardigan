@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
+import React, { useEffect, useState, useRef, useCallback, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useToastQueue } from "./hooks/useToastQueue";
 import { useEngagementPrompts } from "./hooks/useEngagementPrompts";
 import { useLaunchParams } from "./hooks/useLaunchParams";
+import { useCardiganContextValue } from "./hooks/useCardiganContextValue";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { LoadingSkeleton, SkeletonCrossfade } from "./components/LoadingSkeleton";
 import { isNative, isIOS } from "./lib/platform";
@@ -83,8 +84,6 @@ const Tutorial = lazy(() => import("./components/Tutorial/Tutorial").then(m => (
 import { useTutorial } from "./hooks/useTutorial";
 import { ToastStack } from "./components/Toast";
 import { QuickScheduleSheet } from "./components/sheets/QuickScheduleSheet";
-import { isEpisodic } from "./data/constants";
-import { shortDateToISO, todayISO as todayISOFn } from "./utils/dates";
 import { Home } from "./screens/Home";
 /* Secondary screens — lazy-loaded so the main bundle drops the
    weight of components a user may never visit in a session.
@@ -925,136 +924,26 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
     });
     return true;
   }, [showToast]);
-  const ctxValue = useMemo(() => ({
-    ...data,
-    // Override data.readOnly with the composed value (admin view-as
-    // OR trial-expired). Order matters \u2014 this MUST come after
-    // `...data` so it wins.
-    readOnly,
-    subscription,
-    requirePro,
-    // Pro-gated mutation: any caller that bypasses the UI badges (e.g.
-    // a direct path inside PatientExpediente) still gets short-circuited
-    // here \u2014 we open the upgrade sheet and resolve the call as a no-op
-    // so the caller's `await` doesn't throw.
-    uploadDocument: subscription?.isPro
-      ? data.uploadDocument
-      : async () => { requirePro("documents"); return null; },
-    // The four everyday destructive actions go through the undoable
-    // wrapper: optimistic remove + "Deshacer" toast + 3s commit
-    // window. Recurring-template delete stays straight-through \u2014
-    // it's an admin-rare action and undoable wouldn't add much.
-    deleteSession: withUndoableDelete(data.softDeleteSession, "Sesi\u00f3n eliminada"),
-    deletePayment: withUndoableDelete(data.softDeletePayment, "Pago eliminado"),
-    deleteExpense: withUndoableDelete(data.softDeleteExpense, "Gasto eliminado"),
-    deleteRecurringTemplate: data.deleteRecurringTemplate,
-    deleteNote: withUndoableDelete(data.softDeleteNote, "Nota eliminada"),
-    noteCrypto,
-    profession,
-    accentTheme,
-    setProfessionLocal: userProfile.setProfessionLocal,
-    groupsEnabled, setGroupsEnabled,
-    user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, setHideFab, setHideBottomTabs, setScreen,
-    isAdminUser: admin, // surfaced to CommandPalette for admin-only commands
+
+  // The CardiganContext assembler — composes `...data` with the shell's
+  // overrides + cross-cutting handlers (pro-gated uploadDocument, the
+  // undoable-delete wrappers, onCancelSession, onMarkCompleted's episodic
+  // "schedule next" prompt) into the single memoized object the 106
+  // context consumers read. Lives in useCardiganContextValue so the shell
+  // stops owning the 130-line memo; the behaviorful handlers are
+  // characterization-tested there.
+  const ctxValue = useCardiganContextValue({
+    data, readOnly, subscription, requirePro, withUndoableDelete,
+    noteCrypto, profession, accentTheme, userProfile, groupsEnabled, setGroupsEnabled,
+    user, userName, userInitial,
+    openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet,
+    setHideFab, setHideBottomTabs, setScreen, admin,
     navigate, pushLayer, popLayer, removeLayer, online,
     screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,
-    pendingFabAction,
-    requestFabAction: setPendingFabAction,
-    consumeFabAction: () => setPendingFabAction(null),
-    openActivationShareSheet: () => setActivationShareOpen(true),
-    setAgendaView: (v: Row) => { pendingAgendaViewRef.current = v; },
-    consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
-    openExpediente: (patient: Row) => {
-      // Remember which screen the user came from so closing the
-      // expediente can take them back there instead of stranding them
-      // on Pacientes. Only set an origin when the caller isn't already
-      // on Pacientes — otherwise closing would navigate to itself.
-      pendingExpedienteRef.current = { patient, origin: screen !== "patients" ? screen : null };
-      setScreen("patients");
-    },
-    openNoteById: (id: Row) => {
-      // Navigate to Archivo (which routes to Notes tab by default) and
-      // stash the id; Notes screen reads it on mount and opens the
-      // editor with the matching note. Same pendingRef pattern as
-      // openExpediente / setAgendaView.
-      pendingNoteOpenRef.current = id;
-      setScreen("archivo");
-    },
-    consumePendingNoteOpen: () => {
-      const v = pendingNoteOpenRef.current;
-      pendingNoteOpenRef.current = null;
-      return v;
-    },
-    consumeExpediente: () => {
-      const v = pendingExpedienteRef.current;
-      pendingExpedienteRef.current = null;
-      return v;
-    },
-    openQuickSchedule,
-    onCancelSession: async (s: Row, charge: Row, reason: Row) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
-    /* onMarkCompleted intercepts the standard updateSessionStatus
-       call to layer in the "schedule next?" affordance for episodic
-       patients. After the status flip succeeds, if the patient has
-       no future scheduled session, fire an actionable toast that
-       opens QuickScheduleSheet on tap. Recurring patients see no
-       prompt — their schedule already covers the next visit. */
-    onMarkCompleted: async (s: Row, overrideStatus?: Row) => {
-      if (readOnly) return false;
-      const newStatus = overrideStatus || "completed";
-      const ok = await updateSessionStatus(s.id, newStatus);
-      if (!ok) return ok;
-      // The prompt is specifically a "you just FINISHED a visit"
-      // affordance — fire only when the new status lands at
-      // 'completed'. Toggling a row back to 'scheduled' (rare but
-      // possible from the same handler) shouldn't surface a
-      // "completed" toast.
-      if (newStatus !== "completed") return ok;
-      const patient = patients.find((p: Row) => p.id === s.patient_id);
-      if (!patient || !isEpisodic(patient)) return ok;
-      // "Has a future visit already" check: any row with status=
-      // 'scheduled' dated today-or-later that isn't the one we just
-      // marked complete. Specifically NOT the broader "anything not
-      // cancelled/charged" — a future row that's somehow already
-      // 'completed' (early-marked) shouldn't suppress the prompt; the
-      // user just wrapped a visit and likely wants to schedule the
-      // next one regardless.
-      const todayIso = todayISOFn();
-      const hasFuture = (upcomingSessions || []).some((row: Row) => {
-        if (row.patient_id !== patient.id) return false;
-        if (row.id === s.id) return false;
-        if (row.status !== "scheduled") return false;
-        const iso = shortDateToISO(row.date);
-        return iso >= todayIso;
-      });
-      if (hasFuture) return ok;
-      // Fire the prompt toast. Reuses the toast queue's onRetry slot;
-      // the new actionLabel prop (added in this round) carries the
-      // localized "Programar próxima" label so this isn't mistaken
-      // for an error retry.
-      // Toast carries the patient's first name so a user marking
-      // two consecutive consults complete (e.g. on the Agenda screen)
-      // sees which one the [Programar próxima] button refers to.
-      // First name only — the toast is narrow on phones and the full
-      // "Apellido Apellido" tail crowds the action button.
-      const firstName = (patient.name || "").split(" ")[0];
-      showToast(
-        firstName
-          ? `${firstName} · ${t("scheduling.endOfVisitPrompt")}`
-          : t("scheduling.endOfVisitPrompt"),
-        "success",
-        {
-          actionLabel: t("scheduling.scheduleNext"),
-          onRetry: () => openQuickSchedule(patient),
-          // De-dup per patient — repeatedly toggling status (or
-          // quickly marking two consecutive consults complete)
-          // shouldn't stack multiple "Programar próxima" toasts.
-          // The latest one wins.
-          key: `end-of-visit:${patient.id}`,
-        },
-      );
-      return ok;
-    },
-  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withUndoableDelete, groupsEnabled, setGroupsEnabled]);
+    pendingFabAction, setPendingFabAction, setActivationShareOpen,
+    pendingAgendaViewRef, pendingExpedienteRef, pendingNoteOpenRef,
+    openQuickSchedule, updateSessionStatus, patients, upcomingSessions, t,
+  });
 
   // First-time user gate: a 2-step onboarding wizard before mounting
   // the main shell. Demo mode and admin "view as user" mode bypass —
