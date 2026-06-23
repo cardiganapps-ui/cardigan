@@ -69,7 +69,7 @@ describe("AppOverlays gating", () => {
   });
 
   it("crypto gate shows only when not dismissed (and signed-in, non-demo)", async () => {
-    const { queryByTestId, findByTestId } = render(<AppOverlays {...baseProps({ cryptoGateDismissed: false })} />);
+    const { findByTestId } = render(<AppOverlays {...baseProps({ cryptoGateDismissed: false })} />);
     expect(await findByTestId("crypto-gate")).not.toBeNull();
     cleanup();
     const { queryByTestId: q2 } = render(<AppOverlays {...baseProps({ cryptoGateDismissed: true })} />);

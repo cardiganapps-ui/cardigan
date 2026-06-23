@@ -14,11 +14,18 @@ import { useState, useEffect, useCallback } from "react";
 export function useGroupsEnabled(userId: string | null | undefined) {
   const [groupsEnabled, setGroupsEnabledState] = useState(true);
   useEffect(() => {
-    if (!userId) { setGroupsEnabledState(true); return; }
-    try {
-      const v = localStorage.getItem(`cardigan.groupsEnabled.${userId}`);
-      setGroupsEnabledState(v === null ? true : v !== "false");
-    } catch { setGroupsEnabledState(true); }
+    // Read the persisted per-user flag on mount / account switch. Single
+    // setState (computed first) so the read is one synchronous write — the
+    // standard "hydrate from an external store on key change" pattern.
+    let next = true;
+    if (userId) {
+      try {
+        const v = localStorage.getItem(`cardigan.groupsEnabled.${userId}`);
+        next = v === null ? true : v !== "false";
+      } catch { next = true; }
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setGroupsEnabledState(next);
   }, [userId]);
   const setGroupsEnabled = useCallback((val: boolean) => {
     setGroupsEnabledState(val);

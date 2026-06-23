@@ -6,7 +6,7 @@
  * gating on every write opener, the record-vs-edit draft seeding, and the
  * quick-schedule path (no readOnly guard, no-ops on null).
  */
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
 import { useActionSheets } from "../useActionSheets";
 
