@@ -9,7 +9,7 @@ import { DiagnosticsSheet } from "../components/sheets/DiagnosticsSheet";
 // Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
-import { IconUsers, IconStar, IconKey, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconLock, IconSparkle } from "../components/Icons";
+import { IconUsers, IconStar, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconLock, IconSparkle } from "../components/Icons";
 import { AccountHeader } from "./settings/AccountHeader";
 import { MfaSheets } from "./settings/sheets/MfaSheets";
 import { ChangePasswordSheet } from "./settings/sheets/ChangePasswordSheet";
@@ -17,6 +17,7 @@ import { PasskeysSheet } from "./settings/sheets/PasskeysSheet";
 import { SignOutEverywhereSheet } from "./settings/sheets/SignOutEverywhereSheet";
 import { ExportDataSheet } from "./settings/sheets/ExportDataSheet";
 import { DeleteAccountSheet } from "./settings/sheets/DeleteAccountSheet";
+import { EncryptionSheets } from "./settings/sheets/EncryptionSheets";
 import { SubscriptionPanel } from "./settings/SubscriptionPanel";
 import { AppearancePanel } from "./settings/AppearancePanel";
 import { FeaturesPanel } from "./settings/FeaturesPanel";
@@ -455,57 +456,8 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
   };
 
   // ── Note encryption ────────────────────────────────────────────────
-  const [encSetupPass1, setEncSetupPass1] = useState("");
-  const [encSetupPass2, setEncSetupPass2] = useState("");
-  const [encChangeNew1, setEncChangeNew1] = useState("");
-  const [encChangeNew2, setEncChangeNew2] = useState("");
-  const [encConfirmDisable, setEncConfirmDisable] = useState("");
-  const [encBusy, setEncBusy] = useState(false);
-  const [encUiError, setEncUiError] = useState("");
-
-  const submitEncryptionSetup = async () => {
-    setEncUiError("");
-    if (encSetupPass1.length < 8) { setEncUiError(t("settings.encMinLength")); return; }
-    if (encSetupPass1 !== encSetupPass2) { setEncUiError(t("settings.encMismatch")); return; }
-    setEncBusy(true);
-    const ok = await noteCrypto?.setup(encSetupPass1);
-    setEncBusy(false);
-    if (ok) {
-      setEncSetupPass1(""); setEncSetupPass2(""); setActiveSheet(null);
-      showToast(t("settings.encEnabledToast"), "success");
-    } else if (noteCrypto?.error) {
-      setEncUiError(noteCrypto.error);
-    }
-  };
-
-  const submitEncryptionChange = async () => {
-    setEncUiError("");
-    if (encChangeNew1.length < 8) { setEncUiError(t("settings.encMinLength")); return; }
-    if (encChangeNew1 !== encChangeNew2) { setEncUiError(t("settings.encMismatch")); return; }
-    setEncBusy(true);
-    const ok = await noteCrypto?.changePassphrase(encChangeNew1);
-    setEncBusy(false);
-    if (ok) {
-      setEncChangeNew1(""); setEncChangeNew2(""); setActiveSheet(null);
-      showToast(t("settings.encChangedToast"), "success");
-    } else if (noteCrypto?.error) {
-      setEncUiError(noteCrypto.error);
-    }
-  };
-
-  const submitEncryptionDisable = async () => {
-    setEncUiError("");
-    if (encConfirmDisable !== "DESCIFRAR") { setEncUiError(t("settings.encDisableConfirmRequired")); return; }
-    setEncBusy(true);
-    const ok = await noteCrypto?.disable();
-    setEncBusy(false);
-    if (ok) {
-      setEncConfirmDisable(""); setActiveSheet(null);
-      showToast(t("settings.encDisabledToast"), "info");
-    } else if (noteCrypto?.error) {
-      setEncUiError(noteCrypto.error);
-    }
-  };
+  // The passphrase/confirm/busy/error state + the setup/change/disable
+  // handlers live in EncryptionSheets now.
 
   // ── Privacy / ARCO actions ─────────────────────────────────────────
   // The export + delete reauth/captcha state and their handlers live in
@@ -600,12 +552,11 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
           // they later drop off Pro — we never strand someone
           // outside their already-encrypted notes. Only the
           // brand-new "set up encryption" flow is Pro-gated.
+          // (EncryptionSheets resets its fields on open.)
           if (!isPro && noteCrypto.status === "disabled") {
             requirePro?.("encryption");
             return;
           }
-          setEncUiError("");
-          if (noteCrypto.status === "disabled") { setEncSetupPass1(""); setEncSetupPass2(""); }
           setActiveSheet("encryption");
         }}
       />
@@ -1485,159 +1436,17 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         </div>
       )}
 
-      {/* ── ENCRYPTION SHEET (state-aware wrapper) ──
-         Single sheet that adapts to noteCrypto.status. Replaces the
-         old encSetup / encStatus / encChange-row / encDisable-row
-         pile that used to render up to four conditional rows on the
-         main Settings page. */}
-      {activeSheet === "encryption" && (
-        <div className="sheet-overlay" onClick={() => !encBusy && setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.encryptionTitle")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => !encBusy && setActiveSheet(null)} disabled={encBusy}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              {noteCrypto?.status === "disabled" && (
-                <>
-                  <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
-                    {t("settings.encSetupExplain")}
-                  </div>
-                  <div className="input-group" style={{ marginBottom: 12 }}>
-                    <label className="input-label">{t("settings.encNewPassphrase")}</label>
-                    <PasswordInput autoComplete="new-password" value={encSetupPass1} onChange={(e) => setEncSetupPass1(e.target.value)} disabled={encBusy} />
-                  </div>
-                  <div className="input-group" style={{ marginBottom: 14 }}>
-                    <label className="input-label">{t("settings.encConfirmPassphrase")}</label>
-                    <PasswordInput autoComplete="new-password" value={encSetupPass2} onChange={(e) => setEncSetupPass2(e.target.value)} disabled={encBusy} />
-                  </div>
-                  {encUiError && <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <button type="button" className="btn btn-primary" onClick={submitEncryptionSetup} disabled={encBusy || encSetupPass1.length < 8}>
-                      {encBusy ? t("loading") : t("settings.encEnableCta")}
-                    </button>
-                    <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={encBusy}>
-                      {t("cancel")}
-                    </button>
-                  </div>
-                </>
-              )}
-              {noteCrypto?.status === "locked" && (
-                <>
-                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--cream)", borderRadius:"var(--radius)", marginBottom:14 }}>
-                    <div style={{ color:"var(--charcoal-md)" }}><IconLock size={18} /></div>
-                    <div style={{ fontSize:13, color:"var(--charcoal)", fontWeight:600 }}>{t("settings.encStatusLocked")}</div>
-                  </div>
-                  <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.55 }}>
-                    {t("settings.encLockedHint")}
-                  </div>
-                </>
-              )}
-              {noteCrypto?.status === "unlocked" && (
-                <>
-                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--green-bg)", borderRadius:"var(--radius)", marginBottom:14 }}>
-                    <div style={{ color:"var(--green)" }}><IconCheck size={18} /></div>
-                    <div style={{ fontSize:13, color:"var(--charcoal)", fontWeight:600 }}>{t("settings.encStatusUnlocked")}</div>
-                  </div>
-                  <div style={{ fontSize:14, color:"var(--charcoal-md)", lineHeight:1.55, marginBottom:14 }}>
-                    {t("settings.encryptionUnlockedExplain")}
-                  </div>
-                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    <button type="button" className="btn btn-ghost"
-                      onClick={() => { setEncUiError(""); setEncChangeNew1(""); setEncChangeNew2(""); setActiveSheet("encChange"); }}>
-                      {t("settings.encChange")}
-                    </button>
-                    <button type="button" className="btn btn-ghost"
-                      style={{ color:"var(--red)", borderColor:"var(--red)" }}
-                      onClick={() => { setEncUiError(""); setEncConfirmDisable(""); setActiveSheet("encDisable"); }}>
-                      {t("settings.encDisable")}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── ENCRYPTION CHANGE PASSPHRASE SHEET ── */}
-      {activeSheet === "encChange" && (
-        <div className="sheet-overlay" onClick={() => !encBusy && setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.encChange")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => !encBusy && setActiveSheet(null)} disabled={encBusy}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <div className="input-group" style={{ marginBottom: 12 }}>
-                <label className="input-label">{t("settings.encNewPassphrase")}</label>
-                <PasswordInput autoComplete="new-password" value={encChangeNew1} onChange={(e) => setEncChangeNew1(e.target.value)} disabled={encBusy} />
-              </div>
-              <div className="input-group" style={{ marginBottom: 14 }}>
-                <label className="input-label">{t("settings.encConfirmPassphrase")}</label>
-                <PasswordInput autoComplete="new-password" value={encChangeNew2} onChange={(e) => setEncChangeNew2(e.target.value)} disabled={encBusy} />
-              </div>
-              {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button type="button" className="btn btn-primary" onClick={submitEncryptionChange} disabled={encBusy || encChangeNew1.length < 8}>
-                  {encBusy ? t("loading") : t("settings.encChangeCta")}
-                </button>
-                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={encBusy}>
-                  {t("cancel")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── ENCRYPTION DISABLE SHEET ── */}
-      {activeSheet === "encDisable" && (
-        <div className="sheet-overlay" onClick={() => !encBusy && setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.encDisable")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => !encBusy && setActiveSheet(null)} disabled={encBusy}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <div style={{ background: "var(--red-pale, #fdecea)", color: "var(--red-dark, #922)", padding: "10px 14px", borderRadius: "var(--radius)", fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>
-                {t("settings.encDisableWarning")}
-              </div>
-              <div className="input-group" style={{ marginBottom: 14 }}>
-                <label className="input-label">{t("settings.encDisableConfirmLabel")}</label>
-                <input
-                  className="input"
-                  type="text"
-                  autoComplete="off"
-                  autoCapitalize="characters"
-                  value={encConfirmDisable}
-                  onChange={(e) => setEncConfirmDisable(e.target.value)}
-                  placeholder="DESCIFRAR"
-                  disabled={encBusy}
-                />
-              </div>
-              {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={submitEncryptionDisable}
-                  disabled={encBusy || encConfirmDisable !== "DESCIFRAR"}
-                  style={{ background: "var(--red)", color: "var(--white)" }}
-                >
-                  {encBusy ? t("loading") : t("settings.encDisableCta")}
-                </button>
-                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={encBusy}>
-                  {t("cancel")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Note-encryption setup / change / disable (state + handlers extracted
+          to EncryptionSheets; the shared noteCrypto bag is passed in). */}
+      <EncryptionSheets
+        mode={activeSheet === "encryption" ? "main" : activeSheet === "encChange" ? "change" : activeSheet === "encDisable" ? "disable" : null}
+        onClose={() => setActiveSheet(null)}
+        onNavigate={(m) => setActiveSheet(m === "change" ? "encChange" : "encDisable")}
+        noteCrypto={noteCrypto}
+        showToast={showToast}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      />
 
       {/* Delete-account (ARCO Cancelación) — confirm/reauth/captcha state +
           handler extracted to DeleteAccountSheet. */}
