@@ -85,7 +85,7 @@ export function createNoteTagActions(
     const enc = crypto?.encrypt
       ? await crypto.encrypt(trimmed)
       : { content: trimmed, encrypted: false };
-    const row = {
+    const row: TablesInsert<"note_tags"> = {
       user_id: userId,
       label_ciphertext: enc.content,
       label_hash: hash,

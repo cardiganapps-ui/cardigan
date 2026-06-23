@@ -330,7 +330,7 @@ export function createGroupActions(
     } = payload || {};
     if (!name || !name.trim()) return false;
 
-    const row = {
+    const row: TablesInsert<"groups"> = {
       user_id: userId, name: name.trim(), color_idx: colorIdx,
       day, time, duration: Number(duration) > 0 ? Number(duration) : 60,
       rate: rate == null || rate === "" ? null : Number(rate),

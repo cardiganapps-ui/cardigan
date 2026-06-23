@@ -121,7 +121,7 @@ export function createNoteActions(
   async function createNote({ patientId, sessionId, groupId, title, content }: { patientId?: string | null; sessionId?: string | null; groupId?: string | null; title?: string; content?: string }) {
     setMutationError("");
     const { content: storedContent, encrypted } = await maybeEncrypt(content);
-    const row = {
+    const row: TablesInsert<"notes"> = {
       user_id: userId, patient_id: patientId || null,
       session_id: sessionId || null,
       group_id: groupId || null,
@@ -162,7 +162,7 @@ export function createNoteActions(
         pinned: false,
         _optimistic: true,
       };
-      setNotes(prev => [localRow, ...prev]);
+      setNotes(prev => [localRow as Note, ...prev]);
       await enqueue("notes.insert", { row },
         encrypted ? { tempId, plaintextContent: content || "" } : { tempId });
       setMutating(false);
@@ -190,7 +190,7 @@ export function createNoteActions(
   async function updateNote(id: string, { title, content }: { title?: string; content?: string }) {
     setMutationError("");
     const { content: storedContent, encrypted } = await maybeEncrypt(content);
-    const patch = { title, content: storedContent, encrypted };
+    const patch: TablesUpdate<"notes"> = { title, content: storedContent, encrypted };
     // Optimistic local update first so the UI can dismiss immediately.
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id
@@ -234,10 +234,10 @@ export function createNoteActions(
 
   async function updateNoteLink(id: string, { patientId, sessionId, groupId }: { patientId?: string | null; sessionId?: string | null; groupId?: string | null }) {
     setMutationError("");
-    const patch: Record<string, unknown> = { patient_id: patientId || null, session_id: sessionId || null };
+    const patch: TablesUpdate<"notes"> = { patient_id: patientId || null, session_id: sessionId || null };
     if (groupId !== undefined) patch.group_id = groupId || null;
     const nowIso = new Date().toISOString();
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updated_at: nowIso } : n));
+    setNotes(prev => prev.map(n => n.id === id ? ({ ...n, ...patch, updated_at: nowIso } as Note) : n));
     if (typeof id === "string" && id.startsWith("temp-")) return true;
     if (isOffline()) {
       await enqueue("notes.update", { id, userId, patch });
@@ -246,7 +246,7 @@ export function createNoteActions(
     setMutating(true);
     let data, error;
     try {
-      const res = await supabase.from("notes").update(patch as TablesUpdate<"notes">)
+      const res = await supabase.from("notes").update(patch)
         .eq("id", id).eq("user_id", userId).select("updated_at").single();
       data = res.data; error = res.error;
     } catch {
