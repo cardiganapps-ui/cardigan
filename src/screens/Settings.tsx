@@ -8,7 +8,7 @@ import { DiagnosticsSheet } from "../components/sheets/DiagnosticsSheet";
 // Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
-import { IconUsers, IconX, IconCheck, IconSun, IconMoon, IconSmartphone } from "../components/Icons";
+import { IconX } from "../components/Icons";
 import { AccountHeader } from "./settings/AccountHeader";
 import { MfaSheets } from "./settings/sheets/MfaSheets";
 import { ChangePasswordSheet } from "./settings/sheets/ChangePasswordSheet";
@@ -19,6 +19,9 @@ import { DeleteAccountSheet } from "./settings/sheets/DeleteAccountSheet";
 import { EncryptionSheets } from "./settings/sheets/EncryptionSheets";
 import { NotificationsSheet } from "./settings/sheets/NotificationsSheet";
 import { PlanSheet } from "./settings/sheets/PlanSheet";
+import { ReferralSheet } from "./settings/sheets/ReferralSheet";
+import { ProfileSheet } from "./settings/sheets/ProfileSheet";
+import { AppearanceSheets } from "./settings/sheets/AppearanceSheets";
 import { SubscriptionPanel } from "./settings/SubscriptionPanel";
 import { AppearancePanel } from "./settings/AppearancePanel";
 import { FeaturesPanel } from "./settings/FeaturesPanel";
@@ -28,26 +31,6 @@ import { DataPrivacyPanel } from "./settings/DataPrivacyPanel";
 import { HelpPanel } from "./settings/HelpPanel";
 import { DangerZone } from "./settings/DangerZone";
 import { MONETIZATION_ENABLED } from "../config/monetization";
-
-// Spanish "hace X" relative time for the referral leaderboard. Days
-// rounded down so "hace 1 día" doesn't slip to "hace 0 días" on the
-// 23rd hour. Anything older than 30 days falls back to a calendar
-// date so the leaderboard doesn't read as a stale-feeling "hace 200
-// días" list.
-function relativeTime(iso: string | null | undefined) {
-  if (!iso) return "";
-  const then = new Date(iso);
-  if (Number.isNaN(then.getTime())) return "";
-  const diffMs = Date.now() - then.getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "ahora";
-  if (mins < 60) return `hace ${mins} ${mins === 1 ? "min" : "mins"}`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `hace ${hrs} ${hrs === 1 ? "hora" : "horas"}`;
-  const days = Math.floor(hrs / 24);
-  if (days < 30) return `hace ${days} ${days === 1 ? "día" : "días"}`;
-  return formatDate(then, "shortYear");
-}
 import { useCalendarToken } from "../hooks/useCalendarToken";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
 import { OnlinePaymentsPanel } from "../components/OnlinePaymentsPanel";
@@ -66,14 +49,6 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { isClinicalProfession } from "../data/constants";
 import { haptic } from "../utils/haptics";
-import { formatMXNCents, formatDate } from "../utils/format";
-// Map typed error codes from useNotifications to user-readable i18n
-// keys. Keeping this as a pure mapping means the hook stays decoupled
-// from locale strings.
-// ReferralShareBlock + WhatsApp/Share glyphs live in their own module
-// so other surfaces (the activation-complete share sheet, etc.) can
-// reuse the exact same buttons and analytics taxonomy.
-import { ReferralShareBlock } from "../components/ReferralShareBlock";
 import { notifErrorKey } from "./settings/sheets/notifErrorKey";
 
 type SettingsProps = {
@@ -623,31 +598,18 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
       )}
 
       {/* ── PROFILE SHEET ── */}
-      {activeSheet === "profile" && (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.editProfile")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <div className="input-group">
-                <label className="input-label">{t("settings.fullName")}</label>
-                <input className="input" value={editName} onChange={e => setEditName(e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label className="input-label">{t("settings.email")}</label>
-                <input className="input" value={userEmail} disabled style={{ opacity:0.5 }} />
-              </div>
-              {message && <div style={{ fontSize:12, color:"var(--green)", marginBottom:10, display:"flex", alignItems:"center", gap:4 }}><IconCheck size={14} /> {message}</div>}
-              <button className="btn btn-primary-teal" onClick={saveProfile} disabled={saving || !editName.trim()}>
-                {saving ? t("saving") : t("save")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ProfileSheet
+        open={activeSheet === "profile"}
+        editName={editName}
+        setEditName={setEditName}
+        userEmail={userEmail}
+        message={message}
+        saving={saving}
+        saveProfile={saveProfile}
+        setActiveSheet={setActiveSheet}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      />
 
       {/* ── AVATAR PICKER SHEET ── */}
       {activeSheet === "avatar" && (
@@ -662,70 +624,16 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         />
       )}
 
-      {/* ── THEME SHEET ── */}
-      {activeSheet === "theme" && (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.appearance")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              {[
-                { key: "light", label: t("settings.themeLight"), icon: <IconSun size={18} /> },
-                { key: "dark", label: t("settings.themeDark"), icon: <IconMoon size={18} /> },
-                { key: "system", label: t("settings.themeSystem"), icon: <IconSmartphone size={18} /> },
-              ].map(opt => (
-                <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
-                  onClick={() => { theme?.setPreference(opt.key); setActiveSheet(null); }}>
-                  <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>{opt.icon}</div>
-                  <div style={{ flex:1 }}>
-                    <div className="settings-row-title">{opt.label}</div>
-                  </div>
-                  {theme?.preference === opt.key && <IconCheck size={18} style={{ color:"var(--teal)" }} />}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── ACCENT COLOR SHEET ──
-         Per-user preference, persisted in localStorage. The swatch
-         next to each option is a literal preview of that accent so
-         the user sees what they'll get before tapping. */}
-      {activeSheet === "accent" && (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.accentColor")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              {[
-                { key: "default",  swatch: "#1F7A8C" },
-                { key: "sage",     swatch: "#88BB99" },
-                { key: "amber",    swatch: "#D8B26A" },
-                { key: "burgundy", swatch: "#BD8595" },
-                { key: "steel",    swatch: "#7A8FA3" },
-              ].map(opt => (
-                <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
-                  onClick={() => { accentTheme?.setAccent(opt.key); setActiveSheet(null); }}>
-                  <div className="settings-row-icon" aria-hidden="true">
-                    <span style={{ display:"inline-block", width:18, height:18, borderRadius:"50%", background:opt.swatch, border:"1px solid var(--border-lt)" }} />
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div className="settings-row-title" style={{ fontWeight:500 }}>{t(`settings.accent.${opt.key}`)}</div>
-                  </div>
-                  {accentTheme?.accent === opt.key && <IconCheck size={18} style={{ color:"var(--teal)" }} />}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── APARIENCIA (tema) + COLOR DE ACENTO sheets ──
+         One mode-driven component covers both option-list sheets. */}
+      <AppearanceSheets
+        mode={activeSheet === "theme" ? "theme" : activeSheet === "accent" ? "accent" : null}
+        theme={theme}
+        accentTheme={accentTheme}
+        onClose={() => setActiveSheet(null)}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      />
 
       {/* ── NATIVE PAYMENT SHEET ──
           Mounted lazily on first use. Stripe Elements lives in here;
@@ -784,111 +692,15 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
             so users find it without going through the Suscripción flow.
             The hero centers the user's code on a teal-tinted surface;
             the rewards line below gives them a sense of progress. */}
-      {activeSheet === "referral" && (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.referralRowTitle")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              {(() => {
-                const info = subscription?.referralInfo;
-                return (
-                  <>
-                    <div style={{
-                      padding:"22px 18px",
-                      borderRadius:"var(--radius-lg, 16px)",
-                      background:"var(--teal-pale)",
-                      textAlign:"center",
-                      marginBottom:14,
-                    }}>
-                      <div style={{ width:52, height:52, borderRadius:"50%",
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                        background:"var(--white)", color:"var(--teal-dark)",
-                        margin:"0 auto 10px", boxShadow:"var(--shadow-sm)" }}>
-                        <IconUsers size={22} />
-                      </div>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.2px" }}>
-                        {t("subscription.referralTitle")}
-                      </div>
-                      <div style={{ fontSize:13, color:"var(--charcoal-md)", marginTop:6, lineHeight:1.5 }}>
-                        {t("subscription.referralExplain")}
-                      </div>
-                    </div>
-
-                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 16px", background:"var(--white)", border:"1px solid var(--border)", borderRadius:"var(--radius)", marginBottom:14 }}>
-                      <div style={{ flex:1, fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)", letterSpacing:"0.2em" }}>
-                        {info?.code || (subscription?.referralLoading ? "…" : "—")}
-                      </div>
-                      <button type="button" className="btn btn-ghost" onClick={copyReferralCode}
-                        disabled={!info?.code}
-                        style={{ minWidth:96, height:36, fontSize:"var(--text-sm)" }}>
-                        {referralCopied ? t("subscription.shareCopied") : t("subscription.shareCopyLink")}
-                      </button>
-                    </div>
-
-                    {/* Native + per-channel share. The OS share sheet
-                        (navigator.share) covers every app the user has
-                        installed — Messages, Mail, Telegram, IG, Notes,
-                        AirDrop, etc. — and is the primary CTA when
-                        available. The icon row below it is the direct
-                        path for the most common Mexican channels and
-                        the desktop fallback. Each path tracks a
-                        `referral_share` event with the channel name
-                        for funnel analysis. */}
-                    {info?.code && <ReferralShareBlock code={info.code} t={t} />}
-                    {info && info.rewardsCount > 0 && (
-                      <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5, padding:"4px 4px 0" }}>
-                        {info.pendingCreditCents > 0
-                          ? t("subscription.referralRewardsPending", {
-                              n: info.rewardsCount,
-                              credit: `${formatMXNCents(info.pendingCreditCents)}`,
-                            })
-                          : t("subscription.referralRewardsApplied", { n: info.rewardsCount })}
-                      </div>
-                    )}
-
-                    {/* Leaderboard — invitees who actually converted, with
-                        a relative timestamp. The names are intentionally
-                        absent (we don't share emails between users); the
-                        list anchors the rewards count in something the
-                        user can see and feel. */}
-                    {Array.isArray(subscription?.referralLeaderboard) && subscription.referralLeaderboard.length > 0 && (
-                      <div style={{ marginTop:18 }}>
-                        <div style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:8 }}>
-                          {t("subscription.referralLeaderboardTitle")}
-                        </div>
-                        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                          {subscription.referralLeaderboard.map((row: Row, idx: number) => (
-                            <div key={row.id} style={{
-                              display:"flex", alignItems:"center", justifyContent:"space-between",
-                              padding:"10px 12px",
-                              background:"var(--white)",
-                              border:"1px solid var(--border)",
-                              borderRadius:"var(--radius)",
-                              fontSize:13,
-                              color:"var(--charcoal)",
-                            }}>
-                              <span>
-                                {t("subscription.referralLeaderboardRow", { n: idx + 1 })}
-                              </span>
-                              <span style={{ color:"var(--charcoal-md)", fontSize:12 }}>
-                                {relativeTime(row.credited_at)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
+      <ReferralSheet
+        open={activeSheet === "referral"}
+        subscription={subscription}
+        referralCopied={referralCopied}
+        copyReferralCode={copyReferralCode}
+        setActiveSheet={setActiveSheet}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      />
 
       {/* Note-encryption setup / change / disable (state + handlers extracted
           to EncryptionSheets; the shared noteCrypto bag is passed in). */}
