@@ -8,53 +8,18 @@ import {
 import { parseShortDate, parseLocalDate, toISODate } from "../utils/dates";
 import { sessionCountsTowardBalance } from "../utils/accounting";
 import { computeGroupSessionRows } from "../utils/groupRecurrence";
-import type { GRGroup, GRMember, GRPatient, GroupSessionRow } from "../utils/groupRecurrence";
+import type { GroupSessionRow, GRMember } from "../utils/groupRecurrence";
+import type { PatientRow, GroupRow, SessionRow, GroupMemberRow } from "../types/rows";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
 
 // ── Domain row types ────────────────────────────────────────────────
-interface Patient extends GRPatient {
-  id: string;
-  name: string;
-  sessions: number;
-  billed: number;
-  colorIdx?: number | null;
-  color_idx?: number | null;
-  [key: string]: unknown;
-}
-
-interface Group extends GRGroup {
-  name?: string;
-  version?: number | null;
-  colorIdx?: number | null;
-  [key: string]: unknown;
-}
-
-interface Session {
-  id: string;
-  patient_id?: string | null;
-  group_id?: string | null;
-  status?: string | null;
-  date: string;
-  time?: string | null;
-  day?: string | null;
-  rate?: number | null;
-  duration?: number | null;
-  modality?: string | null;
-  cancel_reason?: string | null;
-  color_idx?: number | null;
-  colorIdx?: number | null;
-  [key: string]: unknown;
-}
-
-interface GroupMember {
-  id?: string;
-  user_id?: string;
-  group_id?: string | null;
-  patient_id?: string | null;
-  left_at?: string | null;
-  _optimistic?: boolean;
-  [key: string]: unknown;
-}
+// The group actions read/write the shared boundary row types
+// (src/types/rows.ts). These rows are assignable to the looser GR* shapes
+// that computeGroupSessionRows consumes, so no extends needed.
+type Patient = PatientRow;
+type Group = GroupRow;
+type Session = SessionRow;
+type GroupMember = GroupMemberRow;
 
 /** A fan-out session row from groupRecurrence, optionally carrying a
     server-assigned id once persisted. */
@@ -418,7 +383,7 @@ export function createGroupActions(
       if (error && error.code !== "23505") { setMutationError(error.message); return false; }
       if (data) setGroupMembers(prev => [...prev, ...data]);
     } catch {
-      setGroupMembers(prev => [...prev, ...rows.map(r => ({ ...r, id: tempId("gm"), _optimistic: true }))]);
+      setGroupMembers(prev => [...prev, ...rows.map(r => ({ ...r, id: tempId("gm"), joined_at: null, left_at: null, _optimistic: true }))]);
       await enqueue("group_members.insert", { rows });
     }
     // Backfill FUTURE occurrences for the new members only (never past).
@@ -617,7 +582,7 @@ export function createGroupActions(
     const { endISO } = defaultWindow(effectiveDate);
     const existingSlots = new Set(
       upcomingSessions
-        .filter(s => memberIds.has(s.patient_id) && !deletedIds.has(s.id))
+        .filter(s => s.patient_id != null && memberIds.has(s.patient_id) && !deletedIds.has(s.id))
         .map(s => `${s.patient_id}|${s.date}|${s.time}`)
     );
     const newRows = computeGroupSessionRows({

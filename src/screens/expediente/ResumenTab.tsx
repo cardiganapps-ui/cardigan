@@ -410,8 +410,8 @@ export function ResumenTab({
       {showHealthBlock && hasInBodyDetail && latestMeasurement && (() => {
         const renderDelta = (curKey: string) => {
           if (!previousMeasurement) return null;
-          const a = latestMeasurement[curKey];
-          const b = previousMeasurement[curKey];
+          const a = (latestMeasurement as unknown as Record<string, number | null>)[curKey];
+          const b = (previousMeasurement as unknown as Record<string, number | null>)[curKey];
           if (a == null || b == null) return null;
           const diff = Number(a) - Number(b);
           const sign = diff > 0 ? "+" : "";

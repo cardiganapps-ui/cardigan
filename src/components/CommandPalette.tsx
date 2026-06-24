@@ -258,7 +258,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
       ...adminNavCmds,
       ...patientCmds,
       ...adminAccountCmds,
-    ];
+    ].filter(Boolean) as unknown as Command[];
   }, [patients, query, noteHits, t, navigate, requestFabAction, openExpediente, openNoteById, onClose, adminAvailable, adminAccounts, adminCmds]);
 
   const filtered = useMemo(() => {

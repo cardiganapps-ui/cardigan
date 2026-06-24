@@ -9,10 +9,11 @@
 
    Storage backend: localStorage. Single key per user
    (cardigan.cache.v1.<userId>) so multi-user sessions on the same
-   browser stay isolated. Versioned via the key + an inner `v` field —
-   bump the prefix or the inner version when the row shape changes
-   incompatibly so stale caches get discarded instead of crashing
-   consumers.
+   browser stay isolated. Three layers of invalidation: the key prefix +
+   inner `v` field (bump either when the row shape changes incompatibly),
+   an `appVer` stamp (the build's deployment id — auto-discards caches from
+   a previous deploy, so a schema change can't hydrate stale-shaped rows),
+   and a 24h max-age. Cleared explicitly on sign-out via clearCachedData().
 
    Size envelope: a typical Cardigan account is < 200 patients +
    < 5000 sessions + < 5000 payments + < 500 notes/documents/
@@ -29,9 +30,24 @@
 
 const KEY_PREFIX = "cardigan.cache.v1";
 // Cap how stale a cached snapshot is allowed to be. Beyond this, drop
-// it and force a fresh fetch — the user's been gone long enough that
-// a flash of week-old data would be more confusing than helpful.
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+// it and force a fresh fetch. 24h keeps the offline/fast-paint win for
+// daily users while ensuring financial rows can never render more than a
+// day stale before the background refresh lands — important for money data.
+const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// Build-time deployment id (substituted by vite.config.js's `define`; see
+// the same pattern in lib/skewProtection.ts). Stamped into every cached
+// snapshot so a new deploy auto-discards caches written by an older build —
+// the cheap insurance against a schema/row-shape change hydrating stale-
+// shaped rows. The cost is one cold load per user on their first visit after
+// a deploy (the background refresh repopulates immediately), which is a fine
+// trade for not trusting cross-version cached financial data. Empty/undefined
+// in local dev → falls back to "dev" so the cache still works there.
+declare const __VERCEL_DEPLOYMENT_ID__: string | undefined;
+const APP_VER =
+  typeof __VERCEL_DEPLOYMENT_ID__ === "string" && __VERCEL_DEPLOYMENT_ID__
+    ? __VERCEL_DEPLOYMENT_ID__
+    : "dev";
 
 function keyFor(userId: string) {
   return `${KEY_PREFIX}.${userId}`;
@@ -57,6 +73,9 @@ export function loadCachedData(userId?: string | null): Record<string, unknown> 
   try { parsed = JSON.parse(raw); }
   catch { return null; }
   if (!parsed || parsed.v !== 1 || parsed.uid !== userId) return null;
+  // Discard caches written by a different build — guards against a row-shape
+  // change between deploys hydrating stale-shaped rows into useState.
+  if (parsed.appVer !== APP_VER) return null;
   if (typeof parsed.ts !== "number" || Date.now() - parsed.ts > MAX_AGE_MS) return null;
   return parsed;
 }
@@ -71,6 +90,7 @@ export function saveCachedData(userId: string | null | undefined, data: Record<s
   if (typeof localStorage === "undefined") return;
   const payload = JSON.stringify({
     v: 1,
+    appVer: APP_VER,
     uid: userId,
     ts: Date.now(),
     patients:         data.patients || [],

@@ -36,7 +36,7 @@ export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismis
       onClick={creating ? undefined : onDismiss}
       style={{
         position: "fixed", inset: 0,
-        background: "rgba(0,0,0,0.55)",
+        background: "var(--scrim-bg)",
         display: "flex", alignItems: "center", justifyContent: "center",
         zIndex: 665,
         padding: 16,
@@ -55,7 +55,7 @@ export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismis
           boxShadow: "var(--shadow-lg)",
           overflow: "hidden",
           transform: mounted ? "translateY(0) scale(1)" : "translateY(18px) scale(0.98)",
-          transition: "transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          transition: "transform 0.42s var(--ease-spring)",
         }}
       >
         <div style={{

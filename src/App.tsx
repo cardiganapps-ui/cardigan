@@ -19,6 +19,7 @@ import { AppTopbar } from "./components/app/AppTopbar";
 import { AppSheets } from "./components/app/AppSheets";
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
+import type { CardiganData } from "./hooks/useCardiganData";
 import { useDemoData } from "./hooks/useDemoData";
 import { useNavigation } from "./hooks/useNavigation";
 import { CardiganProvider } from "./context/CardiganContext";
@@ -502,7 +503,10 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   }, [demo, viewAsUserId, user?.id, user?.created_at, profession]);
   const liveData = useCardiganData(demo ? null : user, viewAsUserId, { noteCrypto });
   const demoData = useDemoData(demoProfession);
-  const data = demo ? demoData : liveData;
+  // Demo mode returns the SAME shape as the live data layer with all
+  // mutations no-oped (per the demo contract), so it's a drop-in for
+  // CardiganData — the cast documents that equivalence for the typed context.
+  const data: CardiganData = demo ? (demoData as unknown as CardiganData) : liveData;
   // SaaS subscription / trial gate. Skipped in demo mode (no real user)
   // and in admin "view as user" mode (the admin's own access state is
   // irrelevant to whether they can inspect another user's data — and
@@ -986,8 +990,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
           <div style={{
             flex: 1, minHeight: 0, display: "flex", flexDirection: "column",
             transition: direction ? "none" : undefined,
-            animation: direction === "left" ? "screenSlideLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" :
-                       direction === "right" ? "screenSlideRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : undefined,
+            animation: direction === "left" ? "screenSlideLeft 0.5s var(--ease-spring)" :
+                       direction === "right" ? "screenSlideRight 0.5s var(--ease-spring)" : undefined,
           }}>
             <SkeletonCrossfade
               showContent={!(loading && patients.length === 0)}

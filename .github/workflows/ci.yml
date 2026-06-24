@@ -62,6 +62,27 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
 
+  bundle:
+    name: Bundle size budget (size-limit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Node 22 (not 20): this job runs the full `npm run build`, whose
+          # `prebuild` invokes `node --experimental-strip-types` to load the
+          # TS privacy source — a flag that only exists on Node ≥22.6.
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci --no-audit --no-fund
+      # Build, then check the emitted chunks against the brotli budgets in
+      # .size-limit.json. Fails the job (and, via the deploy gate's `needs`,
+      # blocks production) when a chunk silently bloats past its limit — the
+      # manual-chunk discipline in vite.config.js is now enforced, not hoped.
+      - run: npm run build
+      - run: npm run size
+
   unit:
     name: Unit tests (vitest)
     runs-on: ubuntu-latest
@@ -249,3 +270,63 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  # ── Gated production deploy (WS-1) ──────────────────────────────────
+  #
+  # The whole point: a RED main must never reach cardigan.mx. Until now
+  # Vercel auto-deployed every push to main independently of the checks
+  # above (see the header note at the top of this file). This job makes
+  # the live deploy DOWNSTREAM of every quality gate — it only runs after
+  # lint + typecheck + unit + parity + e2e are green, on a push to main.
+  #
+  # Activation is a one-time cutover (see docs/deploy-gating.md): add the
+  # three VERCEL_* secrets and turn OFF Vercel's own git production
+  # auto-deploy. Until VERCEL_TOKEN exists this job SELF-SKIPS (same guard
+  # pattern as e2e-staging), so the repo stays green/mergeable before the
+  # cutover and there is never a window of double-deploys from this file.
+  deploy-production:
+    name: Deploy production (gated on green CI)
+    needs: [lint, typecheck, bundle, unit, parity, e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check deploy secrets
+        id: guard
+        env:
+          VT: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -n "$VT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::VERCEL_TOKEN absent — gated deploy skipped (cutover not complete; see docs/deploy-gating.md)."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.guard.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.ready == 'true'
+        with:
+          # Node 22: `vercel build` runs `npm run build` → `prebuild`'s
+          # `node --experimental-strip-types` (TS privacy source), needs ≥22.6.
+          node-version: "22"
+          cache: "npm"
+      - if: steps.guard.outputs.ready == 'true'
+        run: npm ci --no-audit --no-fund
+      - name: Install Vercel CLI
+        if: steps.guard.outputs.ready == 'true'
+        run: npm i -g vercel@latest
+
+      # Build with Vercel's own pipeline so the output matches what the
+      # dashboard would have produced, then deploy the prebuilt artifact.
+      - name: Build + deploy to production
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"

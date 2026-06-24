@@ -25,8 +25,12 @@ export function ActivationChecklist({ userId, accessState, onNavigate }: {
   onNavigate?: (nav: string) => void;
 }) {
   const { t } = useT();
-  const ctx = useCardiganMain() || {};
-  const { patients, sessions, payments, notes, subscription, showSuccess } = ctx;
+  const ctx = useCardiganMain();
+  // NB: the context exposes the sessions array as `upcomingSessions`. This
+  // previously destructured a non-existent `sessions` (always undefined), so
+  // the "scheduled a session" step never completed — typing the context
+  // surfaced the bug.
+  const { patients, upcomingSessions, payments, notes, subscription, showSuccess } = ctx;
 
   const dismissed = useMemo(() => {
     if (!userId) return false;
@@ -36,10 +40,10 @@ export function ActivationChecklist({ userId, accessState, onNavigate }: {
 
   const stepStates = useMemo(() => ({
     patient: (patients || []).length > 0,
-    session: (sessions || []).length > 0,
+    session: (upcomingSessions || []).length > 0,
     payment: (payments || []).length > 0,
     note: (notes || []).length > 0,
-  }), [patients, sessions, payments, notes]);
+  }), [patients, upcomingSessions, payments, notes]);
 
   const allDone = stepStates.patient && stepStates.session && stepStates.payment && stepStates.note;
 

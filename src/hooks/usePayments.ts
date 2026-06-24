@@ -5,47 +5,23 @@ import { formatShortDate, getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 import type { TablesInsert } from "../types/db";
+import type { PatientRow, PaymentRow } from "../types/rows";
+import { restoreRows, composeReverts } from "../lib/optimistic";
 import { track } from "../lib/analytics";
 
 // ── Domain row types ────────────────────────────────────────────────
-// Structural shapes the payment actions read/write. Kept local (rather
-// than a shared types module) to mirror the rest of the migrated hooks
-// — the factory only touches these fields.
-
-/** Patient fields the payment path mutates. */
-interface Patient {
-  id: string;
-  name: string;
-  initials?: string | null;
-  colorIdx?: number | null;
-  paid: number;
-  [key: string]: unknown;
-}
-
-/** A payment row as held in client state. Server rows arrive snake_cased
-    (`color_idx`); the client mirror adds `colorIdx`. */
-interface Payment {
-  id: string;
-  user_id?: string;
-  patient_id?: string | null;
-  patient?: string | null;
-  initials?: string | null;
-  amount: number;
-  date?: string;
-  method?: string;
-  note?: string | null;
-  colorIdx?: number | null;
-  color_idx?: number | null;
-  version?: number | null;
-  _optimistic?: boolean;
-  [key: string]: unknown;
-}
+// The payment actions read/write the shared boundary row types
+// (src/types/rows.ts). `Patient` is the full patient row; the payment path
+// only touches id/name/initials/colorIdx/paid.
+type Patient = PatientRow;
+type Payment = PaymentRow;
 
 /** Snake-cased insert/update payload sent to supabase. Aliased to the
     generated payments Insert shape so the row BUILDERS below are
     column-checked at compile time (wrong/missing column → tsc error),
-    not just the .from() table name. */
-type PaymentRow = TablesInsert<"payments">;
+    not just the .from() table name. (Distinct from PaymentRow, which is
+    the richer client-state row above.) */
+type PaymentInsert = TablesInsert<"payments">;
 
 type SetPatients = Dispatch<SetStateAction<Patient[]>>;
 type SetPayments = Dispatch<SetStateAction<Payment[]>>;
@@ -68,7 +44,7 @@ const MISSING_MSG = "Este pago ya no existe.";
 // wins semantics is intentional for offline writes — the user already
 // saw their offline state and expects it to persist. See migration 066
 // and the queue lib docblock for the full tradeoff.
-registerHandler("payments.insert", async ({ row }: { row: PaymentRow }) => {
+registerHandler("payments.insert", async ({ row }: { row: PaymentInsert }) => {
   return await supabase.from("payments").insert(row).select().single();
 });
 
@@ -76,7 +52,7 @@ registerHandler("payments.delete", async ({ id, userId }: { id: string; userId: 
   return await supabase.from("payments").delete().eq("id", id).eq("user_id", userId);
 });
 
-registerHandler("payments.update", async ({ id, userId, patch, enqueuedVersion }: { id: string; userId: string; patch: Partial<PaymentRow>; enqueuedVersion?: number | null }) => {
+registerHandler("payments.update", async ({ id, userId, patch, enqueuedVersion }: { id: string; userId: string; patch: Partial<PaymentInsert>; enqueuedVersion?: number | null }) => {
   // No .eq("version") — offline replay is last-write-wins by design.
   // We still surface a `conflict: true` flag when the row's current
   // version is past the one captured at enqueue, so drain() can roll
@@ -157,7 +133,7 @@ export function createPaymentActions(
     // PII / amount in the payload.
     if (payments.length === 0) track("first_payment_recorded");
 
-    const row: PaymentRow = {
+    const row: PaymentInsert = {
       user_id: userId,
       patient_id: patient?.id || null,
       patient: patientName,
@@ -181,8 +157,8 @@ export function createPaymentActions(
         const { data, error } = await supabase.from("payments").insert(row).select().single();
 
         if (error) {
-          setPayments(prev => prev.filter(p => p.id !== tempId));
-          if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+          setPayments(prev => prev.filter(p => p.id !== tempId)); // drop the optimistic insert
+          restoreRows(setPatients, [prevPatient])();
           setMutationError(error.message);
           return;
         }
@@ -273,7 +249,11 @@ export function createPaymentActions(
       patient_id: newPatient?.id || null,
       patient: patientName,
       initials: newPatient?.initials || getInitials(patientName),
-      amount: parsedAmount, date, method,
+      // date/method are optional params; when omitted the DB patch below
+      // sends `undefined` (Supabase drops the key → server keeps the old
+      // value), so the optimistic row mirrors that by falling back to the
+      // existing value rather than blanking it.
+      amount: parsedAmount, date: date ?? oldPayment.date, method: method ?? oldPayment.method,
       note: note || null,
       colorIdx: newPatient?.colorIdx || 0,
       _optimistic: true,
@@ -296,14 +276,10 @@ export function createPaymentActions(
     }
     setMutationError("");
 
-    const revertOptimistic = () => {
-      setPayments(prev => prev.map(p => p.id === paymentId ? prevPayment : p));
-      setPatients(prev => prev.map(p => {
-        if (prevOldPatient && p.id === prevOldPatient.id) return prevOldPatient;
-        if (prevNewPatient && p.id === prevNewPatient.id) return prevNewPatient;
-        return p;
-      }));
-    };
+    const revertOptimistic = composeReverts(
+      restoreRows(setPayments, [prevPayment]),
+      restoreRows(setPatients, [prevOldPatient, prevNewPatient]),
+    );
 
     // Optimistic locking (migration 066). The version filter rejects
     // a write when another tab / device bumped the row under us — we
@@ -331,11 +307,7 @@ export function createPaymentActions(
       }
       // Patient counters were mutated optimistically; restore the
       // pre-attempt snapshot and let recalc reconcile from truth.
-      setPatients(prev => prev.map(p => {
-        if (prevOldPatient && p.id === prevOldPatient.id) return prevOldPatient;
-        if (prevNewPatient && p.id === prevNewPatient.id) return prevNewPatient;
-        return p;
-      }));
+      restoreRows(setPatients, [prevOldPatient, prevNewPatient])();
       for (const patientId of patientUpdates.keys()) {
         recalcPatientCounters(patientId).then((fixed) => {
           if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));

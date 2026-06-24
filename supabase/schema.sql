@@ -1331,6 +1331,96 @@ create trigger sessions_recalc_counters_after_iud
 after insert or update or delete on sessions
 for each row execute function public.trg_sessions_recalc_counters();
 
+-- Transactional patient creation (migration 083). Inserts the patient
+-- row + all seed sessions in ONE transaction so a mid-flight failure can
+-- never orphan a patient (the uniq_sessions_patient_date_time index only
+-- prevents duplicates, not partial writes). security invoker + forced
+-- user_id = auth.uid(); per-session 23505 is swallowed at a savepoint so
+-- a re-submit is idempotent. Returns { patient, sessions } with the
+-- trigger-authoritative counters re-selected after the inserts.
+create or replace function public.create_patient_with_sessions(
+  p_patient jsonb,
+  p_sessions jsonb default '[]'::jsonb
+) returns jsonb
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_user_id uuid;
+  v_patient patients%rowtype;
+  v_session sessions%rowtype;
+  v_sessions jsonb := '[]'::jsonb;
+  s jsonb;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'unauthenticated' using errcode = '42501';
+  end if;
+
+  insert into patients (
+    user_id, name, parent, phone, email, initials, rate, day, time,
+    color_idx, start_date, scheduling_mode, birthdate, tutor_frequency,
+    height_cm, goal_weight_kg, goal_body_fat_pct, goal_skeletal_muscle_kg,
+    allergies, medical_conditions, sessions, billed, opening_balance,
+    whatsapp_enabled, whatsapp_consent_at, external_folder_url
+  ) values (
+    v_user_id,
+    p_patient->>'name',
+    coalesce(p_patient->>'parent', ''),
+    coalesce(p_patient->>'phone', ''),
+    coalesce(p_patient->>'email', ''),
+    p_patient->>'initials',
+    coalesce((p_patient->>'rate')::int, 0),
+    p_patient->>'day',
+    p_patient->>'time',
+    coalesce((p_patient->>'color_idx')::int, 0),
+    (p_patient->>'start_date')::date,
+    coalesce(p_patient->>'scheduling_mode', 'recurring'),
+    (p_patient->>'birthdate')::date,
+    (p_patient->>'tutor_frequency')::int,
+    (p_patient->>'height_cm')::int,
+    (p_patient->>'goal_weight_kg')::numeric,
+    (p_patient->>'goal_body_fat_pct')::numeric,
+    (p_patient->>'goal_skeletal_muscle_kg')::numeric,
+    coalesce(p_patient->>'allergies', ''),
+    coalesce(p_patient->>'medical_conditions', ''),
+    coalesce((p_patient->>'sessions')::int, 0),
+    coalesce((p_patient->>'billed')::int, 0),
+    coalesce((p_patient->>'opening_balance')::int, 0),
+    coalesce((p_patient->>'whatsapp_enabled')::boolean, false),
+    (p_patient->>'whatsapp_consent_at')::timestamptz,
+    p_patient->>'external_folder_url'
+  ) returning * into v_patient;
+
+  for s in select * from jsonb_array_elements(coalesce(p_sessions, '[]'::jsonb)) loop
+    begin
+      insert into sessions (
+        user_id, patient_id, patient, initials, time, day, date,
+        duration, rate, modality, color_idx, is_recurring,
+        recurrence_frequency, visit_type
+      ) values (
+        v_user_id, v_patient.id,
+        s->>'patient', s->>'initials', s->>'time', s->>'day', s->>'date',
+        coalesce((s->>'duration')::int, 60),
+        (s->>'rate')::int,
+        coalesce(s->>'modality', 'presencial'),
+        coalesce((s->>'color_idx')::int, 0),
+        coalesce((s->>'is_recurring')::boolean, false),
+        coalesce(s->>'recurrence_frequency', 'weekly'),
+        s->>'visit_type'
+      ) returning * into v_session;
+      v_sessions := v_sessions || to_jsonb(v_session);
+    exception when unique_violation then
+      null; -- duplicate (patient,date,time) slot: idempotent skip
+    end;
+  end loop;
+
+  select * into v_patient from patients where id = v_patient.id;
+  return jsonb_build_object('patient', to_jsonb(v_patient), 'sessions', v_sessions);
+end;
+$$;
+
 -- Notes full-text search RPC (migration 071). Wraps the
 -- websearch_to_tsquery + ts_rank pattern so JS callers can pass a
 -- raw query string and get id + updated_at + rank back. Encrypted

@@ -30,7 +30,7 @@ function fmt(n?: number | null, digits = 1) {
 }
 
 export function BodyCompositionStack({ measurement, t }: {
-  measurement?: { weight_kg?: number; total_body_water_kg?: number; skeletal_muscle_kg?: number; body_fat_kg?: number } | null;
+  measurement?: { weight_kg?: number | null; total_body_water_kg?: number | null; skeletal_muscle_kg?: number | null; body_fat_kg?: number | null } | null;
   t: (key: string) => string;
 }) {
   if (!measurement) return null;

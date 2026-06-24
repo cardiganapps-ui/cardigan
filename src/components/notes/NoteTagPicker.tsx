@@ -24,7 +24,7 @@
 import { useState, useMemo } from "react";
 import { IconX } from "../Icons";
 
-interface Tag { id: string; label?: string; color?: string }
+interface Tag { id: string; label?: string; color?: string | null }
 interface TagLink { note_id: string; tag_id: string }
 
 export function NoteTagPicker({ noteId, tags, tagLinks, upsertTag, linkTag, unlinkTag }: {
@@ -32,8 +32,8 @@ export function NoteTagPicker({ noteId, tags, tagLinks, upsertTag, linkTag, unli
   tags?: Tag[];
   tagLinks?: TagLink[];
   upsertTag?: (input: { label: string }) => Promise<{ id?: string } | null | undefined> | { id?: string } | null | undefined;
-  linkTag?: (noteId: string | undefined, tagId: string) => void | Promise<unknown>;
-  unlinkTag?: (noteId: string | undefined, tagId: string) => void | Promise<unknown>;
+  linkTag?: (noteId: string, tagId: string) => void | Promise<unknown>;
+  unlinkTag?: (noteId: string, tagId: string) => void | Promise<unknown>;
 }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -86,10 +86,10 @@ export function NoteTagPicker({ noteId, tags, tagLinks, upsertTag, linkTag, unli
               }}>{tag.label || "—"}</span>
               <button type="button" className="btn-tap"
                 aria-label={`Quitar etiqueta ${tag.label || ""}`}
-                onClick={() => unlinkTag?.(noteId, tag.id)}
+                onClick={() => { if (noteId) unlinkTag?.(noteId, tag.id); }}
                 style={{
                   width: 22, height: 22, minWidth: 22, minHeight: 22,
-                  borderRadius: "50%", background: "rgba(0,0,0,0.06)",
+                  borderRadius: "50%", background: "var(--border-lt)",
                   border: "none", color: "inherit", cursor: "pointer",
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   padding: 0,
@@ -117,7 +117,7 @@ export function NoteTagPicker({ noteId, tags, tagLinks, upsertTag, linkTag, unli
         }}>
           {suggestions.map(tag => (
             <button key={tag.id} type="button" className="btn-tap"
-              onClick={() => linkTag?.(noteId, tag.id)}
+              onClick={() => { if (noteId) linkTag?.(noteId, tag.id); }}
               style={{
                 height: 26, padding: "0 10px",
                 borderRadius: "var(--radius-pill)",

@@ -29,7 +29,7 @@ type Row = any;
 
 export function GroupOccurrenceSheet({ group, occurrence, onClose }: {
   group: Row;
-  occurrence: { date?: string; time?: string };
+  occurrence: { date: string; time: string };
   onClose: () => void;
 }) {
   const { t } = useT();

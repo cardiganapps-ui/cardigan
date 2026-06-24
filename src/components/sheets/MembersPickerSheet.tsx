@@ -45,7 +45,7 @@ export function MembersPickerSheet({ groupId, existingPatientIds, onClose }: {
   });
 
   const submit = async () => {
-    if (selected.size === 0) { animatedClose(); return; }
+    if (!groupId || selected.size === 0) { animatedClose(); return; }
     const ok = await addMembers(groupId, [...selected]);
     if (ok) animatedClose();
   };

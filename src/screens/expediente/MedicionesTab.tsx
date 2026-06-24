@@ -168,7 +168,7 @@ export function MedicionesTab({ patient }: { patient: Row }) {
     if (!activeMetric) return [];
     const pts: { t: number; v: number }[] = [];
     for (const m of ordered) {
-      const v = m[activeMetric.field];
+      const v = (m as unknown as Record<string, number | null>)[activeMetric.field];
       if (v == null) continue;
       const d = new Date(m.taken_at + "T12:00:00");
       const t = Math.floor(d.getTime() / 86400000);
@@ -279,7 +279,7 @@ export function MedicionesTab({ patient }: { patient: Row }) {
   // Headline number for the active metric. Falls back to "—" if the
   // latest row doesn't have the metric (e.g. activeMetric is "muscle"
   // but the most recent entry was a manual weigh-in).
-  const headlineValue = activeMetric ? latest?.[activeMetric.field] : null;
+  const headlineValue = activeMetric ? (latest as unknown as Record<string, number | null> | null)?.[activeMetric.field] : null;
   const deltaFormatter = (v: string) => {
     if (!activeMetric) return v;
     const unit = activeMetric.unit ? ` ${activeMetric.unit}` : "";
@@ -418,7 +418,7 @@ export function MedicionesTab({ patient }: { patient: Row }) {
                   // Stagger entry only on first paint. The animation
                   // delay is computed off the row's index so newer
                   // rows cascade in on add (still subtle: 32ms each).
-                  animation: `listEntryIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 32}ms both`,
+                  animation: `listEntryIn 0.4s var(--ease-spring) ${i * 32}ms both`,
                 }}
                 onClick={() => !readOnly && setEditing(m)}>
                 <div className="mediciones-row-main">

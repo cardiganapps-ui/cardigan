@@ -28,11 +28,15 @@ on:
     paths:
       - "supabase/**"
       - "scripts/schema-snapshot.mjs"
+      - "scripts/gen-types.mjs"
+      - "src/types/supabase.ts"
       - ".github/workflows/schema-drift.yml"
   pull_request:
     paths:
       - "supabase/**"
       - "scripts/schema-snapshot.mjs"
+      - "scripts/gen-types.mjs"
+      - "src/types/supabase.ts"
       - ".github/workflows/schema-drift.yml"
   schedule:
     - cron: "15 4 * * *"
@@ -56,3 +60,17 @@ jobs:
           SUPABASE_PAT: ${{ secrets.SUPABASE_PAT }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: node scripts/schema-snapshot.mjs
+
+      # Generated TypeScript types (src/types/supabase.ts) are the source the
+      # data-layer row types (src/types/rows.ts + the db.ts aliases + the
+      # financial-column contract) build on. Regenerate from the live schema
+      # and fail if the committed file is stale — i.e. a migration landed
+      # without `node --env-file=.env.local scripts/gen-types.mjs` being run.
+      - name: Regenerate generated types and diff
+        env:
+          SUPABASE_PAT: ${{ secrets.SUPABASE_PAT }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          node scripts/gen-types.mjs
+          git diff --exit-code src/types/supabase.ts \
+            || { echo "::error::src/types/supabase.ts is stale — run 'node --env-file=.env.local scripts/gen-types.mjs' and commit the result."; exit 1; }

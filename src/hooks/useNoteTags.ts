@@ -1,23 +1,15 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import type { TablesInsert } from "../types/db";
+import type { TagRow, TagLinkRow } from "../types/rows";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
 import { hashTagLabel, canonicalizeTagLabel } from "../lib/cryptoNotes";
 
 // ── Domain row types ────────────────────────────────────────────────
-interface Tag {
-  id: string;
-  user_id?: string;
-  label_ciphertext?: string;
-  label_hash?: string;
-  color?: string | null;
-  label?: string;
-  encrypted?: boolean;
-  _optimistic?: boolean;
-  [key: string]: unknown;
-}
-
-interface TagLink { note_id: string; tag_id: string }
+// The note-tag actions read/write the shared boundary row types
+// (src/types/rows.ts).
+type Tag = TagRow;
+type TagLink = TagLinkRow;
 
 interface EncryptResult { content: string; encrypted: boolean }
 interface NoteCrypto { encrypt?: (plain: string) => EncryptResult | Promise<EncryptResult> }
@@ -95,7 +87,7 @@ export function createNoteTagActions(
 
     if (isOffline()) {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const local = { id: tempId, ...row, label: trimmed, encrypted, _optimistic: true };
+      const local = { id: tempId, ...row, color: row.color ?? null, label: trimmed, encrypted, _optimistic: true };
       setTags(prev => existing ? prev.map(t => t.label_hash === hash ? local : t) : [local, ...prev]);
       await enqueue("note_tags.upsert", { row });
       return local;

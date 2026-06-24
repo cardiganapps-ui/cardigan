@@ -2,25 +2,13 @@ import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import type { Database } from "../types/supabase";
 import type { TablesInsert, TablesUpdate } from "../types/db";
+import type { NoteRow } from "../types/rows";
+import { restoreRows } from "../lib/optimistic";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
 // ── Domain row types ────────────────────────────────────────────────
-interface Note {
-  id: string;
-  user_id?: string;
-  patient_id?: string | null;
-  session_id?: string | null;
-  group_id?: string | null;
-  title?: string;
-  content?: string;
-  encrypted?: boolean;
-  pinned?: boolean;
-  cover_attachment_id?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  _optimistic?: boolean;
-  [key: string]: unknown;
-}
+// The note actions read/write the shared boundary row type (src/types/rows.ts).
+type Note = NoteRow;
 
 interface EncryptResult { content: string; encrypted: boolean }
 interface NoteCrypto { encrypt?: (plain: string) => EncryptResult | Promise<EncryptResult> }
@@ -191,10 +179,18 @@ export function createNoteActions(
     setMutationError("");
     const { content: storedContent, encrypted } = await maybeEncrypt(content);
     const patch: TablesUpdate<"notes"> = { title, content: storedContent, encrypted };
+    // Capture the pre-edit row so a rejected server write can be reverted
+    // (PRIME-DIRECTIVE-adjacent: never leave the UI showing content the DB
+    // refused). Snapshot before the optimistic apply below.
+    const prevNote = notes.find(n => n.id === id);
+    const revert = restoreRows(setNotes, [prevNote]);
     // Optimistic local update first so the UI can dismiss immediately.
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id
-      ? { ...n, title, content: content || "", encrypted, updated_at: nowIso }
+      // title is optional; when omitted the DB patch sends `undefined`
+      // (Supabase drops the key → server keeps the old title), so the
+      // optimistic row mirrors that instead of blanking it.
+      ? { ...n, title: title ?? n.title, content: content || "", encrypted, updated_at: nowIso }
       : n));
     // Temp-id row: the insert hasn't drained yet. Defer the edit;
     // user can re-edit after drain.
@@ -215,7 +211,7 @@ export function createNoteActions(
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) { revert(); setMutationError(error.message); return false; }
     // Refine the optimistic updated_at with the server-stamped value.
     if (data?.updated_at) {
       setNotes(prev => prev.map(n => n.id === id ? ({ ...n, updated_at: data!.updated_at } as Note) : n));
@@ -236,6 +232,8 @@ export function createNoteActions(
     setMutationError("");
     const patch: TablesUpdate<"notes"> = { patient_id: patientId || null, session_id: sessionId || null };
     if (groupId !== undefined) patch.group_id = groupId || null;
+    const prevNote = notes.find(n => n.id === id);
+    const revert = restoreRows(setNotes, [prevNote]);
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id ? ({ ...n, ...patch, updated_at: nowIso } as Note) : n));
     if (typeof id === "string" && id.startsWith("temp-")) return true;
@@ -255,7 +253,7 @@ export function createNoteActions(
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) { revert(); setMutationError(error.message); return false; }
     if (data?.updated_at) {
       setNotes(prev => prev.map(n => n.id === id ? ({ ...n, updated_at: data!.updated_at } as Note) : n));
     }
@@ -329,7 +327,11 @@ export function createNoteActions(
       await enqueue("notes.update", { id, userId, patch: { cover_attachment_id: next } });
       return true;
     }
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      restoreRows(setNotes, [note])();
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 
@@ -352,7 +354,11 @@ export function createNoteActions(
       await enqueue("notes.update", { id, userId, patch: { pinned } });
       return true;
     }
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      restoreRows(setNotes, [note])();
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 

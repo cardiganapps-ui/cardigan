@@ -94,7 +94,7 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => void |
           flexDirection: "column", gap: 6,
           height: refreshing || done ? THRESHOLD : pullY,
           minHeight: refreshing || done ? THRESHOLD : 0,
-          transition: (refreshing || releasing || done) ? "height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), min-height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+          transition: (refreshing || releasing || done) ? "height 0.8s var(--ease-spring), min-height 0.8s var(--ease-spring)" : "none",
           flexShrink: 0, overflow: "hidden",
         }}>
           <div style={{
@@ -106,13 +106,13 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => void |
                 ? "scale(1)"
                 : `scale(${0.3 + progress * 0.7}) rotate(${progress * 180}deg)`,
             transition: (releasing || done)
-              ? "opacity 0.6s ease, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)"
+              ? "opacity 0.6s ease, transform 0.8s var(--ease-spring)"
               : "none",
           }}>
             {done ? (
               /* Success checkmark */
               <svg width={24} height={24} viewBox="0 0 24 24" fill="none" style={{
-                animation: "ptr-check-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                animation: "ptr-check-in 0.5s var(--ease-spring)",
               }}>
                 <circle cx={12} cy={12} r={11} stroke="var(--green)" strokeWidth={2} fill="var(--green-bg)" />
                 <path d="M7 12.5L10.5 16L17 9" stroke="var(--green)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
@@ -122,7 +122,7 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => void |
               /* Logo spinner */
               <div style={{
                 width: 28, height: 28,
-                animation: refreshing ? "ptr-breathe 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite" : "none",
+                animation: refreshing ? "ptr-breathe 1.8s var(--ease-in-out) infinite" : "none",
               }}>
                 <LogoIcon size={28} color={refreshing ? "var(--teal)" : `rgba(91, 155, 175, ${0.3 + progress * 0.7})`} />
               </div>

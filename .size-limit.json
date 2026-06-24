@@ -1,0 +1,22 @@
+[
+  {
+    "name": "App entry + barrel chunks",
+    "path": "dist/assets/index-*.js",
+    "limit": "250 kB"
+  },
+  {
+    "name": "Supabase client",
+    "path": "dist/assets/supabase-*.js",
+    "limit": "54 kB"
+  },
+  {
+    "name": "All CSS",
+    "path": "dist/assets/*.css",
+    "limit": "38 kB"
+  },
+  {
+    "name": "Total JS (all chunks)",
+    "path": "dist/assets/*.js",
+    "limit": "1075 kB"
+  }
+]

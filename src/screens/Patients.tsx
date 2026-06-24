@@ -19,7 +19,8 @@ import { PatientExpediente } from "./PatientExpediente";
 import { EmptyState } from "../components/EmptyState";
 import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
-import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic, isPotentialOrDiscarded, PATIENT_STATUS, SESSION_TYPE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic, PATIENT_STATUS, SESSION_TYPE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../data/constants";
+import { filterPatients } from "../utils/patientFilter";
 import { PotentialProfileSheet } from "../components/sheets/PotentialProfileSheet";
 import { ConvertPotentialSheet } from "../components/sheets/ConvertPotentialSheet";
 import { SegmentedControl } from "../components/SegmentedControl";
@@ -371,7 +372,7 @@ export function Patients() {
         schedules: editSchedules,
         rate: Number(editRate) || 0,
         effectiveDate,
-        endDate: hasEndDate ? endDate : null,
+        endDate: hasEndDate ? endDate : undefined,
       });
       if (ok) {
         // Also save basic info
@@ -457,36 +458,11 @@ export function Patients() {
     {k:"potential",l:t("patients.potentialFilter"), badge: potentialCount},
   ];
 
-  // Filter rules. Every non-potential filter explicitly excludes
-  // potentials/discarded — they never appear in the regular lanes.
-  // The 'potential' filter switches to its sub-filter (Activos /
-  // Archivados) for active vs. discarded potentials.
-  const applyFilter = (p: Row) => {
-    if (filter==="potential") {
-      if (potentialSubFilter === "archived") return p.status === PATIENT_STATUS.DISCARDED;
-      return p.status === PATIENT_STATUS.POTENTIAL;
-    }
-    if (isPotentialOrDiscarded(p)) return false;
-    if (filter==="active") return p.status==="active";
-    if (filter==="ended")  return p.status==="ended";
-    if (filter==="owes")   return p.amountDue>0;
-    if (filter==="paid")   return p.amountDue<=0;
-    return true;
-  };
-  const applySort = (a: Row, b: Row) => {
-    if (a.status !== b.status) {
-      if (a.status === "active") return -1;
-      if (b.status === "active") return 1;
-    }
-    return a.name.localeCompare(b.name);
-  };
-  // Memoized so a re-render that doesn't change the inputs (e.g. a parent
-  // state tick) doesn't re-run filter+sort over the whole patient list on
-  // every keystroke/render. applyFilter closes over filter + the potential
-  // sub-filter; applySort is pure.
+  // Search + lane filter + status/name sort. The pure logic lives in
+  // utils/patientFilter (unit-tested); memoized so a parent state tick
+  // doesn't re-run filter+sort over the whole roster on every render.
   const filtered = useMemo(
-    () => patients.filter((p: Row) => p.name.toLowerCase().includes(search.toLowerCase()) && applyFilter(p)).sort(applySort),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => filterPatients(patients, { search, filter, potentialSubFilter }),
     [patients, search, filter, potentialSubFilter],
   );
   const isPotentialView = filter === "potential";
@@ -548,7 +524,7 @@ export function Patients() {
                 practitioner sees pending interviews at a glance
                 without having to enter the lane. Tight padding so
                 the chip doesn't blow the row past iPhone width. */}
-            {f.k === "potential" && f.badge > 0 && (
+            {f.k === "potential" && (f.badge ?? 0) > 0 && (
               <span style={{ marginLeft:4, padding:"0 4px", borderRadius:"var(--radius-pill)", background:"var(--rose)", color:"var(--white)", fontSize:9, fontWeight:800 }}>{f.badge}</span>
             )}
           </button>

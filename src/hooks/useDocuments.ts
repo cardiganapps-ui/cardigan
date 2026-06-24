@@ -3,24 +3,11 @@ import { supabase } from "../supabaseClient";
 import { maybeConvertHeic } from "../utils/heicConvert";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
 import type { TablesUpdate } from "../types/db";
+import type { DocumentRow } from "../types/rows";
 
 // ── Domain row types ────────────────────────────────────────────────
-interface DocumentRow {
-  id: string;
-  user_id?: string;
-  patient_id?: string | null;
-  session_id?: string | null;
-  group_id?: string | null;
-  name?: string;
-  file_path?: string | null;
-  file_type?: string | null;
-  file_size?: number | null;
-  kind?: string;
-  created_at?: string;
-  updated_at?: string;
-  _optimistic?: boolean;
-  [key: string]: unknown;
-}
+// The document actions read/write the shared boundary row type
+// (src/types/rows.ts).
 
 type SetDocuments = Dispatch<SetStateAction<DocumentRow[]>>;
 type SetFlag = Dispatch<SetStateAction<boolean>>;

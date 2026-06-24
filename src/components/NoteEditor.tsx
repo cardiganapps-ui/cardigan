@@ -21,6 +21,8 @@ import { useVoiceDictation } from "../lib/useVoiceDictation";
 import { supabase } from "../supabaseClient";
 import { enqueue } from "../lib/mutationQueue";
 import { extractOutline } from "./notes/outlineUtil";
+import { useNoteOutline } from "./notes/useNoteOutline";
+import { useNoteAutosave } from "./notes/useNoteAutosave";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";
 import { useViewport } from "../hooks/useViewport";
@@ -106,7 +108,6 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const [content, setContent] = useState(note?.content || "");
   const [linkedPatientId, setLinkedPatientId] = useState(note?.patient_id || "");
   const [linkedSessionId, setLinkedSessionId] = useState(note?.session_id || "");
-  const [saveState, setSaveState] = useState("saved"); // "saved" | "saving" | "dirty"
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -123,19 +124,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const [readingMode, setReadingMode] = useState(false);
   // Cover picker visibility (Phase E.2). Opens from the kebab.
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
-  // Heading scroll-spy state. The IntersectionObserver effect below
-  // updates this whenever the topmost-visible heading changes; the
-  // outline drawer reads it to highlight the matching entry.
-  const [activeHeadingLine, setActiveHeadingLine] = useState<number | null>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
-  // Holds the latest typed args while a debounced save is pending. We
-  // read this on unmount so a tablet-split-view note switch (which
-  // unmounts the editor without going through doClose) doesn't drop
-  // the user's last 800 ms of typing.
-  const pendingSaveArgs = useRef<{ title: string; content: string } | null>(null);
+
+  // Debounced autosave lifecycle (800 ms timer, saved/saving/dirty
+  // indicator, unmount-flush of pending typed content, and cancel-pending
+  // for explicit-save paths) extracted to useNoteAutosave (WS-6).
+  const { saveState, setSaveState, scheduleSave, cancelPending } = useNoteAutosave({
+    onSave, readOnly, showToast, saveFailedMsg: t("notes.saveFailed"),
+  });
 
   // Always close through this ref so "empty on close" → delete fires
   // regardless of what triggered the close (back button, ESC, etc.).
@@ -147,9 +145,9 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
 
   const doClose = useCallback(async () => {
     const { title: ti, content: co, onSave: s, onDelete: d, onClose: cl, note: n, readOnly: ro, templates: tpls } = closeRef.current;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    // doClose explicitly persists below, so unmount-flush would double-write.
-    pendingSaveArgs.current = null;
+    // doClose persists explicitly below, so cancel any pending debounced
+    // save first — otherwise the unmount-flush would double-write.
+    cancelPending();
     if (ro) { cl(); return; }
     try {
       if (isEffectivelyEmpty(ti, co, tpls)) {
@@ -163,7 +161,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       showToast?.(t("notes.saveFailed"), "error");
     }
     cl();
-  }, [showToast, t]);
+  }, [showToast, t, cancelPending]);
 
   const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Cancel the exit-animation timer on unmount so a queued doClose()
@@ -187,53 +185,13 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
 
   useLayer(inlineMode ? null : "noteEditor", inlineMode ? null : handleClose);
 
-  /* ── Autosave ───────────────────────────────────────────────────── */
-  const autoSave = useCallback((newTitle: string, newContent: string) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    pendingSaveArgs.current = { title: newTitle, content: newContent };
-    setSaveState("dirty");
-    saveTimer.current = setTimeout(async () => {
-      pendingSaveArgs.current = null;
-      setSaveState("saving");
-      try {
-        await onSave({ title: newTitle, content: newContent });
-        setSaveState("saved");
-        haptic.success();
-      } catch {
-        // Don't just flip back to "dirty" silently — the user thinks
-        // their writes are queued but autosave is broken. Toast it
-        // and leave the indicator showing dirty so they know to retry.
-        // Re-arm pendingSaveArgs so unmount can still attempt to
-        // persist what the user typed.
-        pendingSaveArgs.current = { title: newTitle, content: newContent };
-        setSaveState("dirty");
-        haptic.warn();
-        showToast?.(t("notes.saveFailed"), "error");
-      }
-    }, 800);
-  }, [onSave, showToast, t]);
-
-  // Flush any pending typed content on unmount. Without this, switching
-  // notes on tablet split view (where the parent swaps `editingNote`
-  // mid-debounce) silently dropped whatever the user typed in the last
-  // 800 ms. Fire-and-forget; if it fails the user still has the toast
-  // path on next mount via the dirty indicator.
-  useEffect(() => () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    const pending = pendingSaveArgs.current;
-    if (pending && !closeRef.current?.readOnly) {
-      pendingSaveArgs.current = null;
-      const fn = closeRef.current?.onSave;
-      if (fn) {
-        try { Promise.resolve(fn(pending)).catch(() => {}); } catch { /* ignore */ }
-      }
-    }
-  }, []);
+  // Autosave (debounce + dirty indicator + unmount flush) lives in
+  // useNoteAutosave above; the change handlers below call scheduleSave.
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
-    autoSave(e.target.value, content);
+    scheduleSave(e.target.value, content);
   };
 
   const handleTitleKeyDown = (e: React.KeyboardEvent) => {
@@ -245,97 +203,17 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
-    autoSave(title, newContent);
-  }, [autoSave, title]);
+    scheduleSave(title, newContent);
+  }, [scheduleSave, title]);
 
   const handleSelectionChange = useCallback(({ active }: { active?: Set<string> }) => {
     setActiveFormats(active || new Set());
   }, []);
 
-  // Cheap signature of the heading set — used by the scroll-spy
-  // effect's deps array below. `content` changes every keystroke;
-  // the heading SET only changes when a line becomes / stops being
-  // a heading. Declared above the effect so it's not in TDZ when
-  // the deps array evaluates during render.
-  const headingsSignature = useMemo(
-    () => extractOutline(content).map(o => `${o.line}-${o.level}`).join(","),
-    [content]
-  );
-
-  /* ── Heading scroll-spy ─────────────────────────────────────────
-     IntersectionObserver tracks h1/h2/h3 lines inside the markdown
-     editor root, identifies the topmost one currently in view, and
-     updates activeHeadingLine. The outline drawer reads this to
-     highlight the matching entry — "you are here" affordance while
-     scrolling through a long note.
-
-     Observer scope = the editor's scroll viewport (.mde-scroll).
-     A small rootMargin pulls the trigger zone toward the top of
-     the viewport so the heading transitions feel anchored to the
-     scroll-top rather than the centre. */
-  useEffect(() => {
-    const scrollEl = scrollRef.current;
-    if (!scrollEl) return;
-    if (typeof IntersectionObserver === "undefined") return;
-    let raf = 0;
-    const visible = new Map(); // lineIdx → top (relative to viewport)
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        const lineIdx = parseInt((entry.target as HTMLElement).dataset.line || "", 10);
-        if (Number.isNaN(lineIdx)) continue;
-        if (entry.isIntersecting) {
-          visible.set(lineIdx, entry.boundingClientRect.top);
-        } else {
-          visible.delete(lineIdx);
-        }
-      }
-      // rAF-coalesce so a burst of crossings doesn't thrash React.
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        if (visible.size === 0) {
-          setActiveHeadingLine(null);
-          return;
-        }
-        // Pick the heading whose top is closest to (but above /
-        // overlapping) the viewport's top edge — i.e. the smallest
-        // line number among visible entries by document order.
-        let best = Infinity;
-        for (const lineIdx of visible.keys()) {
-          if (lineIdx < best) best = lineIdx;
-        }
-        setActiveHeadingLine(best === Infinity ? null : best);
-      });
-    }, {
-      root: scrollEl,
-      // Trigger zone: top 12% of viewport. A heading "becomes
-      // active" as it crosses into the top sliver.
-      rootMargin: "0px 0px -88% 0px",
-      threshold: 0,
-    });
-
-    // Re-observe whenever the content changes (new headings appear /
-    // disappear). MutationObserver on the editor root catches
-    // structural changes the IntersectionObserver doesn't see.
-    const editorRoot = scrollEl.querySelector(".mde-root");
-    if (!editorRoot) return () => { observer.disconnect(); if (raf) cancelAnimationFrame(raf); };
-    const wireUp = () => {
-      observer.disconnect();
-      visible.clear();
-      const headings = editorRoot.querySelectorAll(".mde-line--h1, .mde-line--h2, .mde-line--h3");
-      headings.forEach(h => observer.observe(h));
-    };
-    wireUp();
-    const mut = new MutationObserver(wireUp);
-    mut.observe(editorRoot, { childList: true, subtree: false });
-    return () => {
-      mut.disconnect();
-      observer.disconnect();
-      if (raf) cancelAnimationFrame(raf);
-    };
-    // Only re-attach the IO + MO when the heading set actually
-    // changes. Depending on `content` would re-run per keystroke,
-    // disconnecting + reconnecting both observers on every char.
-  }, [headingsSignature]);
+  // Heading scroll-spy (IntersectionObserver tracking the topmost visible
+  // heading). Extracted to useNoteOutline (WS-6); the outline drawer reads
+  // activeHeadingLine to highlight the "you are here" entry.
+  const activeHeadingLine = useNoteOutline(content, scrollRef);
 
   /* ── Scroll-shadow header ──────────────────────────────────────── */
   useEffect(() => {
@@ -576,8 +454,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     setTitle(newTitle || "");
     setContent(newContent || "");
     editorRef.current?.setContent(newContent || "");
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    pendingSaveArgs.current = null;
+    cancelPending();
     setSaveState("saving");
     try {
       await onSave({ title: newTitle || "", content: newContent || "" });
@@ -589,7 +466,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       setSaveState("dirty");
       throw new Error("save_failed");
     }
-  }, [note, noteCrypto, title, content, onSave, readOnly]);
+  }, [note, noteCrypto, title, content, onSave, readOnly, cancelPending, setSaveState]);
 
   /* ── Find + outline ────────────────────────────────────────────── */
   const handleJumpToMatch = useCallback((match: { line: number; startCol: number; endCol: number }) => {
@@ -606,7 +483,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     setTitle(tpl.title);
     setContent(tpl.content);
     editorRef.current?.setContent(tpl.content);
-    autoSave(tpl.title, tpl.content);
+    scheduleSave(tpl.title, tpl.content);
     editorRef.current?.focus();
     haptic.tap();
   };
@@ -1013,7 +890,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       {confirmDelete && (
         <div className="sheet-overlay" onClick={() => setConfirmDelete(false)} style={{ alignItems: "center" }}>
           <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
-            style={{ maxWidth: 340, borderRadius: "var(--radius-lg)", margin: "0 20px", animation: "sheetScaleIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+            style={{ maxWidth: 340, borderRadius: "var(--radius-lg)", margin: "0 20px", animation: "sheetScaleIn 0.45s var(--ease-spring)" }}>
             <div style={{ padding: "28px 24px 22px", textAlign: "center" }}>
               <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--red-bg)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
                 <IconTrash size={24} />

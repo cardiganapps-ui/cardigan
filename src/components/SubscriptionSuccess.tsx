@@ -132,7 +132,7 @@ export function SubscriptionSuccess({ open, onClose }: { open?: boolean; onClose
           maxWidth: 420,
           transform: mounted ? "scale(1) translateY(0)" : "scale(0.92) translateY(8px)",
           opacity: mounted ? 1 : 0,
-          transition: "transform 0.42s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.28s ease",
+          transition: "transform 0.42s var(--ease-spring-soft), opacity 0.28s ease",
         }}
       >
         <div className="sheet-handle" />

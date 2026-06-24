@@ -116,6 +116,16 @@ describe("passphrase wrap / unwrap", () => {
     await expect(wrapMasterWithPassphrase(generateMasterKeyBytes(), "")).rejects.toThrow(/required/i);
   });
 
+  it("fails closed on a sub-floor passphrase_iters (downgrade defense, WS-11)", async () => {
+    const master = generateMasterKeyBytes();
+    const wrap = await fastWrap(master, "correct-pass");
+    // A tampered/weak iteration count must be refused before any key
+    // derivation, regardless of the (otherwise valid) wrap material.
+    await expect(
+      unwrapMasterWithPassphrase({ ...wrap, passphrase: "correct-pass", passphrase_iters: 1000 })
+    ).rejects.toThrow();
+  });
+
   it("uses a fresh salt + iv per wrap (no reuse across users with the same passphrase)", async () => {
     const master = generateMasterKeyBytes();
     const a = await fastWrap(master, "same-passphrase");
