@@ -133,7 +133,7 @@ export function NewGroupSheet({ onClose }: { onClose: () => void }) {
                   onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); goToMembers(); } }} />
               </div>
 
-              <label style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", cursor:"pointer" }}>
+              <label aria-label={t("groups.oneOff")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", cursor:"pointer" }}>
                 <input type="checkbox" checked={oneOff} onChange={e => setOneOff(e.target.checked)} style={{ width:18, height:18 }} />
                 <span>
                   <span style={{ fontWeight:700, fontSize:"var(--text-md)" }}>{t("groups.oneOff")}</span>

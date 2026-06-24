@@ -68,7 +68,9 @@ export function NoteTagPicker({ noteId, tags, tagLinks, upsertTag, linkTag, unli
 
   return (
     <div className="input-group">
-      <label className="input-label">Etiquetas</label>
+      {/* Group heading for the tag picker (multiple controls below), not a
+          single-control label — a <div> avoids the false label association. */}
+      <div className="input-label">Etiquetas</div>
 
       {linked.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>

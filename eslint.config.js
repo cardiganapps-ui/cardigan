@@ -32,6 +32,7 @@ const a11yErrorRules = {
   'jsx-a11y/no-autofocus': 'error',
   'jsx-a11y/interactive-supports-focus': 'error',
   'jsx-a11y/no-noninteractive-tabindex': 'error',
+  'jsx-a11y/label-has-associated-control': 'error',
 }
 
 /* ── Design-system gate ──

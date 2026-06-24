@@ -70,8 +70,9 @@ export default function EncryptionUnlockGate({ noteCrypto, onSkip }: {
           Tus notas están cifradas. Ingresa tu contraseña de notas para verlas y editarlas en esta sesión.
         </div>
         <div className="input-group" style={{ marginBottom: 12 }}>
-          <label className="input-label">Contraseña de notas</label>
+          <label className="input-label" htmlFor="notes-passphrase">Contraseña de notas</label>
           <PasswordInput
+            id="notes-passphrase"
             autoComplete="off"
             // eslint-disable-next-line jsx-a11y/no-autofocus -- unlock gate: focus the passphrase field so the user can type immediately
             autoFocus

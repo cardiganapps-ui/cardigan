@@ -267,6 +267,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }: {
                   <label
                     key={r.scanned_at}
                     className={"inbody-import-row" + (alreadyImported ? " is-existing" : "")}
+                    aria-label={dateLabel}
                     role="listitem">
                     <input
                       type="checkbox"

@@ -64,25 +64,25 @@ export function AdminMessages() {
 
           {mode === "user" && (
             <div className="input-group">
-              <label className="input-label">User ID</label>
-              <input className="input" value={userId} onChange={(e) => { setUserId(e.target.value); clearConfirm(); }} placeholder="uuid del usuario" />
+              <label className="input-label" htmlFor="adminmsg-userid">User ID</label>
+              <input id="adminmsg-userid" className="input" value={userId} onChange={(e) => { setUserId(e.target.value); clearConfirm(); }} placeholder="uuid del usuario" />
               <div className="input-help">Cópialo desde Usuarios → detalle del usuario.</div>
             </div>
           )}
 
           <div className="input-group">
-            <label className="input-label">Título</label>
-            <input className="input" value={title} maxLength={120} onChange={(e) => { setTitle(e.target.value); clearConfirm(); }} placeholder="Título del aviso" />
+            <label className="input-label" htmlFor="adminmsg-title">Título</label>
+            <input id="adminmsg-title" className="input" value={title} maxLength={120} onChange={(e) => { setTitle(e.target.value); clearConfirm(); }} placeholder="Título del aviso" />
           </div>
 
           <div className="input-group">
-            <label className="input-label">Mensaje</label>
-            <textarea className="input" rows={4} value={body} maxLength={1000} onChange={(e) => { setBody(e.target.value); clearConfirm(); }} placeholder="Cuerpo (opcional)" style={{ resize: "vertical" }} />
+            <label className="input-label" htmlFor="adminmsg-body">Mensaje</label>
+            <textarea id="adminmsg-body" className="input" rows={4} value={body} maxLength={1000} onChange={(e) => { setBody(e.target.value); clearConfirm(); }} placeholder="Cuerpo (opcional)" style={{ resize: "vertical" }} />
           </div>
 
           <div className="input-group">
-            <label className="input-label">URL al tocar</label>
-            <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="/" />
+            <label className="input-label" htmlFor="adminmsg-url">URL al tocar</label>
+            <input id="adminmsg-url" className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="/" />
             <div className="input-help">A dónde lleva al tocar la notificación (ej. /#agenda).</div>
           </div>
 

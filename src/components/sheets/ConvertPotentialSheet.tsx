@@ -383,29 +383,29 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
             <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14 }}>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 <div className="input-group">
-                  <label className="input-label">Estatura (cm)</label>
-                  <input className="input" type="number" min="50" max="250" value={heightCm} onChange={e => setHeightCm(e.target.value)} />
+                  <label className="input-label" htmlFor="cp-height">Estatura (cm)</label>
+                  <input id="cp-height" className="input" type="number" min="50" max="250" value={heightCm} onChange={e => setHeightCm(e.target.value)} />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">Peso meta (kg)</label>
-                  <input className="input" type="number" min="20" max="300" step="0.1" value={goalWeightKg} onChange={e => setGoalWeightKg(e.target.value)} />
+                  <label className="input-label" htmlFor="cp-goal-weight">Peso meta (kg)</label>
+                  <input id="cp-goal-weight" className="input" type="number" min="20" max="300" step="0.1" value={goalWeightKg} onChange={e => setGoalWeightKg(e.target.value)} />
                 </div>
                 <div className="input-group" style={{ marginBottom:0 }}>
-                  <label className="input-label">% grasa meta</label>
-                  <input className="input" type="number" min="3" max="60" step="0.1" value={goalBodyFatPct} onChange={e => setGoalBodyFatPct(e.target.value)} />
+                  <label className="input-label" htmlFor="cp-goal-bodyfat">% grasa meta</label>
+                  <input id="cp-goal-bodyfat" className="input" type="number" min="3" max="60" step="0.1" value={goalBodyFatPct} onChange={e => setGoalBodyFatPct(e.target.value)} />
                 </div>
                 <div className="input-group" style={{ marginBottom:0 }}>
-                  <label className="input-label">Músculo meta (kg)</label>
-                  <input className="input" type="number" min="5" max="100" step="0.1" value={goalSkeletalMuscleKg} onChange={e => setGoalSkeletalMuscleKg(e.target.value)} />
+                  <label className="input-label" htmlFor="cp-goal-muscle">Músculo meta (kg)</label>
+                  <input id="cp-goal-muscle" className="input" type="number" min="5" max="100" step="0.1" value={goalSkeletalMuscleKg} onChange={e => setGoalSkeletalMuscleKg(e.target.value)} />
                 </div>
               </div>
               <div className="input-group" style={{ marginTop:10 }}>
-                <label className="input-label">Alergias</label>
-                <input className="input" value={allergies} onChange={e => setAllergies(e.target.value)} />
+                <label className="input-label" htmlFor="cp-allergies">Alergias</label>
+                <input id="cp-allergies" className="input" value={allergies} onChange={e => setAllergies(e.target.value)} />
               </div>
               <div className="input-group" style={{ marginBottom:0 }}>
-                <label className="input-label">Antecedentes médicos</label>
-                <input className="input" value={medicalConditions} onChange={e => setMedicalConditions(e.target.value)} />
+                <label className="input-label" htmlFor="cp-medical">Antecedentes médicos</label>
+                <input id="cp-medical" className="input" value={medicalConditions} onChange={e => setMedicalConditions(e.target.value)} />
               </div>
             </div>
           )}
