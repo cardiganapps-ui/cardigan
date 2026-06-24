@@ -10,6 +10,11 @@
 #   • patient.paid     drift vs Σ payments
 #   • patient.billed   drift vs predicate-aligned consumed (CLAUDE.md #4)
 #   • patient.sessions drift vs raw session row count
+#   • the counter TRIGGER not firing — a rolled-back canary (--strict runs
+#     it by default) inserts one synthetic 'completed' session and asserts
+#     the trigger moved the counters, then rolls back. Closes the
+#     silent-trigger-failure blind spot (a dead trigger would otherwise
+#     reconcile "green" because the drift checks read the same rows).
 #
 # Setup (one-time, GitHub repo Settings → Secrets and variables → Actions):
 #
@@ -19,9 +24,11 @@
 #                              (e.g. "axyuqfkmifcaupwhzfuw" from
 #                              https://axyuqfkmifcaupwhzfuw.supabase.co)
 #
-# The script is read-only — it never writes. Safe to run on a hot DB.
-# Cron is at 04:00 UTC = 22:00 Mexico City — comfortably past business
-# hours so the day's last activity has settled.
+# The script is read-only EXCEPT the trigger canary, which inserts one
+# synthetic session inside a transaction that ALWAYS rolls back (zero
+# committed rows). Safe to run on a hot DB. Pass --no-canary for a strictly
+# read-only run. Cron is at 04:00 UTC = 22:00 Mexico City — comfortably
+# past business hours so the day's last activity has settled.
 
 name: Accounting audit
 

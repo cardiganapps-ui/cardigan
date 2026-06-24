@@ -7,10 +7,22 @@
 
    Usage:
      node --env-file=.env.local scripts/audit-accounting.mjs [--user=<user_id>]
+                                                              [--strict] [--canary] [--no-canary]
 
    Requires SUPABASE_PAT and SUPABASE_PROJECT_REF (or SUPABASE_URL).
    Uses the Supabase Management API — bypasses RLS, so you see every
-   user's data. Read-only: the script never writes.
+   user's data.
+
+   READ-ONLY except the optional trigger canary (--canary, and on by
+   default under --strict). The canary inserts ONE synthetic 'completed'
+   session for a real patient inside a transaction that ALWAYS rolls back
+   (a closing RAISE aborts the statement), reads the trigger-updated
+   counters to prove the counter trigger actually FIRES, then leaves zero
+   committed rows. This closes the silent-trigger-failure blind spot: the
+   drift checks above re-derive from the same rows the trigger reads, so a
+   dead/detached/silently-broken trigger would still reconcile "green".
+   Pass --no-canary to skip the probe (e.g. mid-incident, when you want a
+   strictly read-only run).
 
    Reports, per user:
      • Duplicate sessions (patient_id, date, time)
@@ -109,6 +121,64 @@ const userFilter = process.argv.find(a => a.startsWith("--user="))?.slice(7) || 
 // regression in any of the predicate-aligned counter paths trips an
 // alert within 24 hours.
 const strictMode = process.argv.includes("--strict");
+// The trigger-health canary (see header). Runs under --canary, and by
+// default under --strict so the nightly audit proves the counter trigger
+// fires. --no-canary opts out (strictly read-only run).
+const noCanary = process.argv.includes("--no-canary");
+const canaryMode = process.argv.includes("--canary");
+const wantCanary = (canaryMode || strictMode) && !noCanary;
+
+// Distinctive rate for the canary's synthetic session — the trigger must
+// add exactly this to patient.billed if it fired.
+const CANARY_RATE = 4242;
+
+// Trigger-health canary. Normalizes one real patient's counters to truth
+// (same recompute the trigger uses, so the assertion is immune to any
+// pre-existing drift), inserts a `completed` session (counts toward the
+// balance unconditionally — no tz/date dependence), then reads the
+// trigger-set counters. A live trigger moves sessions by +1 and billed by
+// +CANARY_RATE. The closing RAISE rolls the whole probe back, so nothing
+// is ever committed; the verdict rides out in the error message.
+async function runTriggerCanary() {
+  const doBlock = `do $$
+declare
+  v_pid uuid; v_uid uuid;
+  v_b_base int; v_s_base int;
+  v_b_after int; v_s_after int;
+begin
+  select id, user_id into v_pid, v_uid from patients order by id limit 1;
+  if v_pid is null then raise exception 'CANARY_SKIP no_patients'; end if;
+  perform public.recalc_patient_session_counters(v_pid);
+  select coalesce(billed,0), coalesce(sessions,0) into v_b_base, v_s_base from patients where id = v_pid;
+  insert into sessions (user_id, patient_id, patient, initials, time, day, date, status, rate, is_recurring)
+    values (v_uid, v_pid, '__canary__', 'CX', '10:00', 'Lunes', '1-Ene', 'completed', ${CANARY_RATE}, false);
+  select coalesce(billed,0), coalesce(sessions,0) into v_b_after, v_s_after from patients where id = v_pid;
+  raise exception 'CANARY_VERDICT s_base=% s_after=% b_base=% b_after=%', v_s_base, v_s_after, v_b_base, v_b_after;
+end $$;`;
+  let raised = "";
+  try {
+    await sql(doBlock);
+    // The canary ALWAYS raises; reaching here means the abort/rollback
+    // mechanism changed out from under us — treat as a failure so it's
+    // investigated (and so nothing could have committed silently).
+    return { ok: false, ran: true, reason: "canary did not raise — rollback path unverified" };
+  } catch (e) {
+    raised = String(e?.message || e);
+  }
+  if (/CANARY_SKIP/.test(raised)) return { ok: true, ran: false, skipped: true };
+  const m = raised.match(/CANARY_VERDICT s_base=(\d+) s_after=(\d+) b_base=(-?\d+) b_after=(-?\d+)/);
+  if (!m) {
+    const firstLine = raised.split("\\n")[0].slice(0, 200);
+    return { ok: false, ran: true, reason: `trigger probe errored: ${firstLine}` };
+  }
+  const [, sBase, sAfter, bBase, bAfter] = m.map(Number);
+  const sessionsFired = sAfter === sBase + 1;
+  const billedFired = bAfter === bBase + CANARY_RATE;
+  return {
+    ok: sessionsFired && billedFired, ran: true,
+    sBase, sAfter, bBase, bAfter, sessionsFired, billedFired,
+  };
+}
 
 async function sql(query) {
   const r = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
@@ -304,6 +374,26 @@ async function main() {
   console.log(`Total owed:          ${fmt(globalOwedTotal)}`);
   console.log(`Total credit:        ${fmt(globalCreditTotal)}`);
 
+  // ── Trigger-health canary ────────────────────────────────────────
+  // A rolled-back probe that proves the counter trigger actually FIRES
+  // (see runTriggerCanary + the header). Without it, every drift check
+  // above could read "green" while the trigger is silently dead, because
+  // they re-derive from the same rows the trigger uses.
+  let canary = null;
+  if (wantCanary) {
+    canary = await runTriggerCanary();
+    console.log("\n================ TRIGGER CANARY =================");
+    if (canary.skipped) {
+      console.log("• skipped — no patients to probe");
+    } else if (canary.ok) {
+      console.log(`✓ counter trigger fired: sessions ${canary.sBase}→${canary.sAfter} (+1), billed ${fmt(canary.bBase)}→${fmt(canary.bAfter)} (+${fmt(CANARY_RATE)}) — rolled back`);
+    } else if (canary.reason) {
+      console.log(`\x1b[31m⚠ canary failed: ${canary.reason}\x1b[0m`);
+    } else {
+      console.log(`\x1b[31m⚠ counter trigger did NOT fire as expected: sessions +1=${canary.sessionsFired}, billed +${CANARY_RATE}=${canary.billedFired} (s ${canary.sBase}→${canary.sAfter}, b ${canary.bBase}→${canary.bAfter})\x1b[0m`);
+    }
+  }
+
   // Strict mode: exit non-zero when any structural invariant is
   // violated. Used by the daily CI workflow so drift trips an alert
   // automatically. We deliberately do NOT fail on "patients owing"
@@ -346,6 +436,13 @@ async function main() {
     if (orphanReceipts.length > 0)violations.push(`${orphanReceipts.length} orphaned receipt(s)`);
     if (globalDriftCount > 0)     violations.push(`${globalDriftCount} paid-counter drift`);
     if (globalSessionsDriftCount > 0) violations.push(`${globalSessionsDriftCount} sessions-counter drift`);
+    // Trigger canary: a non-firing (or errored) trigger is a hard failure —
+    // it means the denormalized counters are no longer being maintained,
+    // even if today's drift checks happen to reconcile. A skipped canary
+    // (no patients) is not a violation.
+    if (canary && !canary.ok && !canary.skipped) {
+      violations.push(`counter trigger canary: ${canary.reason || "trigger did not fire on synthetic insert"}`);
+    }
     if (violations.length > 0) {
       console.error(`\n✗ STRICT MODE: ${violations.length} invariant(s) violated:`);
       for (const v of violations) console.error(`    • ${v}`);
@@ -355,6 +452,11 @@ async function main() {
     if (globalBilledDriftCount > 0) {
       console.log(`  (billed drift on ${globalBilledDriftCount} patient(s) — expected lag from auto-completing sessions; not a failure)`);
     }
+  } else if (canaryMode && canary && !canary.ok && !canary.skipped) {
+    // Standalone `--canary` (no --strict): still exit non-zero on failure
+    // so a manual or CI canary run signals a dead trigger.
+    console.error("\n✗ trigger canary failed.");
+    process.exit(1);
   }
 
   if (dupRecur.length > 0) {
