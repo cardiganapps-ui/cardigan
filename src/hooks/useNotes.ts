@@ -191,6 +191,11 @@ export function createNoteActions(
     setMutationError("");
     const { content: storedContent, encrypted } = await maybeEncrypt(content);
     const patch: TablesUpdate<"notes"> = { title, content: storedContent, encrypted };
+    // Capture the pre-edit row so a rejected server write can be reverted
+    // (PRIME-DIRECTIVE-adjacent: never leave the UI showing content the DB
+    // refused). Snapshot before the optimistic apply below.
+    const prevNote = notes.find(n => n.id === id);
+    const revert = () => { if (prevNote) setNotes(prev => prev.map(n => n.id === id ? prevNote : n)); };
     // Optimistic local update first so the UI can dismiss immediately.
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id
@@ -215,7 +220,7 @@ export function createNoteActions(
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) { revert(); setMutationError(error.message); return false; }
     // Refine the optimistic updated_at with the server-stamped value.
     if (data?.updated_at) {
       setNotes(prev => prev.map(n => n.id === id ? ({ ...n, updated_at: data!.updated_at } as Note) : n));
@@ -236,6 +241,8 @@ export function createNoteActions(
     setMutationError("");
     const patch: TablesUpdate<"notes"> = { patient_id: patientId || null, session_id: sessionId || null };
     if (groupId !== undefined) patch.group_id = groupId || null;
+    const prevNote = notes.find(n => n.id === id);
+    const revert = () => { if (prevNote) setNotes(prev => prev.map(n => n.id === id ? prevNote : n)); };
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id ? ({ ...n, ...patch, updated_at: nowIso } as Note) : n));
     if (typeof id === "string" && id.startsWith("temp-")) return true;
@@ -255,7 +262,7 @@ export function createNoteActions(
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) { revert(); setMutationError(error.message); return false; }
     if (data?.updated_at) {
       setNotes(prev => prev.map(n => n.id === id ? ({ ...n, updated_at: data!.updated_at } as Note) : n));
     }
@@ -329,7 +336,11 @@ export function createNoteActions(
       await enqueue("notes.update", { id, userId, patch: { cover_attachment_id: next } });
       return true;
     }
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      setNotes(prev => prev.map(n => n.id === id ? note : n));
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 
@@ -352,7 +363,11 @@ export function createNoteActions(
       await enqueue("notes.update", { id, userId, patch: { pinned } });
       return true;
     }
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      setNotes(prev => prev.map(n => n.id === id ? note : n));
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 
