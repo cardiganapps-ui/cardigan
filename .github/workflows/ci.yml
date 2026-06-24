@@ -70,7 +70,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Node 22 (not 20): this job runs the full `npm run build`, whose
+          # `prebuild` invokes `node --experimental-strip-types` to load the
+          # TS privacy source — a flag that only exists on Node ≥22.6.
+          node-version: "22"
           cache: "npm"
       - run: npm ci --no-audit --no-fund
       # Build, then check the emitted chunks against the brotli budgets in
@@ -305,7 +308,9 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.guard.outputs.ready == 'true'
         with:
-          node-version: "20"
+          # Node 22: `vercel build` runs `npm run build` → `prebuild`'s
+          # `node --experimental-strip-types` (TS privacy source), needs ≥22.6.
+          node-version: "22"
           cache: "npm"
       - if: steps.guard.outputs.ready == 'true'
         run: npm ci --no-audit --no-fund
