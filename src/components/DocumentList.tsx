@@ -12,13 +12,13 @@ export function DocumentList({
   emptyMessage, showPatientName, onPatientClick,
   variant = "list", // "list" (single card with dividers) | "cards" (individual cards with gaps)
 }: {
-  documents: Array<{ id: string; name?: string; patient_id?: string | null; session_id?: string | null; file_size?: number | null; file_type?: string | null; created_at?: string; uploaded_by_user_id?: string | null; user_id?: string }>;
-  sessions?: Array<{ id: string; patient_id?: string | null; date?: string; time?: string; status?: string; created_at?: string; [key: string]: unknown }>;
+  documents: Array<{ id: string; name?: string; patient_id?: string | null; session_id?: string | null; file_size?: number | null; file_type?: string | null; created_at?: string | null; uploaded_by_user_id?: string | null; user_id?: string }>;
+  sessions?: Array<{ id: string; patient_id?: string | null; date?: string; time?: string; status?: string | null; created_at?: string | null; [key: string]: unknown }>;
   patients?: Array<{ id: string; name?: string; [key: string]: unknown }>;
   onOpen: (doc: { id: string; [key: string]: unknown }) => void;
-  onRename: (id: string, name: string) => void | Promise<void>;
-  onTag?: (docId: string, sessionId: string | null) => void | Promise<void>;
-  onDelete: (id: string) => void | Promise<void>;
+  onRename: (id: string, name: string) => void | Promise<unknown>;
+  onTag?: (docId: string, sessionId: string | null) => void | Promise<unknown>;
+  onDelete: (id: string) => void | Promise<unknown>;
   emptyMessage?: React.ReactNode;
   showPatientName?: boolean;
   onPatientClick?: (p: { id: string; name?: string }) => void;

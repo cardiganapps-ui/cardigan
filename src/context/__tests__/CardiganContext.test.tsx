@@ -10,12 +10,14 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, act, cleanup } from "@testing-library/react";
 import { memo, useEffect, useState } from "react";
 import { CardiganProvider, useCardigan, useCardiganMain, useCardiganUI } from "../CardiganContext";
+import type { CardiganContextValue, CardiganMainValue, CardiganUIValue } from "../CardiganContext";
 
 afterEach(() => cleanup());
 
 describe("CardiganProvider (dual-mode) + back-compat useCardigan", () => {
   it("a flat `value` feeds BOTH slices (patient portal + test harness path)", () => {
-    const flat = { patients: [1, 2], screen: "home" };
+    // Minimal fake value — cast to the precise context type for the test.
+    const flat = { patients: [1, 2], screen: "home" } as unknown as CardiganContextValue;
     function Probe() {
       const main = useCardiganMain();
       const ui = useCardiganUI();
@@ -33,7 +35,7 @@ describe("CardiganProvider (dual-mode) + back-compat useCardigan", () => {
       const m = useCardigan();
       return <div data-testid="o">{JSON.stringify(m)}</div>;
     }
-    const { getByTestId } = render(<CardiganProvider mainValue={mainValue} uiValue={uiValue}><Probe /></CardiganProvider>);
+    const { getByTestId } = render(<CardiganProvider mainValue={mainValue as unknown as CardiganMainValue} uiValue={uiValue as unknown as CardiganUIValue}><Probe /></CardiganProvider>);
     expect(JSON.parse(getByTestId("o").textContent || "{}")).toEqual({ patients: [1], readOnly: true, screen: "agenda", drawerOpen: true });
   });
 });
@@ -60,7 +62,7 @@ describe("WS-2 granular re-render isolation", () => {
       const [mainValue] = useState({ patients: [] as number[] });
       const [uiValue, setUiValue] = useState<Record<string, unknown>>({ screen: "home" });
       return (
-        <CardiganProvider mainValue={mainValue} uiValue={uiValue}>
+        <CardiganProvider mainValue={mainValue as unknown as CardiganMainValue} uiValue={uiValue as unknown as CardiganUIValue}>
           <MainConsumer />
           <UIConsumer />
           <button data-testid="nav" onClick={() => setUiValue({ screen: "agenda" })}>nav</button>

@@ -1,6 +1,7 @@
 import React from "react";
 import { I18nProvider, useT } from "../../i18n/index";
 import { CardiganProvider } from "../../context/CardiganContext";
+import type { CardiganContextValue } from "../../context/CardiganContext";
 import { Toast } from "../../components/Toast";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { LogoIcon } from "../../components/LogoMark";
@@ -105,7 +106,10 @@ export function PatientApp({ user, signOut, demo = false }: PatientAppProps) {
   return (
     <I18nProvider>
       <PatientI18nSync profession={ctxValue.profession}>
-      <CardiganProvider value={ctxValue}>
+      {/* The patient portal provides only the handful of context fields its
+          read-only shell reads (no therapist data/mutations), so it's a
+          deliberate subset of the full CardiganContextValue. */}
+      <CardiganProvider value={ctxValue as unknown as CardiganContextValue}>
         <PatientShell user={user} signOut={signOut} data={data} />
         {toasts.length > 0 && (
           <div style={{

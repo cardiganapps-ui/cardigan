@@ -23,10 +23,13 @@ vi.mock("../../utils/dates", () => ({
 }));
 
 import { useCardiganContextValue } from "../useCardiganContextValue";
+import type { CardiganContextValueDeps } from "../useCardiganContextValue";
 
 const t = (k: string) => k;
 
-function baseDeps(over: Record<string, unknown> = {}) {
+// The deps are intentionally partial mocks — these tests only exercise the
+// handlers with real logic — so the builder casts to the full deps type.
+function baseDeps(over: Record<string, unknown> = {}): CardiganContextValueDeps {
   return {
     data: { uploadDocument: vi.fn(async () => "doc-id"), softDeleteSession: vi.fn(), softDeletePayment: vi.fn(), softDeleteExpense: vi.fn(), softDeleteNote: vi.fn(), deleteRecurringTemplate: vi.fn() },
     readOnly: false,
@@ -76,7 +79,7 @@ function baseDeps(over: Record<string, unknown> = {}) {
     upcomingSessions: [],
     t,
     ...over,
-  };
+  } as unknown as CardiganContextValueDeps;
 }
 
 afterEach(() => cleanup());
@@ -91,7 +94,7 @@ describe("useCardiganContextValue", () => {
   it("uploadDocument passes through for Pro users", async () => {
     const deps = baseDeps({ subscription: { isPro: true } });
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    const res = await result.current.mainValue.uploadDocument();
+    const res = await (result.current.mainValue.uploadDocument as () => Promise<unknown>)();
     expect(res).toBe("doc-id");
     expect(deps.requirePro).not.toHaveBeenCalled();
   });
@@ -99,7 +102,7 @@ describe("useCardiganContextValue", () => {
   it("uploadDocument is pro-gated to a no-op for non-Pro users", async () => {
     const deps = baseDeps({ subscription: { isPro: false } });
     const { result } = renderHook(() => useCardiganContextValue(deps));
-    const res = await result.current.mainValue.uploadDocument();
+    const res = await (result.current.mainValue.uploadDocument as () => Promise<unknown>)();
     expect(res).toBeNull();
     expect(deps.requirePro).toHaveBeenCalledWith("documents");
     expect(deps.data.uploadDocument).not.toHaveBeenCalled();
@@ -108,7 +111,7 @@ describe("useCardiganContextValue", () => {
   it("wraps the four everyday deletes in withUndoableDelete with their labels", () => {
     const deps = baseDeps();
     renderHook(() => useCardiganContextValue(deps));
-    const labels = deps.withUndoableDelete.mock.calls.map((c: unknown[]) => c[1]);
+    const labels = vi.mocked(deps.withUndoableDelete).mock.calls.map((c) => c[1]);
     expect(labels).toEqual(["Sesión eliminada", "Pago eliminado", "Gasto eliminado", "Nota eliminada"]);
   });
 
@@ -131,7 +134,7 @@ describe("useCardiganContextValue", () => {
     expect(ok).toBe(true);
     expect(deps.updateSessionStatus).toHaveBeenCalledWith("s1", "completed");
     expect(deps.showToast).toHaveBeenCalledTimes(1);
-    const [msg, kind, opts] = deps.showToast.mock.calls[0];
+    const [msg, kind, opts] = vi.mocked(deps.showToast).mock.calls[0];
     expect(msg).toContain("Juan");
     expect(kind).toBe("success");
     expect(opts.key).toBe("end-of-visit:p1");

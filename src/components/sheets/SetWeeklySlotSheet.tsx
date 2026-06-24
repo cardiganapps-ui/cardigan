@@ -96,7 +96,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }: {
         patient.id,
         [{ day, time, duration: Number(duration) || 60, modality, frequency }],
         startDate,
-        null, // open-ended
+        undefined, // open-ended
       );
       if (!seeded) {
         await updatePatient(patient.id, {

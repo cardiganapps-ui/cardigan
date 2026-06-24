@@ -706,8 +706,12 @@ export function useCardiganData(
     [enrichedPatients, enrichedSessions]
   );
 
-  // Defense-in-depth: prevent mutations in read-only mode
-  const guard = <T,>(fn: T): T | (() => Promise<boolean>) => readOnly ? (async () => false) : fn;
+  // Defense-in-depth: prevent mutations in read-only mode. Signature-
+  // preserving: in read-only mode the real fn is swapped for a no-op that
+  // resolves falsy, but the returned type stays `T` so callers keep the
+  // action's real call signature (the no-op ignores args at runtime — the
+  // cast asserts that shape match, which holds for every guarded action).
+  const guard = <T,>(fn: T): T => readOnly ? (((async () => false) as unknown) as T) : fn;
 
   // After a successful patient create we also refresh from the server.
   // The optimistic setters inside createPatient should be enough, but a
@@ -808,3 +812,9 @@ export function useCardiganData(
     refresh,
   };
 }
+
+/** The full data-layer value the coordinator returns: typed data arrays
+    (enriched patients/sessions), the guarded mutation actions, and the
+    fetch/mutation status. The context assembler spreads this and the
+    CardiganContext value is built on it. */
+export type CardiganData = ReturnType<typeof useCardiganData>;

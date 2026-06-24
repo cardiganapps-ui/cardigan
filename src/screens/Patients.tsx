@@ -371,7 +371,7 @@ export function Patients() {
         schedules: editSchedules,
         rate: Number(editRate) || 0,
         effectiveDate,
-        endDate: hasEndDate ? endDate : null,
+        endDate: hasEndDate ? endDate : undefined,
       });
       if (ok) {
         // Also save basic info
@@ -548,7 +548,7 @@ export function Patients() {
                 practitioner sees pending interviews at a glance
                 without having to enter the lane. Tight padding so
                 the chip doesn't blow the row past iPhone width. */}
-            {f.k === "potential" && f.badge > 0 && (
+            {f.k === "potential" && (f.badge ?? 0) > 0 && (
               <span style={{ marginLeft:4, padding:"0 4px", borderRadius:"var(--radius-pill)", background:"var(--rose)", color:"var(--white)", fontSize:9, fontWeight:800 }}>{f.badge}</span>
             )}
           </button>

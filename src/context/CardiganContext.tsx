@@ -1,12 +1,20 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
+import type { useCardiganContextValue } from "../hooks/useCardiganContextValue";
 
-/* The shape injected by useCardiganData + AppShell. It carries ~70 keys
-   (data arrays, mutation actions, UI/navigation state). Typed as a
-   permissive bridge during the TS migration so .ts/.tsx consumers can
-   destructure it without `any` casts at every call site; tighten this into
-   a precise interface once useCardiganData itself is migrated (Tier 2/3). */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional migration bridge; tighten when useCardiganData is typed
-export type CardiganContextValue = Record<string, any>;
+/* The context value is now DERIVED from the assembler that builds it
+   (useCardiganContextValue), so the data arrays + mutation actions carry
+   their real types (WS-4) instead of the former `Record<string, any>`
+   bridge. The two slices mirror the two-context split below; the UI-only
+   plumbing callbacks the assembler passes through (navigate / pushLayer /
+   modal openers) are still typed as loosely as their deps until those are
+   tightened, but every data/accounting field is now concrete. */
+type AssemblerReturn = ReturnType<typeof useCardiganContextValue>;
+/** Stable Main slice: data arrays, mutation actions, config, stable callbacks. */
+export type CardiganMainValue = AssemblerReturn["mainValue"];
+/** Fast-changing UI slice: screen / drawerOpen / pendingFabAction / tutorial / theme / notifications. */
+export type CardiganUIValue = AssemblerReturn["uiValue"];
+/** The full merged value (back-compat `useCardigan()` — Main ∩ UI). */
+export type CardiganContextValue = CardiganMainValue & CardiganUIValue;
 
 /* ── Sliced context (WS-2) ────────────────────────────────────────────
    The single 70-key context value used to recompute (and re-render all
@@ -28,8 +36,8 @@ export type CardiganContextValue = Record<string, any>;
    existing consumers keep working unchanged; screens migrate to the
    granular hooks (`useCardiganMain` / `useCardiganUI`) one at a time to
    claim the re-render win. */
-const MainContext = createContext<CardiganContextValue | null>(null);
-const UIContext = createContext<CardiganContextValue | null>(null);
+const MainContext = createContext<CardiganMainValue | null>(null);
+const UIContext = createContext<CardiganUIValue | null>(null);
 
 /* The provider is dual-mode for a clean, no-big-bang migration:
    • Pass split `mainValue` + `uiValue` (the therapist AppShell) to get
@@ -41,8 +49,8 @@ export function CardiganProvider({
   value, mainValue, uiValue, children,
 }: {
   value?: CardiganContextValue;
-  mainValue?: CardiganContextValue;
-  uiValue?: CardiganContextValue;
+  mainValue?: CardiganMainValue;
+  uiValue?: CardiganUIValue;
   children: ReactNode;
 }) {
   const main = mainValue ?? value ?? null;
@@ -61,7 +69,7 @@ export function CardiganProvider({
 
 /** Data arrays, mutation actions, stable callbacks, config. Referentially
     stable across navigation — prefer this in data-display screens. */
-export function useCardiganMain(): CardiganContextValue {
+export function useCardiganMain(): CardiganMainValue {
   const ctx = useContext(MainContext);
   if (!ctx) throw new Error("useCardiganMain must be used within CardiganProvider");
   return ctx;
@@ -69,7 +77,7 @@ export function useCardiganMain(): CardiganContextValue {
 
 /** Fast-changing navigation / UI state (screen, drawerOpen, …) + the nav
     actions. Re-renders on navigation — use only where that's expected. */
-export function useCardiganUI(): CardiganContextValue {
+export function useCardiganUI(): CardiganUIValue {
   const ctx = useContext(UIContext);
   if (!ctx) throw new Error("useCardiganUI must be used within CardiganProvider");
   return ctx;

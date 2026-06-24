@@ -17,7 +17,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   onClose?: () => void;
   initialPatientName?: string;
   initialAmount?: string | number;
-  editingPayment?: { id?: string; patient?: string; amount?: number; method?: string; date?: string; note?: string } | null;
+  editingPayment?: { id: string; patient?: string; amount?: number; method?: string; date?: string; note?: string } | null;
 }) {
   const { patients, createPayment, updatePayment, mutating } = useCardiganMain();
   const { t } = useT();
@@ -150,8 +150,8 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
                   trigger recalcs their `paid` counter. */}
               {patients
                 .slice()
-                .sort((a: { status?: string }, b: { status?: string }) => {
-                  const rank = (s?: string) => (s === "active" ? 0 : s === "potential" ? 1 : s === "ended" ? 2 : 3);
+                .sort((a: { status?: string | null }, b: { status?: string | null }) => {
+                  const rank = (s?: string | null) => (s === "active" ? 0 : s === "potential" ? 1 : s === "ended" ? 2 : 3);
                   return rank(a.status) - rank(b.status);
                 })
                 .map((p: { id?: string; name?: string }) => <option key={p.id} value={p.name}>{p.name}</option>)}

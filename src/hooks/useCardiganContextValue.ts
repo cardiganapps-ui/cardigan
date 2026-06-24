@@ -1,6 +1,8 @@
 import { useMemo, useRef, useEffect } from "react";
 import { isEpisodic } from "../data/constants";
 import { shortDateToISO, todayISO as todayISOFn } from "../utils/dates";
+import type { CardiganData } from "./useCardiganData";
+import type { PatientRow, SessionRow } from "../types/rows";
 
 /* ── useCardiganContextValue ───────────────────────────────────────────
    The CardiganContext assembler, extracted verbatim from App.tsx's
@@ -29,7 +31,7 @@ import { shortDateToISO, todayISO as todayISOFn } from "../utils/dates";
 type Row = any;
 
 export interface CardiganContextValueDeps {
-  data: Row;
+  data: CardiganData;
   readOnly: boolean;
   subscription: Row;
   requirePro: (feature?: string) => void;
@@ -73,8 +75,8 @@ export interface CardiganContextValueDeps {
   pendingNoteOpenRef: { current: Row };
   openQuickSchedule: (patient: Row) => void;
   updateSessionStatus: Row;
-  patients: Row[];
-  upcomingSessions: Row[];
+  patients: PatientRow[];
+  upcomingSessions: SessionRow[];
   t: (key: string) => string;
 }
 

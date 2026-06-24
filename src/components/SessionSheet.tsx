@@ -22,8 +22,8 @@ type SessionRow = any;
 
 export function SessionSheet({ session, patients, notes, onOpenNote, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }: {
   session?: SessionRow;
-  patients?: Array<{ id?: string; name?: string; rate?: number }>;
-  notes?: Array<{ session_id?: string }>;
+  patients?: Array<{ id?: string; name?: string; rate?: number | null }>;
+  notes?: Array<{ session_id?: string | null }>;
   onOpenNote?: (session: SessionRow) => void;
   onClose?: () => void;
   onCancelSession: (session: SessionRow, charge: boolean | null, reason: string) => Promise<boolean> | boolean;
