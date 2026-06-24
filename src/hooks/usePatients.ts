@@ -4,52 +4,18 @@ import { DAY_ORDER } from "../data/seedData";
 import { getInitials, shortDateToISO, todayISO } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import type { TablesInsert, TablesUpdate } from "../types/db";
+import type { PatientRow, SessionRow, PaymentRow, DocumentRow, GroupMemberRow } from "../types/rows";
 import { track } from "../lib/analytics";
 import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants";
 
 // ── Domain row types ────────────────────────────────────────────────
-interface Patient {
-  id: string;
-  name: string;
-  parent?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  initials?: string | null;
-  rate?: number | null;
-  day?: string | null;
-  time?: string | null;
-  colorIdx?: number | null;
-  color_idx?: number | null;
-  status?: string;
-  scheduling_mode?: string;
-  start_date?: string | null;
-  birthdate?: string | null;
-  allergies?: string | null;
-  medical_conditions?: string | null;
-  sessions: number;
-  billed: number;
-  paid?: number;
-  opening_balance?: number | null;
-  [key: string]: unknown;
-}
-
-interface Session {
-  id: string;
-  patient_id?: string | null;
-  session_type?: string | null;
-  status?: string | null;
-  date: string;
-  time?: string | null;
-  color_idx?: number | null;
-  colorIdx?: number | null;
-  modality?: string | null;
-  cancel_reason?: string | null;
-  [key: string]: unknown;
-}
-
-interface Payment { id: string; patient_id?: string | null; [key: string]: unknown }
-interface DocumentRow { id: string; patient_id?: string | null; file_path?: string | null; [key: string]: unknown }
-interface GroupMember { patient_id?: string | null; [key: string]: unknown }
+// The patient actions read/write the shared boundary row types
+// (src/types/rows.ts). The factory touches several domains (patients +
+// their sessions/payments/documents/group memberships) on create/delete.
+type Patient = PatientRow;
+type Session = SessionRow;
+type Payment = PaymentRow;
+type GroupMember = GroupMemberRow;
 
 interface Schedule {
   day: string;

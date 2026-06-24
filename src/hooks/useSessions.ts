@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import type { Database } from "../types/supabase";
 import type { TablesInsert, TablesUpdate } from "../types/db";
+import type { PatientRow, SessionRow } from "../types/rows";
 import { DAY_ORDER } from "../data/seedData";
 import {
   PATIENT_STATUS,
@@ -18,52 +19,11 @@ import { track } from "../lib/analytics";
 export { getRecurringDates };
 
 // ── Domain row types ────────────────────────────────────────────────
-// Structural shapes the session actions read/write. Local to the module
-// (matching the rest of the migrated hooks); the index signature keeps
-// the many DB-mirrored fields the factory passes around without listing
-// every column.
-
-/** Patient fields the session path mutates. */
-interface Patient {
-  id: string;
-  name: string;
-  initials?: string | null;
-  parent?: string | null;
-  colorIdx?: number | null;
-  rate?: number | null;
-  paid?: number;
-  billed: number;
-  sessions: number;
-  day?: string | null;
-  time?: string | null;
-  status?: string;
-  [key: string]: unknown;
-}
-
-/** A session row as held in client state. */
-interface Session {
-  id: string;
-  patient_id?: string | null;
-  patient?: string | null;
-  initials?: string | null;
-  status?: string | null;
-  date: string;
-  time?: string | null;
-  day?: string | null;
-  duration?: number | null;
-  rate?: number | null;
-  modality?: string | null;
-  session_type?: string | null;
-  visit_type?: string | null;
-  cancel_reason?: string | null;
-  is_recurring?: boolean;
-  recurrence_frequency?: string | null;
-  version?: number | null;
-  color_idx?: number | null;
-  colorIdx?: number | null;
-  _optimistic?: boolean;
-  [key: string]: unknown;
-}
+// The session actions read/write the shared boundary row types
+// (src/types/rows.ts). `Patient` is the full patient row; the session path
+// touches its scheduling + counter fields.
+type Patient = PatientRow;
+type Session = SessionRow;
 
 /** Snake-cased row inserted into `sessions` (recurring generation). */
 interface SessionInsertRow {
@@ -80,6 +40,20 @@ interface SessionInsertRow {
   color_idx: number;
   is_recurring?: boolean;
   recurrence_frequency?: string;
+}
+
+/** Build an optimistic, not-yet-persisted session row from an insert
+    payload. A sessions Insert carries only the columns we set — the DB fills
+    defaults for the rest — but client state holds full SessionRow shapes, so
+    this stamps the temp id + display fields and asserts the row shape. The
+    server's returned row replaces it on reconcile. Centralizes the
+    construction the optimistic/offline paths below all repeat. */
+function optimisticSession(
+  row: TablesInsert<"sessions"> | SessionInsertRow,
+  id: string,
+  status: string = SESSION_STATUS.SCHEDULED,
+): SessionRow {
+  return { ...row, id, status, colorIdx: row.color_idx, _optimistic: true } as SessionRow;
 }
 
 /** A recurring schedule slot supplied by the UI. */
@@ -361,10 +335,7 @@ export function createSessionActions(
 
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const optimisticRow = {
-        ...row, id: tempId, status: SESSION_STATUS.SCHEDULED,
-        colorIdx: row.color_idx, _optimistic: true,
-      };
+      const optimisticRow = optimisticSession(row, tempId);
       setUpcomingSessions(prev => [...prev, optimisticRow]);
       setPatients(prev => prev.map(p => p.id === patient.id
         ? { ...p, sessions: newSessions, billed: newBilled } : p));
@@ -382,10 +353,7 @@ export function createSessionActions(
       // Transport-level failure mid-flight — queue with a temp row
       // so the user's optimistic insert isn't lost.
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const optimisticRow = {
-        ...row, id: tempId, status: SESSION_STATUS.SCHEDULED,
-        colorIdx: row.color_idx, _optimistic: true,
-      };
+      const optimisticRow = optimisticSession(row, tempId);
       setUpcomingSessions(prev => [...prev, optimisticRow]);
       setPatients(prev => prev.map(p => p.id === patient.id
         ? { ...p, sessions: newSessions, billed: newBilled } : p));
@@ -787,13 +755,8 @@ export function createSessionActions(
       // immediately. Bulk inserts use a single queue entry so the
       // bulk is replayed atomically (preserves the ordering the
       // uniq_sessions_patient_date_time index expects).
-      const optimisticRows = allRows.map((r) => ({
-        ...r,
-        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        status: SESSION_STATUS.SCHEDULED,
-        colorIdx: r.color_idx,
-        _optimistic: true,
-      }));
+      const optimisticRows = allRows.map((r) =>
+        optimisticSession(r, `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`));
       setUpcomingSessions(prev => [...prev, ...optimisticRows]);
       setPatients(prev => prev.map(p => p.id === patientId
         ? { ...p, sessions: newSessions, billed: newBilled } : p));
@@ -809,13 +772,8 @@ export function createSessionActions(
     } catch {
       // Transport-level — same shape as the offline path: optimistic
       // temp rows + queue. The bulk replays atomically on drain.
-      const optimisticRows = allRows.map((r) => ({
-        ...r,
-        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        status: SESSION_STATUS.SCHEDULED,
-        colorIdx: r.color_idx,
-        _optimistic: true,
-      }));
+      const optimisticRows = allRows.map((r) =>
+        optimisticSession(r, `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`));
       setUpcomingSessions(prev => [...prev, ...optimisticRows]);
       setPatients(prev => prev.map(p => p.id === patientId
         ? { ...p, sessions: newSessions, billed: newBilled } : p));
@@ -914,13 +872,8 @@ export function createSessionActions(
       // immediately. They get swapped for server rows on a subsequent
       // refetch (no per-row replay listener for bulk inserts — too
       // many temp ids to track individually).
-      const optimisticRows = allRows.map((r) => ({
-        ...r,
-        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        status: SESSION_STATUS.SCHEDULED,
-        colorIdx: r.color_idx,
-        _optimistic: true,
-      }));
+      const optimisticRows = allRows.map((r) =>
+        optimisticSession(r, `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`));
       if (optimisticRows.length > 0) {
         setUpcomingSessions(prev => [...prev, ...optimisticRows]);
       }
@@ -955,13 +908,8 @@ export function createSessionActions(
     } catch {
       // Transport-level — queue the whole flow with optimistic temp
       // rows so the user's edit isn't lost.
-      const optimisticRows = allRows.map((r) => ({
-        ...r,
-        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        status: SESSION_STATUS.SCHEDULED,
-        colorIdx: r.color_idx,
-        _optimistic: true,
-      }));
+      const optimisticRows = allRows.map((r) =>
+        optimisticSession(r, `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`));
       if (optimisticRows.length > 0) {
         setUpcomingSessions(prev => [...prev, ...optimisticRows]);
       }

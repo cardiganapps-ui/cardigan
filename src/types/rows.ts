@@ -24,36 +24,46 @@ type WithColorIdx = { colorIdx?: number | null };
     it (cleared once the real row replaces it). Never present on a DB read. */
 type Optimistic = { _optimistic?: boolean };
 
+/** Columns the DB assigns/maintains on write. They're present on a row read
+    back from the server, but ABSENT on an optimistic temp row that the hooks
+    insert into client state before the round-trip reconciles it. Modeled
+    optional so those temp-row literals typecheck without an escape hatch,
+    while server reads still carry them. `color_idx` joins the set because an
+    optimistic row carries the camelCase `colorIdx` delta in its place. */
+type ServerManaged = "created_at" | "updated_at" | "version" | "color_idx";
+type StateRow<T> =
+  Omit<T, ServerManaged & keyof T> & Partial<Pick<T, ServerManaged & keyof T>>;
+
 // ── Core rows ────────────────────────────────────────────────────────
 // `patients.billed/paid/sessions` are nullable in the schema but maintained
 // by DB triggers (migrations 068/069) and never observed null by the app, so
 // they're narrowed to non-null by intersection — `(number | null) & number`
 // resolves to `number`, sparing every read site a `?? 0`.
-export type PatientRow = Tables<"patients"> & WithColorIdx & {
+export type PatientRow = StateRow<Tables<"patients">> & WithColorIdx & {
   paid: number;
   billed: number;
   sessions: number;
 };
 
-export type SessionRow = Tables<"sessions"> & WithColorIdx & Optimistic & {
+export type SessionRow = StateRow<Tables<"sessions">> & WithColorIdx & Optimistic & {
   /** Set by the enrichedSessions pass when a past `scheduled` row is shown
       as `completed` (display-only — never persisted). */
   _autoCompleted?: boolean;
 };
 
-export type PaymentRow = Tables<"payments"> & WithColorIdx & Optimistic;
+export type PaymentRow = StateRow<Tables<"payments">> & WithColorIdx & Optimistic;
 
-export type NoteRow = Tables<"notes"> & Optimistic;
+export type NoteRow = StateRow<Tables<"notes">> & Optimistic;
 
-export type DocumentRow = Tables<"documents"> & Optimistic;
+export type DocumentRow = StateRow<Tables<"documents">> & Optimistic;
 
-export type ExpenseRow = Tables<"expenses"> & Optimistic;
+export type ExpenseRow = StateRow<Tables<"expenses">> & Optimistic;
 
-export type RecurringExpenseRow = Tables<"recurring_expenses"> & Optimistic;
+export type RecurringExpenseRow = StateRow<Tables<"recurring_expenses">> & Optimistic;
 
-export type MeasurementRow = Tables<"measurements">;
+export type MeasurementRow = StateRow<Tables<"measurements">>;
 
-export type GroupRow = Tables<"groups"> & WithColorIdx;
+export type GroupRow = StateRow<Tables<"groups">> & WithColorIdx;
 
 export type GroupMemberRow = Tables<"group_members">;
 

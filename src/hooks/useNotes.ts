@@ -2,25 +2,12 @@ import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import type { Database } from "../types/supabase";
 import type { TablesInsert, TablesUpdate } from "../types/db";
+import type { NoteRow } from "../types/rows";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
 // ── Domain row types ────────────────────────────────────────────────
-interface Note {
-  id: string;
-  user_id?: string;
-  patient_id?: string | null;
-  session_id?: string | null;
-  group_id?: string | null;
-  title?: string;
-  content?: string;
-  encrypted?: boolean;
-  pinned?: boolean;
-  cover_attachment_id?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  _optimistic?: boolean;
-  [key: string]: unknown;
-}
+// The note actions read/write the shared boundary row type (src/types/rows.ts).
+type Note = NoteRow;
 
 interface EncryptResult { content: string; encrypted: boolean }
 interface NoteCrypto { encrypt?: (plain: string) => EncryptResult | Promise<EncryptResult> }
@@ -199,7 +186,10 @@ export function createNoteActions(
     // Optimistic local update first so the UI can dismiss immediately.
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id
-      ? { ...n, title, content: content || "", encrypted, updated_at: nowIso }
+      // title is optional; when omitted the DB patch sends `undefined`
+      // (Supabase drops the key → server keeps the old title), so the
+      // optimistic row mirrors that instead of blanking it.
+      ? { ...n, title: title ?? n.title, content: content || "", encrypted, updated_at: nowIso }
       : n));
     // Temp-id row: the insert hasn't drained yet. Defer the edit;
     // user can re-edit after drain.
