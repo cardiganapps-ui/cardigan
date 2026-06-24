@@ -1,7 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
-
-interface NotificationRow { id: string; read?: boolean | null }
+import type { NotificationRow } from "../types/rows";
 
 /* In-app notification inbox actions (read / clear). Mirrors the optimistic-
    update + revert pattern of the other domain modules. Rows are created

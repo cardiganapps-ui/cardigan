@@ -65,7 +65,7 @@ export type MeasurementRow = StateRow<Tables<"measurements">>;
 
 export type GroupRow = StateRow<Tables<"groups">> & WithColorIdx;
 
-export type GroupMemberRow = Tables<"group_members">;
+export type GroupMemberRow = StateRow<Tables<"group_members">> & Optimistic;
 
 export type NotificationRow = Tables<"notifications">;
 

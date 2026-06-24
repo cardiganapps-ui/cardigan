@@ -22,47 +22,16 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import type { TablesInsert, TablesUpdate } from "../types/db";
+import type { ExpenseRow, RecurringExpenseRow } from "../types/rows";
 import { computeRecurringExpenseRows } from "../utils/recurrence";
 import { shortDateToISO } from "../utils/dates";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
 // ── Domain row types ────────────────────────────────────────────────
-interface Expense {
-  id: string;
-  user_id?: string;
-  amount: number;
-  category?: string;
-  date?: string;
-  description?: string | null;
-  payment_method?: string | null;
-  tax_treatment?: string;
-  cfdi_uuid?: string | null;
-  cfdi_url?: string | null;
-  recurring_id?: string | null;
-  period_year?: number | null;
-  period_month?: number | null;
-  receipt_document_id?: string | null;
-  note?: string | null;
-  color_idx?: number | null;
-  _optimistic?: boolean;
-  [key: string]: unknown;
-}
-
-interface RecurringTemplate {
-  id: string;
-  user_id?: string;
-  amount: number;
-  category?: string;
-  description?: string | null;
-  day_of_month: number;
-  payment_method?: string | null;
-  tax_treatment?: string;
-  active?: boolean;
-  start_year?: number;
-  start_month?: number;
-  paused_at?: string | null;
-  [key: string]: unknown;
-}
+// The expense actions read/write the shared boundary row types
+// (src/types/rows.ts).
+type Expense = ExpenseRow;
+type RecurringTemplate = RecurringExpenseRow;
 
 interface PendingSlot { recurring_id: string; year: number; month: number }
 

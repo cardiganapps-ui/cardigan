@@ -1,25 +1,16 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import type { TablesUpdate } from "../types/db";
+import type { MeasurementRow } from "../types/rows";
 
 // ── Domain row types ────────────────────────────────────────────────
-interface Measurement {
-  id: string;
-  user_id?: string;
-  patient_id?: string | null;
-  taken_at?: string;
-  scanned_at?: string | null;
-  source?: string | null;
-  weight_kg?: number | null;
-  waist_cm?: number | null;
-  hip_cm?: number | null;
-  body_fat_pct?: number | null;
-  notes?: string | null;
-  created_at?: string;
-  [key: string]: unknown;
-}
+// The measurement actions read/write the shared boundary row type
+// (src/types/rows.ts).
+type Measurement = MeasurementRow;
 
-/** A row mapped from an InBody/LookinBody CSV import (pre-insert). */
+/** A row mapped from an InBody/LookinBody CSV import (pre-insert). The
+    index signature is intentional here — this is transient parser data with
+    dynamic CSV columns, not a typed DB boundary row. */
 interface ImportRow {
   scanned_at?: string;
   _name?: string;
