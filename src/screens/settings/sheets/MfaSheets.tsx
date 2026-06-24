@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useT } from "../../../i18n/index";
 import { IconX } from "../../../components/Icons";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── MFA sheets (enroll + manage) ─────────────────────────────────────
    Extracted from Settings.tsx. The shared `mfa` instance (useMfa) lives
@@ -57,8 +58,8 @@ export function MfaSheets({ mode, mfa, onClose, showToast, setSheetPanel, sheetP
 
   if (mode === "enroll") {
     return (
-      <div className="sheet-overlay" onClick={() => { if (!mfaBusy) { mfa.cancelEnroll(); onClose(); } }}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+      <SheetOverlay onClose={() => { if (!mfaBusy) { mfa.cancelEnroll(); onClose(); } }}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.mfaEnrollTitle")}</span>
@@ -134,7 +135,7 @@ export function MfaSheets({ mode, mfa, onClose, showToast, setSheetPanel, sheetP
             </div>
           </div>
         </div>
-      </div>
+      </SheetOverlay>
     );
   }
 
@@ -143,8 +144,8 @@ export function MfaSheets({ mode, mfa, onClose, showToast, setSheetPanel, sheetP
     // open time before, now read straight off the shared instance.
     const unenrollId = mfa.factors?.[0]?.id;
     return (
-      <div className="sheet-overlay" onClick={() => !mfaBusy && onClose()}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+      <SheetOverlay onClose={() => !mfaBusy && onClose()}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.mfaTitle")}</span>
@@ -187,7 +188,7 @@ export function MfaSheets({ mode, mfa, onClose, showToast, setSheetPanel, sheetP
             </div>
           </div>
         </div>
-      </div>
+      </SheetOverlay>
     );
   }
 

@@ -5,6 +5,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { IconX, IconCheck } from "../Icons";
+import { SheetOverlay } from "../SheetOverlay";
 import { haptic } from "../../utils/haptics";
 import type { TileState } from "./useAttachmentSrc";
 
@@ -79,14 +80,13 @@ export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, current
   const hasAnyAttachments = (attachmentRows || []).length > 0;
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
+    <SheetOverlay exiting={exiting} onClose={safeAnimatedClose || undefined}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("notes.cover.title")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
       >
         <div className="sheet-handle" />
@@ -198,6 +198,6 @@ export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, current
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

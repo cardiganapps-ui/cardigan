@@ -11,6 +11,7 @@ import { DAY_ORDER } from "../../data/seedData";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, SCHEDULING_MODE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
 import { SegmentedControl } from "../SegmentedControl";
 import { haptic } from "../../utils/haptics";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── SetWeeklySlotSheet ──────────────────────────────────────────────
    Episodic → recurring switch. Fires from the Resumen tab when an
@@ -120,14 +121,13 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }: {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={submitting ? undefined : animatedClose} role="presentation">
+    <SheetOverlay exiting={exiting} onClose={submitting ? undefined : animatedClose} role="presentation">
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="set-slot-title"
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}>
         <div className="sheet-handle" aria-hidden />
         <div className="sheet-header">
@@ -247,6 +247,6 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }: {
           </div>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

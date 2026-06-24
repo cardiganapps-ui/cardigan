@@ -9,6 +9,7 @@ import { useSheetExit } from "../hooks/useSheetExit";
 import { IconX, IconStar } from "./Icons";
 import { track } from "../lib/analytics";
 import { haptic } from "../utils/haptics";
+import { SheetOverlay } from "./SheetOverlay";
 
 /* ── RatingSheet ──────────────────────────────────────────────────────
    1-5 stars + optional comment, captured at structured prompts:
@@ -150,14 +151,13 @@ export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }: 
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={dismiss}>
+    <SheetOverlay exiting={exiting} onClose={dismiss}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("rating.title")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
@@ -283,7 +283,7 @@ export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }: 
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }
 

@@ -7,6 +7,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useCardiganMain } from "../../context/CardiganContext";
+import { SheetOverlay } from "../SheetOverlay";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed rows
 type Row = any;
@@ -111,8 +112,8 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
   const selectedPatient = (patients || []).find((p: Row) => p.id === patientId);
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))", overflowY:"auto" }}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))", overflowY:"auto" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("docs.upload")}</span>
@@ -214,6 +215,6 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

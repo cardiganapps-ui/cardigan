@@ -6,6 +6,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { IconX, IconCheck } from "../../components/Icons";
+import { SheetOverlay } from "../../components/SheetOverlay";
 import { usesAnthropometrics } from "../../data/constants";
 import { haptic } from "../../utils/haptics";
 import { todayISO } from "../../utils/dates";
@@ -165,14 +166,13 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
   const profession = PROFESSION_LABEL[therapistProfession || ""] || PROFESSION_LABEL.psychologist;
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <SheetOverlay onClose={onClose}>
       <div
         ref={setPanel}
         className="sheet-panel"
         role="dialog"
         aria-modal="true"
         aria-label={t("intake.title")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
         style={{ maxHeight: "92vh" }}
       >
@@ -359,6 +359,6 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
           </button>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

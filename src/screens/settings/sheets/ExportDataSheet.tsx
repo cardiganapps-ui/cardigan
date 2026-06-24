@@ -5,6 +5,7 @@ import { supabase } from "../../../supabaseClient";
 import { PasswordInput } from "../../../components/PasswordInput";
 import { TurnstileWidget, TURNSTILE_ENABLED } from "../../../components/TurnstileWidget";
 import { reauthMessageFor } from "./reauthMessage";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Export-my-data sheet (ARCO Acceso) ───────────────────────────────
    Extracted from Settings.tsx. Step-up password gate before issuing the
@@ -95,8 +96,8 @@ export function ExportDataSheet({ open, onClose, showToast, setSheetPanel, sheet
   if (!open) return null;
 
   return (
-    <div className="sheet-overlay" onClick={() => !exporting && onClose()}>
-      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+    <SheetOverlay onClose={() => !exporting && onClose()}>
+      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("settings.privacyExport")}</span>
@@ -144,6 +145,6 @@ export function ExportDataSheet({ open, onClose, showToast, setSheetPanel, sheet
           </div>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

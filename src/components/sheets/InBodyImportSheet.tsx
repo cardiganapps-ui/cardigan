@@ -8,6 +8,7 @@ import { useSheetExit } from "../../hooks/useSheetExit";
 import { useCardiganMain } from "../../context/CardiganContext";
 import { parseInBodyCSV, parseInBodyXLSX } from "../../utils/inbody";
 import { haptic } from "../../utils/haptics";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── InBodyImportSheet ───────────────────────────────────────────
    Three-step bottom sheet for ingesting a LookinBody CSV export
@@ -185,14 +186,13 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }: {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose} role="presentation">
+    <SheetOverlay exiting={exiting} onClose={animatedClose} role="presentation">
       <div
         ref={setPanel}
         className={`sheet-panel inbody-import-sheet ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="inbody-import-title"
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}>
         <div className="sheet-handle" aria-hidden />
         <div className="sheet-header">
@@ -323,7 +323,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }: {
           </div>
         )}
       </div>
-    </div>
+    </SheetOverlay>
   );
 }
 

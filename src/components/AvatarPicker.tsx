@@ -12,6 +12,7 @@ import { invalidateAvatarUrl, setAvatarUrl, useAvatarUrl } from "../hooks/useAva
 import { useCardiganMain } from "../context/CardiganContext";
 import { AVATAR_PRESETS, presetUrl, isPresetId } from "../data/avatarPresets";
 import { AvatarCropEditor } from "./AvatarCropEditor";
+import { SheetOverlay } from "./SheetOverlay";
 
 /* ── Cardigan avatar picker ─────────────────────────────────────────
    Bottom sheet with two ways to set a profile photo:
@@ -282,14 +283,13 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }: {
   const selectedPresetId = draft.kind === KIND_PRESET ? draft.id : null;
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("avatar.title") || "Cambiar foto"}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
       >
         <div className="sheet-handle" />
@@ -408,7 +408,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }: {
         </div>
         )}
       </div>
-    </div>
+    </SheetOverlay>
   );
 }
 

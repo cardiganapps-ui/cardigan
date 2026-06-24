@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useT } from "../../../i18n/index";
 import { IconX, IconLock, IconCheck } from "../../../components/Icons";
 import { PasswordInput } from "../../../components/PasswordInput";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Note-encryption sheets (setup / change / disable) ────────────────
    Extracted from Settings.tsx. The shared noteCrypto bag lives in context
@@ -98,8 +99,8 @@ export function EncryptionSheets({ mode, onClose, onNavigate, noteCrypto, showTo
 
   if (mode === "main") {
     return (
-      <div className="sheet-overlay" onClick={() => !encBusy && onClose()}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+      <SheetOverlay onClose={() => !encBusy && onClose()}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.encryptionTitle")}</span>
@@ -164,14 +165,14 @@ export function EncryptionSheets({ mode, onClose, onNavigate, noteCrypto, showTo
             )}
           </div>
         </div>
-      </div>
+      </SheetOverlay>
     );
   }
 
   if (mode === "change") {
     return (
-      <div className="sheet-overlay" onClick={() => !encBusy && onClose()}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+      <SheetOverlay onClose={() => !encBusy && onClose()}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.encChange")}</span>
@@ -197,14 +198,14 @@ export function EncryptionSheets({ mode, onClose, onNavigate, noteCrypto, showTo
             </div>
           </div>
         </div>
-      </div>
+      </SheetOverlay>
     );
   }
 
   if (mode === "disable") {
     return (
-      <div className="sheet-overlay" onClick={() => !encBusy && onClose()}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+      <SheetOverlay onClose={() => !encBusy && onClose()}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.encDisable")}</span>
@@ -244,7 +245,7 @@ export function EncryptionSheets({ mode, onClose, onNavigate, noteCrypto, showTo
             </div>
           </div>
         </div>
-      </div>
+      </SheetOverlay>
     );
   }
 

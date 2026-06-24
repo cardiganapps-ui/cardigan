@@ -14,6 +14,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { haptic } from "../../utils/haptics";
 import { RescheduleSessionSheet } from "./RescheduleSessionSheet";
+import { SheetOverlay } from "../../components/SheetOverlay";
 
 /* ── PatientAgenda ─────────────────────────────────────────────────
    Friendly chronological list of all upcoming sessions. Past versions
@@ -513,9 +514,9 @@ function SessionManageSheet({ session, pending, withdrawing, onClose, onReschedu
   const isFuture = sessionStartMs(session) > openedAt;
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <SheetOverlay onClose={onClose}>
       <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true"
-        onClick={(e) => e.stopPropagation()} {...panelHandlers}
+        {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
@@ -671,7 +672,7 @@ function SessionManageSheet({ session, pending, withdrawing, onClose, onReschedu
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }
 

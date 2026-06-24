@@ -9,6 +9,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useLayer } from "../../hooks/useLayer";
 import { getClientColor } from "../../data/seedData";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* Multi-select existing active patients to add to a group. Already-active
    members are excluded from the list. "Agregar" batches addMembers, which
@@ -51,8 +52,8 @@ export function MembersPickerSheet({ groupId, existingPatientIds, onClose }: {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(88lvh, calc(100lvh - var(--sat) - 16px))" }}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(88lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("groups.addMembers")}</span>
@@ -90,6 +91,6 @@ export function MembersPickerSheet({ groupId, existingPatientIds, onClose }: {
           </button>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

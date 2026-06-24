@@ -10,6 +10,7 @@ import { useSheetExit } from "../../hooks/useSheetExit";
 import { useLayer } from "../../hooks/useLayer";
 import { getClientColor } from "../../data/seedData";
 import { SESSION_STATUS } from "../../data/constants";
+import { SheetOverlay } from "../SheetOverlay";
 
 // Same status vocabulary + colors as the individual SessionSheet (the
 // canonical sessions.* labels and the .status-* color system), so a group
@@ -63,8 +64,8 @@ export function GroupOccurrenceSheet({ group, occurrence, onClose }: {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(90lvh, calc(100lvh - var(--sat) - 16px))" }}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(90lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{group.name}</span>
@@ -129,6 +130,6 @@ export function GroupOccurrenceSheet({ group, occurrence, onClose }: {
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

@@ -11,6 +11,7 @@ import type { MarkdownEditorHandle } from "./notes/MarkdownEditor";
 import { captureMessage } from "../lib/sentry";
 import { useAttachmentSrc } from "./notes/useAttachmentSrc";
 import { CoverPickerSheet } from "./notes/CoverPickerSheet";
+import { SheetOverlay } from "./SheetOverlay";
 import { FormatToolbar } from "./notes/FormatToolbar";
 import { NoteContextChip } from "./notes/NoteContextChip";
 import { FindInNote } from "./notes/FindInNote";
@@ -888,8 +889,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
 
       {/* ── Delete confirmation modal ─────────────────────────── */}
       {confirmDelete && (
-        <div className="sheet-overlay" onClick={() => setConfirmDelete(false)} style={{ alignItems: "center" }}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
+        <SheetOverlay onClose={() => setConfirmDelete(false)} style={{ alignItems: "center" }}>
+          <div className="sheet-panel" role="dialog" aria-modal="true"
             style={{ maxWidth: 340, borderRadius: "var(--radius-lg)", margin: "0 20px", animation: "sheetScaleIn 0.45s var(--ease-spring)" }}>
             <div style={{ padding: "28px 24px 22px", textAlign: "center" }}>
               <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--red-bg)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
@@ -910,7 +911,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
               </button>
             </div>
           </div>
-        </div>
+        </SheetOverlay>
       )}
 
       {/* ── Body (title + markdown editor) ────────────────────── */}
@@ -1065,13 +1066,12 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
 
       {/* ── Outline drawer / sheet ──────────────────────────────── */}
       {outlineOpen && (
-        <div className="sheet-overlay" onClick={() => setOutlineOpen(false)}>
+        <SheetOverlay onClose={() => setOutlineOpen(false)}>
           <div
             className="sheet-panel mde-outline-sheet"
             role="dialog"
             aria-modal="true"
             aria-label={t("notes.outline")}
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="sheet-handle" />
             <NoteOutline
@@ -1081,7 +1081,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
               activeLine={activeHeadingLine}
             />
           </div>
-        </div>
+        </SheetOverlay>
       )}
 
       {/* ── Version history sheet ────────────────────────────────── */}

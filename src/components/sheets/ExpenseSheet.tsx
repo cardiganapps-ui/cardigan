@@ -17,6 +17,7 @@ import { formatMXN } from "../../utils/format";
 import { supabase } from "../../supabaseClient";
 import { isNative } from "../../lib/platform";
 import { takePhoto } from "../../lib/nativeCamera";
+import { SheetOverlay } from "../SheetOverlay";
 
 const LAST_CATEGORY_KEY = "cardigan.lastExpenseCategory";
 
@@ -297,9 +298,9 @@ export function ExpenseSheet({ editingExpense, onClose }: { editingExpense?: Row
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
+    <SheetOverlay exiting={exiting} onClose={safeAnimatedClose || undefined}>
       <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
-        onClick={(e) => e.stopPropagation()} {...panelHandlers}
+        {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
@@ -609,6 +610,6 @@ export function ExpenseSheet({ editingExpense, onClose }: { editingExpense?: Row
           </div>
         </form>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

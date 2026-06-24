@@ -5,6 +5,7 @@ import { ProValueWidget } from "../../../components/ProValueWidget";
 import { billingSummary } from "../../../utils/subscriptionStatus";
 import { formatMXNCents, formatDate } from "../../../utils/format";
 import { isNative, isIOS } from "../../../lib/platform";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Plan / Suscripción sheet ─────────────────────────────────────────
    Extracted from Settings.tsx — the largest single sheet (status hero,
@@ -49,8 +50,8 @@ export function PlanSheet({
   const { t } = useT();
   if (!open) return null;
   return (
-        <div className="sheet-overlay" onClick={() => !subBusy && setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+        <SheetOverlay onClose={() => !subBusy && setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.subscriptionTitle")}</span>
@@ -428,6 +429,6 @@ export function PlanSheet({
               })()}
             </div>
           </div>
-        </div>
+        </SheetOverlay>
   );
 }

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { IconX } from "./Icons";
+import { SheetOverlay } from "./SheetOverlay";
 
 /**
  * Contextual help anchored to a small "?" button in the top bar.
@@ -60,12 +61,11 @@ export function HelpTip({ tipsKey, variant = "default" }: { tipsKey: string; var
         // backdrop-filter, which creates a containing block that would
         // trap the position:fixed overlay inside the bar. Rendering at
         // the body root lets the sheet anchor to the viewport.
-        <div className="sheet-overlay" onClick={() => setOpen(false)}>
+        <SheetOverlay onClose={() => setOpen(false)}>
           <div
             className="sheet-panel help-tip-sheet"
             role="dialog"
             aria-label={ariaLabel}
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="sheet-handle" />
             <div className="sheet-header">
@@ -80,7 +80,7 @@ export function HelpTip({ tipsKey, variant = "default" }: { tipsKey: string; var
               </ul>
             </div>
           </div>
-        </div>,
+        </SheetOverlay>,
         document.body
       )}
     </>

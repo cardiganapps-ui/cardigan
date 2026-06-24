@@ -7,6 +7,7 @@ import { PushInstallCard } from "../../../components/PushInstallCard";
 import { NextRemindersPreview } from "../NextRemindersPreview";
 import { haptic } from "../../../utils/haptics";
 import { notifErrorKey } from "./notifErrorKey";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Notifications sheet ───────────────────────────────────────────────
    Extracted from Settings.tsx. PRESENTATIONAL: the notifications hook,
@@ -40,8 +41,8 @@ export function NotificationsSheet({
   const { t } = useT();
   if (!open) return null;
   return (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+        <SheetOverlay onClose={() => setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.notificationsRowTitle")}</span>
@@ -218,6 +219,6 @@ export function NotificationsSheet({
               )}
             </div>
           </div>
-        </div>
+        </SheetOverlay>
   );
 }

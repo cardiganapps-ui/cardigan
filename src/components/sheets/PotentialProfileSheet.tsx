@@ -13,6 +13,7 @@ import { formatPhoneMX, phoneHref, emailHref, phoneDigits } from "../../utils/co
 import { formatMXN } from "../../utils/format";
 import { isNative } from "../../lib/platform";
 import { launchUrl } from "../../lib/nativeBrowser";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── PotentialProfileSheet ────────────────────────────────────────
    Slim profile for a 'potential' patient. Deliberately NOT the full
@@ -99,8 +100,8 @@ export function PotentialProfileSheet({
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">
@@ -313,7 +314,7 @@ export function PotentialProfileSheet({
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }
 

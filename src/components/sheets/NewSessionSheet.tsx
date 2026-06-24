@@ -10,6 +10,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic } from "../../data/constants";
 import { formatMXN } from "../../utils/format";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* For episodic patients, the natural default is "next visit two weeks
    out" (the most common nutrition cadence during plan rollout) — not
@@ -122,8 +123,8 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("sessions.schedule")}</span>
@@ -215,6 +216,6 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
           </div>
         </form>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useT } from "../../../i18n/index";
 import { IconX, IconKey } from "../../../components/Icons";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Passkeys sheet ───────────────────────────────────────────────────
    Extracted from Settings.tsx. Lists the user's WebAuthn passkeys and
@@ -33,8 +34,8 @@ export function PasskeysSheet({ open, onClose, passkeys, showToast, setSheetPane
   return (
     <>
       {open && (
-        <div className="sheet-overlay" onClick={() => !passkeys.busy && onClose()}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+        <SheetOverlay onClose={() => !passkeys.busy && onClose()}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.passkeySheetTitle")}</span>
@@ -100,7 +101,7 @@ export function PasskeysSheet({ open, onClose, passkeys, showToast, setSheetPane
               </div>
             </div>
           </div>
-        </div>
+        </SheetOverlay>
       )}
 
       <ConfirmDialog

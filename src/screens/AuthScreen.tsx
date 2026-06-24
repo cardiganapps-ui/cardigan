@@ -12,6 +12,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { isNative } from "../lib/platform";
 import { MONETIZATION_ENABLED } from "../config/monetization";
+import { SheetOverlay } from "../components/SheetOverlay";
 
 // Google OAuth is gated behind an explicit env flag because the provider
 // is NOT configured in Supabase (external_google_enabled=false, no client
@@ -781,11 +782,11 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onPass
       </div>
 
       {showAuth && (
-        <div
-          className="sheet-overlay sheet-overlay--no-blur"
-          onClick={() => setShowAuth(false)}
+        <SheetOverlay
+          className="sheet-overlay--no-blur"
+          onClose={() => setShowAuth(false)}
         >
-          <div ref={setAuthPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...authPanelHandlers}>
+          <div ref={setAuthPanel} className="sheet-panel" role="dialog" aria-modal="true" {...authPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               {/* Brand lockup replaces the redundant mode-name title — the
@@ -816,7 +817,7 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onPass
               <AuthForm mode={authMode} setMode={setAuthMode} onSignIn={onSignIn} onSignUp={onSignUp} onProvider={onProvider} onMagicLink={onMagicLink} onPasskey={onPasskey} t={t} />
             </div>
           </div>
-        </div>
+        </SheetOverlay>
       )}
     </>
   );

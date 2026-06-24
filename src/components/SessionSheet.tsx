@@ -14,6 +14,7 @@ import { useSheetExit } from "../hooks/useSheetExit";
 import { useCardiganMain } from "../context/CardiganContext";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, SESSION_STATUS } from "../data/constants";
 import { formatMXN } from "../utils/format";
+import { SheetOverlay } from "./SheetOverlay";
 
 // Session/patient rows come through the loosely-typed Cardigan data
 // layer; model the fields this sheet actually reads.
@@ -131,8 +132,8 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title" style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -470,6 +471,6 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

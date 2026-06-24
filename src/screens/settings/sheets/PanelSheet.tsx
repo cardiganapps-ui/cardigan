@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useT } from "../../../i18n/index";
 import { IconX } from "../../../components/Icons";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── PanelSheet ───────────────────────────────────────────────────────
    Generic sheet shell for the Settings sheets that are just a titled
@@ -27,8 +28,8 @@ export function PanelSheet({ open, title, onClose, setSheetPanel, sheetPanelHand
   const { t } = useT();
   if (!open) return null;
   return (
-        <div className="sheet-overlay" onClick={onClose}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+        <SheetOverlay onClose={onClose}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{title}</span>
@@ -38,6 +39,6 @@ export function PanelSheet({ open, title, onClose, setSheetPanel, sheetPanelHand
               {children}
             </div>
           </div>
-        </div>
+        </SheetOverlay>
   );
 }

@@ -4,6 +4,7 @@ import { IconClipboard, IconX, IconPlus, IconSun } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass, statusLabel, railClass } from "../utils/sessions";
 import { ActivationChecklist } from "../components/ActivationChecklist";
+import { SheetOverlay } from "../components/SheetOverlay";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -760,8 +761,8 @@ export function Home({ setScreen, userName }: HomeProps) {
       )}
 
       {selected && (
-        <div className="sheet-overlay" onClick={() => setSelected(null)}>
-          <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...selectedPanelHandlers}>
+        <SheetOverlay onClose={() => setSelected(null)}>
+          <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" {...selectedPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("home.balanceDetail")}</span>
@@ -808,7 +809,7 @@ export function Home({ setScreen, userName }: HomeProps) {
               </div>
             </div>
           </div>
-        </div>
+        </SheetOverlay>
       )}
 
       {rescheduleSheetOpen && (

@@ -5,6 +5,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { CalendarLinkPanel } from "../CalendarLinkPanel";
+import { SheetOverlay } from "../SheetOverlay";
 
 export function CalendarLinkSheet({ onClose, readOnly = false }: { onClose: () => void; readOnly?: boolean }) {
   const { t } = useT();
@@ -19,7 +20,7 @@ export function CalendarLinkSheet({ onClose, readOnly = false }: { onClose: () =
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
       {/* No inline maxHeight — defer to .sheet-panel's `max-height: 85svh`
           in screens.css. On Capacitor iOS the `html.cap-native { zoom: 0.88 }`
           rule interacts strangely with viewport-relative units inside
@@ -35,7 +36,6 @@ export function CalendarLinkSheet({ onClose, readOnly = false }: { onClose: () =
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
-        onClick={e => e.stopPropagation()}
         {...panelHandlers}
         style={{ display: "flex", flexDirection: "column" }}>
         <div className="sheet-handle" />
@@ -47,6 +47,6 @@ export function CalendarLinkSheet({ onClose, readOnly = false }: { onClose: () =
           <CalendarLinkPanel readOnly={readOnly} />
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

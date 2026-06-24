@@ -13,6 +13,7 @@ import {
   PAYMENT_METHOD, TAX_TREATMENT, TAX_TREATMENTS,
 } from "../../data/constants";
 import { MoneyInput } from "../MoneyInput";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* Manager for recurring expense templates. Listed in this single sheet
    so a therapist juggling 3-4 templates (rent, software, supervisión,
@@ -129,9 +130,9 @@ export function RecurringExpenseSheet({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
+    <SheetOverlay exiting={exiting} onClose={safeAnimatedClose || undefined}>
       <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
-        onClick={(e) => e.stopPropagation()} {...panelHandlers}
+        {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
@@ -328,6 +329,6 @@ export function RecurringExpenseSheet({ onClose }: { onClose: () => void }) {
           })}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

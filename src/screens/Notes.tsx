@@ -4,6 +4,7 @@ import { haptic } from "../utils/haptics";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { SwipeableRow } from "../components/SwipeableRow";
 import { EmptyState } from "../components/EmptyState";
+import { SheetOverlay } from "../components/SheetOverlay";
 import { TagFilterPills } from "../components/notes/TagFilterPills";
 import { NoteTagPicker } from "../components/notes/NoteTagPicker";
 import { useCardiganMain } from "../context/CardiganContext";
@@ -383,8 +384,8 @@ export function Notes() {
 
       {/* Long-press properties sheet */}
       {propsNote && (
-        <div className="sheet-overlay" onClick={() => setPropsNote(null)}>
-          <div ref={setPropsPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...propsPanelHandlers}>
+        <SheetOverlay onClose={() => setPropsNote(null)}>
+          <div ref={setPropsPanel} className="sheet-panel" role="dialog" aria-modal="true" {...propsPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{propsNote.title || t("notes.noTitle")}</span>
@@ -454,13 +455,13 @@ export function Notes() {
               </div>
             </div>
           </div>
-        </div>
+        </SheetOverlay>
       )}
 
       {/* Delete confirmation modal (long-press sheet) */}
       {confirmDeleteProps && propsNote && (
-        <div className="sheet-overlay" onClick={() => setConfirmDeleteProps(false)} style={{ alignItems:"center" }}>
-          <div ref={(el) => { confirmDeletePropsRef.current = el; }} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
+        <SheetOverlay onClose={() => setConfirmDeleteProps(false)} style={{ alignItems:"center" }}>
+          <div ref={(el) => { confirmDeletePropsRef.current = el; }} className="sheet-panel" role="dialog" aria-modal="true"
             style={{ maxWidth:340, borderRadius:"var(--radius-lg)", margin:"0 20px", animation:"slideUp 0.5s ease" }}>
             <div style={{ padding:"28px 24px 22px", textAlign:"center" }}>
               <div style={{ width:56, height:56, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
@@ -487,7 +488,7 @@ export function Notes() {
               </button>
             </div>
           </div>
-        </div>
+        </SheetOverlay>
       )}
     </div>
     {isTabletSplit && (

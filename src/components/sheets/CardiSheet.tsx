@@ -10,6 +10,7 @@ import { useCardigan } from "../../context/CardiganContext";
 import { useCardiChat } from "../../hooks/useCardiChat";
 import { useCardiConsent } from "../../hooks/useCardiConsent";
 import { CardiConsentGate } from "../CardiConsentGate";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── CardiSheet ───────────────────────────────────────────────────────
    Bottom sheet hosting the Cardi AI helper. Same structural shape as
@@ -130,14 +131,13 @@ export function CardiSheet({ open, onClose }: { open?: boolean; onClose?: () => 
   const showLoading = consent.state === "unknown";
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("cardi.title")}
-        onClick={e => e.stopPropagation()}
         {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))", display: "flex", flexDirection: "column" }}
       >
@@ -312,7 +312,7 @@ export function CardiSheet({ open, onClose }: { open?: boolean; onClose?: () => 
         </div>
         )}
       </div>
-    </div>
+    </SheetOverlay>
   );
 }
 

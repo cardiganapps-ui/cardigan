@@ -10,6 +10,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useLayer } from "../../hooks/useLayer";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, RECURRENCE_FREQUENCY } from "../../data/constants";
+import { SheetOverlay } from "../SheetOverlay";
 
 const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const FREQ_OPTS = [
@@ -54,8 +55,8 @@ export function GroupScheduleSheet({ group, onClose }: { group: Row; onClose: ()
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={mutating ? undefined : animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(90lvh, calc(100lvh - var(--sat) - 16px))" }}>
+    <SheetOverlay exiting={exiting} onClose={mutating ? undefined : animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(90lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("groups.schedule")}</span>
@@ -114,6 +115,6 @@ export function GroupScheduleSheet({ group, onClose }: { group: Row; onClose: ()
           </button>
         </form>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

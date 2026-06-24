@@ -1,5 +1,6 @@
 import { useT } from "../../../i18n/index";
 import { IconX, IconCheck } from "../../../components/Icons";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Editar perfil sheet ──────────────────────────────────────────────
    Extracted from Settings.tsx. PRESENTATIONAL: the edit-name field state,
@@ -29,8 +30,8 @@ export function ProfileSheet({
   const { t } = useT();
   if (!open) return null;
   return (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+        <SheetOverlay onClose={() => setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.editProfile")}</span>
@@ -51,6 +52,6 @@ export function ProfileSheet({
               </button>
             </div>
           </div>
-        </div>
+        </SheetOverlay>
   );
 }

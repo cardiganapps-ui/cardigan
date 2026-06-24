@@ -18,6 +18,7 @@ import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_M
 import { findEmptySlot } from "../../utils/scheduleSlots";
 import { detectScheduleConflicts } from "../../utils/scheduleConflicts";
 import { buildNewPatientPayload, buildPotentialPayload, type Schedule, type NewPatientFormState } from "./newPatientPayload";
+import { SheetOverlay } from "../SheetOverlay";
 
 // Loosely-typed patient/session rows. The form's schedule-row shape
 // (Schedule) + the submit payload builders live in ./newPatientPayload;
@@ -353,7 +354,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     : "minmax(86px, 1.1fr) minmax(64px, 0.85fr) minmax(48px, 0.6fr) minmax(94px, 1.2fr)";
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={submitting ? undefined : animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={submitting ? undefined : animatedClose}>
       {/* maxHeight clamps to leave the status bar / Dynamic Island
           uncovered. The previous 92vh value didn't subtract the safe-
           area-inset-top, so on notched iPhones the sheet pushed up
@@ -368,7 +369,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
           overflow/containment combinations differ enough across iOS
           Safari versions that a flex-pinned footer is the only
           bulletproof option. */}
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))", position:"relative", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))", position:"relative", display:"flex", flexDirection:"column", overflow:"hidden" }}>
         {submitting && (
           <div role="status" aria-live="polite"
             style={{ position:"absolute", inset:0, background:"var(--white)", zIndex:2,
@@ -1088,6 +1089,6 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
           </div>
         </form>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

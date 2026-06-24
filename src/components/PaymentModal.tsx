@@ -11,6 +11,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useSheetExit } from "../hooks/useSheetExit";
 import { haptic } from "../utils/haptics";
 import { formatMXN } from "../utils/format";
+import { SheetOverlay } from "./SheetOverlay";
 
 export function PaymentModal({ open, onClose, initialPatientName, initialAmount, editingPayment }: {
   open?: boolean;
@@ -124,8 +125,8 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{isEditing ? t("finances.editPayment") : t("finances.recordPayment")}</span>
@@ -197,6 +198,6 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
           </div>
         </form>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

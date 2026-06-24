@@ -4,6 +4,7 @@ import { haptic } from "../utils/haptics";
 import { IconCheck, IconDocument, IconLock, IconCalendar, IconX } from "./Icons";
 import { useSheetExit } from "../hooks/useSheetExit";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { SheetOverlay } from "./SheetOverlay";
 
 /* ── SubscriptionSuccess ──────────────────────────────────────────────
    Celebration modal that fires once per user on the very first
@@ -106,9 +107,9 @@ export function SubscriptionSuccess({ open, onClose }: { open?: boolean; onClose
   ];
 
   return (
-    <div
-      className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`}
-      onClick={animatedClose}
+    <SheetOverlay
+      exiting={exiting}
+      onClose={animatedClose}
       style={{
         opacity: mounted ? 1 : 0,
         transition: "opacity 0.28s ease",
@@ -127,7 +128,6 @@ export function SubscriptionSuccess({ open, onClose }: { open?: boolean; onClose
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: 420,
           transform: mounted ? "scale(1) translateY(0)" : "scale(0.92) translateY(8px)",
@@ -203,6 +203,6 @@ export function SubscriptionSuccess({ open, onClose }: { open?: boolean; onClose
           </button>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

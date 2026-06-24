@@ -7,6 +7,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { IconX } from "../Icons";
+import { SheetOverlay } from "../SheetOverlay";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { diffLines, diffSummary } from "../../lib/noteDiff";
 import { formatDate } from "../../utils/format";
@@ -166,14 +167,13 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }: {
   if (!open) return null;
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("notes.historyTitle")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
         style={{ maxHeight: "85vh", display: "flex", flexDirection: "column" }}
       >
@@ -317,7 +317,7 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }: {
         onConfirm={() => pendingRestore && restore(pendingRestore)}
         onCancel={() => setPendingRestore(null)}
       />
-    </div>
+    </SheetOverlay>
   );
 }
 

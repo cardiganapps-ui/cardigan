@@ -11,6 +11,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { haptic } from "../../utils/haptics";
 import { parseFolderLink, shortenForDisplay } from "../../utils/folderLinks";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── ShareFolderSheet ─────────────────────────────────────────────
    Receiver UI for the PWA's Web Share Target. When the user opens
@@ -151,14 +152,13 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }: {
   // retry from the source app.
   if (!parsed.valid) {
     return (
-      <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+      <SheetOverlay exiting={exiting} onClose={animatedClose}>
         <div
           ref={setPanel}
           className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
           role="dialog"
           aria-modal="true"
           aria-label={t("expediente.folder.shareSheetTitle")}
-          onClick={(e) => e.stopPropagation()}
           {...panelHandlers}
         >
           <div className="sheet-handle" />
@@ -192,19 +192,18 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }: {
             </button>
           </div>
         </div>
-      </div>
+      </SheetOverlay>
     );
   }
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("expediente.folder.shareSheetTitle")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}
       >
@@ -458,6 +457,6 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }: {
         }}
         onCancel={() => setPendingOverwrite(null)}
       />
-    </div>
+    </SheetOverlay>
   );
 }

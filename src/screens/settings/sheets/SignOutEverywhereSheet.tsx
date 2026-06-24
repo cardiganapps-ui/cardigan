@@ -1,5 +1,6 @@
 import { useT } from "../../../i18n/index";
 import { IconX } from "../../../components/Icons";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Sign-out-everywhere sheet ────────────────────────────────────────
    Extracted from Settings.tsx. Calls signOut("global"), which revokes
@@ -20,8 +21,8 @@ export function SignOutEverywhereSheet({ open, onClose, signOut, setSheetPanel, 
   const { t } = useT();
   if (!open) return null;
   return (
-    <div className="sheet-overlay" onClick={() => onClose()}>
-      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+    <SheetOverlay onClose={() => onClose()}>
+      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("settings.signOutEverywhere")}</span>
@@ -46,6 +47,6 @@ export function SignOutEverywhereSheet({ open, onClose, signOut, setSheetPanel, 
           </div>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

@@ -1,5 +1,6 @@
 import { useT } from "../../../i18n/index";
 import { IconX, IconCheck, IconSun, IconMoon, IconSmartphone } from "../../../components/Icons";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Apariencia (tema) + Color de acento sheets ───────────────────────
    Extracted from Settings.tsx. PRESENTATIONAL: the theme + accent
@@ -40,8 +41,8 @@ export function AppearanceSheets({ mode, theme, accentTheme, onClose, setSheetPa
   ];
 
   return (
-        <div className="sheet-overlay" onClick={onClose}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+        <SheetOverlay onClose={onClose}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{mode === "theme" ? t("settings.appearance") : t("settings.accentColor")}</span>
@@ -75,6 +76,6 @@ export function AppearanceSheets({ mode, theme, accentTheme, onClose, setSheetPa
               )}
             </div>
           </div>
-        </div>
+        </SheetOverlay>
   );
 }

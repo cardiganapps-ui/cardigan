@@ -8,6 +8,7 @@ import { useSheetExit } from "../hooks/useSheetExit";
 import { ReferralShareBlock } from "./ReferralShareBlock";
 import { IconCheck, IconX } from "./Icons";
 import { track } from "../lib/analytics";
+import { SheetOverlay } from "./SheetOverlay";
 
 /* ── ActivationCompleteShareSheet ──────────────────────────────────────
    Bottom-sheet shown the moment a user crosses all four activation
@@ -58,14 +59,13 @@ export function ActivationCompleteShareSheet({ open, onClose, code }: {
   if (!open) return null;
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("activationShare.title")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
@@ -143,6 +143,6 @@ export function ActivationCompleteShareSheet({ open, onClose, code }: {
           </button>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

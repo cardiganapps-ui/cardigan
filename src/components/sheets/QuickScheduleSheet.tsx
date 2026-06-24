@@ -9,6 +9,7 @@ import { useCardiganMain } from "../../context/CardiganContext";
 import { todayISO, isoToShortDate, parseShortDate } from "../../utils/dates";
 import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../../data/constants";
 import { haptic } from "../../utils/haptics";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── QuickScheduleSheet ──────────────────────────────────────────────
    "Programar próxima consulta" affordance for episodic patients. The
@@ -151,14 +152,13 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }: {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={submitting ? undefined : animatedClose} role="presentation">
+    <SheetOverlay exiting={exiting} onClose={submitting ? undefined : animatedClose} role="presentation">
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="quick-schedule-title"
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}>
         <div className="sheet-handle" aria-hidden />
         <div className="sheet-header">
@@ -305,6 +305,6 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }: {
           </div>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

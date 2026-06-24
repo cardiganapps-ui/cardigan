@@ -12,6 +12,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, RECURRENCE_FREQUENCY, isPotentialOrDiscarded, PATIENT_STATUS } from "../../data/constants";
 import { getClientColor } from "../../data/seedData";
+import { SheetOverlay } from "../SheetOverlay";
 
 const FREQ_OPTS = [
   { k: RECURRENCE_FREQUENCY.WEEKLY,   l: "patients.frequencyWeekly" },
@@ -107,8 +108,8 @@ export function NewGroupSheet({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={mutating ? undefined : animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
+    <SheetOverlay exiting={exiting} onClose={mutating ? undefined : animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span style={{ display:"inline-flex", alignItems:"center", gap:8, minWidth:0 }}>
@@ -244,6 +245,6 @@ export function NewGroupSheet({ onClose }: { onClose: () => void }) {
           </div>
         )}
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

@@ -10,6 +10,7 @@ import { IconX, IconCheck, IconMail, IconLink } from "../Icons";
 import { WhatsAppGlyph, ShareGlyph } from "../ReferralShareBlock";
 import { haptic } from "../../utils/haptics";
 import { isSharingSupported, shareContent } from "../../lib/nativeShare";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── InvitePatientSheet ───────────────────────────────────────────
    Therapist-side bottom sheet that generates a single-use invite
@@ -152,14 +153,13 @@ export function InvitePatientSheet({ patient, onClose }: { patient?: Row; onClos
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("patientInvite.title", { name: patient.name })}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
       >
         <div className="sheet-handle" />
@@ -454,6 +454,6 @@ export function InvitePatientSheet({ patient, onClose }: { patient?: Row; onClos
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

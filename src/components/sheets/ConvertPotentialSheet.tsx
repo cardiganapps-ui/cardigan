@@ -17,6 +17,7 @@ import {
   SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics,
   RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY,
 } from "../../data/constants";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── ConvertPotentialSheet ────────────────────────────────────────
    Promotion sheet — fills in the data we didn't collect at potential-
@@ -162,8 +163,8 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
   if (!potential) return null;
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("patients.convertingTitle")}</span>
@@ -419,6 +420,6 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
           </div>
         </form>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

@@ -6,6 +6,7 @@ import { getStripe } from "../lib/stripe";
 import { formatMXN } from "../utils/format";
 import { useSheetExit } from "../hooks/useSheetExit";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { SheetOverlay } from "./SheetOverlay";
 
 /* ── StripePaymentSheet ───────────────────────────────────────────────
    Native checkout — Stripe Elements `PaymentElement` mounted inside
@@ -285,8 +286,8 @@ export default function StripePaymentSheet({
   const trialAware = typeof daysLeftInTrial === "number" && daysLeftInTrial > 0;
 
   return (
-    <div
-      className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`}
+    <SheetOverlay
+      exiting={exiting}
       // The Stripe payment sheet must render ABOVE any sheet that
       // launched it (Settings → Suscripción → Suscribirme being the
       // canonical case). All sheets share `--z-sheet`, so without an
@@ -295,14 +296,13 @@ export default function StripePaymentSheet({
       // +1 keeps us above peer sheets without colliding with the
       // higher-tier overlays (note editor, expediente).
       style={{ zIndex: "calc(var(--z-sheet) + 1)" }}
-      onClick={() => stage !== "submitting" && animatedClose()}
+      onClose={() => stage !== "submitting" && animatedClose()}
     >
       <div
         ref={(el) => { panelRef.current = el; }}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="sheet-handle" />
         <div className="sheet-header">
@@ -475,7 +475,7 @@ export default function StripePaymentSheet({
           )}
         </form>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }
 

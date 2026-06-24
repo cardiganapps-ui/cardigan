@@ -6,6 +6,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { IconX, IconCalendar } from "../../components/Icons";
+import { SheetOverlay } from "../../components/SheetOverlay";
 import { haptic } from "../../utils/haptics";
 import { todayISO, shortDateToISO } from "../../utils/dates";
 
@@ -164,14 +165,13 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
     : null;
 
   return (
-    <div className="sheet-overlay" onClick={safeClose || undefined}>
+    <SheetOverlay onClose={safeClose || undefined}>
       <div
         ref={setPanel}
         className="sheet-panel"
         role="dialog"
         aria-modal="true"
         aria-label={t("patientHome.rescheduleSheetTitle")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}
       >
@@ -262,6 +262,6 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
           </button>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

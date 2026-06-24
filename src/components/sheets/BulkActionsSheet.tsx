@@ -5,6 +5,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useLayer } from "../../hooks/useLayer";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* Bulk actions for a selection of sessions. Canonical Cardigan sheet — a
    spacious action list (icon-in-tinted-circle + label) instead of a cramped
@@ -37,8 +38,8 @@ export function BulkActionsSheet({ count, busy, onClose, onComplete, onCancelNoC
   ];
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={busy ? undefined : animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers}>
+    <SheetOverlay exiting={exiting} onClose={busy ? undefined : animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("agenda.bulkActionsTitle", { n: count })}</span>
@@ -70,6 +71,6 @@ export function BulkActionsSheet({ count, busy, onClose, onComplete, onCancelNoC
           ))}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

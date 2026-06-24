@@ -3,6 +3,7 @@ import { useT } from "../../../i18n/index";
 import { IconX } from "../../../components/Icons";
 import { supabase } from "../../../supabaseClient";
 import { TurnstileWidget, TURNSTILE_ENABLED } from "../../../components/TurnstileWidget";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Change-password sheet ────────────────────────────────────────────
    Extracted from Settings.tsx. Captcha-gated password-reset email: the
@@ -82,8 +83,8 @@ export function ChangePasswordSheet({ open, onClose, userEmail, setMessage, setS
   if (!open) return null;
 
   return (
-    <div className="sheet-overlay" onClick={() => !saving && onClose()}>
-      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+    <SheetOverlay onClose={() => !saving && onClose()}>
+      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("settings.changePassword")}</span>
@@ -126,6 +127,6 @@ export function ChangePasswordSheet({ open, onClose, userEmail, setMessage, setS
           </div>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

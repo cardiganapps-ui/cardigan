@@ -8,6 +8,7 @@ import { useNotifications } from "../../hooks/useNotifications";
 import { Toggle } from "../../components/Toggle";
 import { CalendarLinkPanel } from "../../components/CalendarLinkPanel";
 import { IconBell, IconCalendar, IconLogOut, IconX } from "../../components/Icons";
+import { SheetOverlay } from "../../components/SheetOverlay";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useState } from "react";
 import { haptic } from "../../utils/haptics";
@@ -97,14 +98,13 @@ export function PatientSettingsSheet({ open, onClose, user, signOut }: PatientSe
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <SheetOverlay onClose={onClose}>
       <div
         ref={setPanel}
         className="sheet-panel"
         role="dialog"
         aria-modal="true"
         aria-label={t("patientSettings.title")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
         style={{ maxHeight: "92vh" }}
       >
@@ -266,6 +266,6 @@ export function PatientSettingsSheet({ open, onClose, user, signOut }: PatientSe
         }}
         onCancel={() => setConfirmSignOut(false)}
       />
-    </div>
+    </SheetOverlay>
   );
 }

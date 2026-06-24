@@ -6,6 +6,7 @@ import { isNative, getPlatform } from "../../lib/platform";
 import { haptic } from "../../utils/haptics";
 import { checkNativePermission, subscribeNative } from "../../lib/nativePush";
 import { IconBell, IconChevron } from "../Icons";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── DiagnosticsSheet ─────────────────────────────────────────────
    Bottom sheet that surfaces push + haptics state so we can sanity-check
@@ -175,14 +176,13 @@ export function DiagnosticsSheet({ open, onClose, notifications }: {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
       <div
         ref={(el) => { panelRef.current = el; }}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label="Diagnóstico"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="sheet-handle" />
         <div className="sheet-header">
@@ -314,6 +314,6 @@ export function DiagnosticsSheet({ open, onClose, notifications }: {
           </div>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

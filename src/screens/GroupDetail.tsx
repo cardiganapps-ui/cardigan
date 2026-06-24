@@ -4,6 +4,7 @@ import { Avatar } from "../components/Avatar";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
+import { SheetOverlay } from "../components/SheetOverlay";
 import { MembersPickerSheet } from "../components/sheets/MembersPickerSheet";
 import { GroupOccurrenceSheet } from "../components/sheets/GroupOccurrenceSheet";
 import { GroupScheduleSheet } from "../components/sheets/GroupScheduleSheet";
@@ -119,8 +120,8 @@ export function GroupDetail({ group, onClose }: { group: Row; onClose: () => voi
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers}
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers}
         style={{ maxHeight:"min(94lvh, calc(100lvh - var(--sat) - 12px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header" style={{ gap:12 }}>
@@ -345,6 +346,6 @@ export function GroupDetail({ group, onClose }: { group: Row; onClose: () => voi
         onConfirm={doConfirm}
         onCancel={() => setConfirm(null)}
       />
-    </div>
+    </SheetOverlay>
   );
 }

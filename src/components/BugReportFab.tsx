@@ -7,6 +7,7 @@ import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useSheetExit } from "../hooks/useSheetExit";
+import { SheetOverlay } from "./SheetOverlay";
 
 /* ── Bug report sheet ──
    Previously rendered its own floating bottom-left button, which
@@ -76,8 +77,8 @@ export function BugReportSheet({ open, onClose, user, screen }: { open?: boolean
   if (!open) return null;
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("bugReport.title")}</span>
@@ -109,6 +110,6 @@ export function BugReportSheet({ open, onClose, user, screen }: { open?: boolean
           </form>
         )}
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

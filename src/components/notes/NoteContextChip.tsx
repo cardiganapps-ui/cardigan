@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { IconUser, IconCalendar, IconChevron, IconX } from "../Icons";
+import { SheetOverlay } from "../SheetOverlay";
 import { useT } from "../../i18n/index";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
@@ -70,14 +71,13 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
       </button>
 
       {open && !readOnly && (
-        <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+        <SheetOverlay exiting={exiting} onClose={animatedClose}>
           <div
             ref={setPanel}
             className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
             role="dialog"
             aria-modal="true"
             aria-label={t("notes.linkToPatient")}
-            onClick={(e) => e.stopPropagation()}
             {...panelHandlers}
           >
             <div className="sheet-handle" />
@@ -123,7 +123,7 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
               </div>
             </div>
           </div>
-        </div>
+        </SheetOverlay>
       )}
     </>
   );

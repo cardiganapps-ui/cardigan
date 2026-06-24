@@ -16,6 +16,7 @@ import { PatientListView } from "./patients/PatientListView";
 import { usePatientEditForm } from "./patients/usePatientEditForm";
 import { PatientExpediente } from "./PatientExpediente";
 import { EmptyState } from "../components/EmptyState";
+import { SheetOverlay } from "../components/SheetOverlay";
 import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic, PATIENT_STATUS, SESSION_TYPE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../data/constants";
@@ -330,8 +331,8 @@ export function Patients() {
       )}
 
       {selected && (
-        <div className="sheet-overlay" onClick={closeSheet}>
-          <div ref={setEditPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...editPanelHandlers}>
+        <SheetOverlay onClose={closeSheet}>
+          <div ref={setEditPanel} className="sheet-panel" role="dialog" aria-modal="true" {...editPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">
@@ -707,7 +708,7 @@ export function Patients() {
               ) : null}
             </div>
           </div>
-        </div>
+        </SheetOverlay>
       )}
 
       {expediente && !isTabletSplit && createPortal(

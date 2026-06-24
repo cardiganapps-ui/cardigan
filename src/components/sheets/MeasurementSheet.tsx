@@ -7,6 +7,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { haptic } from "../../utils/haptics";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── MeasurementSheet ────────────────────────────────────────────
    Bottom sheet for adding or editing an anthropometric measurement.
@@ -73,14 +74,13 @@ export function MeasurementSheet({ open, measurement, onSave, onClose }: {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose} role="presentation">
+    <SheetOverlay exiting={exiting} onClose={animatedClose} role="presentation">
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="measurement-sheet-title"
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}>
         <div className="sheet-handle" aria-hidden />
         <div className="sheet-header">
@@ -190,6 +190,6 @@ export function MeasurementSheet({ open, measurement, onSave, onClose }: {
           </div>
         </form>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

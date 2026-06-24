@@ -6,6 +6,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { IconX } from "../Icons";
+import { SheetOverlay } from "../SheetOverlay";
 import { haptic } from "../../utils/haptics";
 
 /* ── QuickCaptureSheet ────────────────────────────────────────────
@@ -115,14 +116,13 @@ export function QuickCaptureSheet({ open, onClose, onSaved }: {
   if (!open) return null;
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
+    <SheetOverlay exiting={exiting} onClose={safeAnimatedClose || undefined}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("notes.quickCapture.title")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
       >
         <div className="sheet-handle" />
@@ -201,6 +201,6 @@ export function QuickCaptureSheet({ open, onClose, onSaved }: {
           </div>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

@@ -10,6 +10,7 @@ import { haptic } from "../../utils/haptics";
 import {
   IconX, IconCheck, IconChevronRight,
 } from "../Icons";
+import { SheetOverlay } from "../SheetOverlay";
 
 /* ── SessionRequestsSheet ──────────────────────────────────────────
    Therapist-facing list of pending reschedule requests. The patient
@@ -92,9 +93,9 @@ export function SessionRequestsSheet({ onClose }: { onClose: () => void }) {
   const patientNameById = new Map<string, string>((patients || []).map((p: Row): [string, string] => [p.id, p.name]));
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
+    <SheetOverlay exiting={exiting} onClose={safeAnimatedClose || undefined}>
       <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
-        onClick={(e) => e.stopPropagation()} {...panelHandlers}
+        {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
@@ -222,6 +223,6 @@ export function SessionRequestsSheet({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

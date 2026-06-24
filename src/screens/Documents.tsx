@@ -3,6 +3,7 @@ import { IconSearch, IconUpload } from "../components/Icons";
 import { isWordDoc, isImageDoc, isPdfDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
+import { SheetOverlay } from "../components/SheetOverlay";
 import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -183,8 +184,8 @@ export function Documents() {
 
       {/* Patient picker after file selection */}
       {pendingFiles && (
-        <div className="sheet-overlay" onClick={() => setPendingFiles(null)}>
-          <div ref={setPendingPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...pendingPanelHandlers} style={{ maxHeight:"60vh" }}>
+        <SheetOverlay onClose={() => setPendingFiles(null)}>
+          <div ref={setPendingPanel} className="sheet-panel" role="dialog" aria-modal="true" {...pendingPanelHandlers} style={{ maxHeight:"60vh" }}>
             <div className="sheet-handle" />
             <div style={{ padding:"16px 20px 8px" }}>
               <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>
@@ -209,7 +210,7 @@ export function Documents() {
               </div>
             </div>
           </div>
-        </div>
+        </SheetOverlay>
       )}
 
       {/* Filters & sort */}

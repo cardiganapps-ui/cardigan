@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IconX, IconBell } from "../Icons";
+import { SheetOverlay } from "../SheetOverlay";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
@@ -58,14 +59,13 @@ export function InboxSheet({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+    <SheetOverlay exiting={exiting} onClose={animatedClose}>
       <div
         ref={setPanel}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("inbox.title")}
-        onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
         style={{ display: "flex", flexDirection: "column" }}
       >
@@ -157,6 +157,6 @@ export function InboxSheet({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }

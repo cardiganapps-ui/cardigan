@@ -1,4 +1,5 @@
 import { IconX, IconSparkle } from "../../../components/Icons";
+import { SheetOverlay } from "../../../components/SheetOverlay";
 import { useT } from "../../../i18n/index";
 import { CopyChip } from "./CopyChip";
 import { useEscape } from "../../../hooks/useEscape";
@@ -27,12 +28,11 @@ export function CodeCreatedSheet({ code, onClose }: { code: Row; onClose?: () =>
     : t("admin.codesDurationRepeating", { months: code.duration_in_months });
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <SheetOverlay onClose={onClose}>
       <div
         className="sheet-panel"
         role="dialog"
         aria-modal="true"
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
         style={{ maxHeight: "92vh", overflowY: "auto" }}
       >
         <div className="sheet-handle" />
@@ -74,6 +74,6 @@ export function CodeCreatedSheet({ code, onClose }: { code: Row; onClose?: () =>
           </button>
         </div>
       </div>
-    </div>
+    </SheetOverlay>
   );
 }
