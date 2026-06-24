@@ -1,10 +1,9 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { getClientColor, DAY_ORDER } from "../data/seedData";
+import { DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
 import { haptic } from "../utils/haptics";
 import { SwipeRevealRow } from "../components/SwipeRevealRow";
-import { useLongPress } from "../hooks/useLongPress";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { todayISO, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
@@ -14,7 +13,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useViewport } from "../hooks/useViewport";
 import { Toggle } from "../components/Toggle";
 import { MoneyInput } from "../components/MoneyInput";
-import { Avatar } from "../components/Avatar";
+import { PatientRow } from "./patients/PatientRow";
 import { PatientExpediente } from "./PatientExpediente";
 import { EmptyState } from "../components/EmptyState";
 import { useCardiganMain } from "../context/CardiganContext";
@@ -24,7 +23,6 @@ import { filterPatients } from "../utils/patientFilter";
 import { PotentialProfileSheet } from "../components/sheets/PotentialProfileSheet";
 import { ConvertPotentialSheet } from "../components/sheets/ConvertPotentialSheet";
 import { SegmentedControl } from "../components/SegmentedControl";
-import { formatMXN } from "../utils/format";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
@@ -83,88 +81,6 @@ function deriveSlotFrequency(p: Row, sessions: Row[]) {
   return future[0].recurrence_frequency || DEFAULT_RECURRENCE_FREQUENCY;
 }
 
-/* ── PatientRow ──
-   Extracted from the .map() inside the main render so per-row hooks
-   (useLongPress) have a stable owner. Wraps the row body in a long-
-   press detector that opens the same context menu desktop users get
-   via right-click — surfacing Editar / Eliminar on mobile, where
-   neither swipe-to-pay nor the chevron tap currently exposes them.
-
-   The long-press handlers sit on a wrapping div around SwipeRevealRow
-   (or the bare row). Both gesture systems get the raw touch events
-   because neither stops propagation; SwipeRevealRow bails out the
-   moment vertical motion dominates, while long-press bails out the
-   moment ANY motion exceeds 10px. A still hold-for-450ms triggers the
-   menu, suppressing the synthetic click that would otherwise reach
-   the row's onClick. */
-type PatientRowProps = {
-  p: Row;
-  i: number;
-  swipeEnabled: boolean;
-  isInterviewLane: boolean;
-  isPotential: boolean;
-  isDiscarded: boolean;
-  filter: string;
-  splitMode: boolean;
-  expediente: Row | null;
-  rowClick: () => void;
-  openCtxMenu: ((x: number, y: number, p: Row, e?: Row) => void) | null;
-  onPay: (p: Row) => void;
-  t: (key: string, ...args: Row[]) => string;
-};
-
-function PatientRow({ p, i, swipeEnabled, isInterviewLane, isPotential, isDiscarded, filter, splitMode, expediente, rowClick, openCtxMenu, onPay, t }: PatientRowProps) {
-  const longPress = useLongPress(
-    openCtxMenu ? (x: number, y: number) => openCtxMenu(x, y, p) : null,
-    { enabled: !!openCtxMenu }
-  );
-  const rowBody = (
-    <div
-      className={`row-item list-entry-stagger ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""} ${isInterviewLane ? "row-potential" : ""} ${isDiscarded ? "row-discarded" : ""}`}
-      style={{ "--stagger-i": Math.min(i, 12) } as React.CSSProperties}
-      onClick={swipeEnabled ? undefined : rowClick}
-      onContextMenu={(e: React.MouseEvent) => isInterviewLane ? null : openCtxMenu?.(e.clientX, e.clientY, p, e)}>
-      <Avatar initials={p.initials} color={isInterviewLane ? "var(--rose)" : getClientColor(i)} size="md" />
-      <div className="row-content">
-        <div className="row-title">{p.name}</div>
-        <div className="row-sub">
-          {p.parent && (
-            <>
-              <span style={{ color:"var(--purple)", fontWeight:700 }}>{t("sessions.tutor")}: {p.parent}</span>
-              {" · "}
-            </>
-          )}
-          {formatMXN(p.rate)} {t("expediente.perSession")}
-        </div>
-      </div>
-      <div style={{ flexShrink:0 }}>
-        {filter === "owes"
-          ? <span style={{ fontSize:"var(--text-sm)", fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>{formatMXN(p.amountDue)}</span>
-          : isPotential
-            ? <span className="badge badge-rose">{t("patients.statusPotential")}</span>
-            : isDiscarded
-              ? <span className="badge badge-gray">{t("patients.statusDiscarded")}</span>
-              : <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
-        }
-      </div>
-      <span className="row-chevron">›</span>
-    </div>
-  );
-  const inner = swipeEnabled
-    ? <SwipeRevealRow
-        onClick={rowClick}
-        actions={[{
-          key: "payment",
-          icon: <IconDollar size={20} />,
-          label: t("patients.swipePay"),
-          color: "var(--green)",
-          onAction: () => onPay(p),
-        }]}>
-        {rowBody}
-      </SwipeRevealRow>
-    : rowBody;
-  return <div {...longPress.bind}>{inner}</div>;
-}
 
 export function Patients() {
   const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, applyScheduleChange, finalizePatient, discardPotential, convertPotentialToActive, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate, profession } = useCardiganMain();
