@@ -94,10 +94,15 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci --no-audit --no-fund
-      - run: npm test
-      # Coverage ratchet on the financial kernel (accounting.ts — the
-      # canonical amountDue formula). Fails if a new accounting branch
-      # ships without a test, per CLAUDE.md's prime-directive rule.
+      # Runs the full unit suite WITH the coverage ratchet (test:coverage is
+      # `vitest run --coverage`, so it subsumes a plain `npm test`). The gate
+      # holds the financial kernel (accounting.ts — the canonical amountDue
+      # formula) at 100% + its branch floor, and (WS-10) its integrity
+      # neighbors — recurrence/backfill, the optimistic-revert primitive,
+      # opening balance, the patient-edit + new-patient payload builders,
+      # slot finding + conflict detection — at their measured floor. Fails if
+      # a new branch in any of them ships without a test, per CLAUDE.md's
+      # prime-directive rule.
       - run: npm run test:coverage
 
   # JS ↔ SQL accounting-predicate parity. Protects the Prime Directive:
