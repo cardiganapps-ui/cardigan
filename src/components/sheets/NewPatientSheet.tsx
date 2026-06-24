@@ -15,42 +15,13 @@ import { useT } from "../../i18n/index";
 import { useCardiganMain } from "../../context/CardiganContext";
 import { parseFolderLink } from "../../utils/folderLinks";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
+import { findEmptySlot } from "../../utils/scheduleSlots";
 
-// Weekdays + hours to search through when picking a sensible default
-// for the first recurring slot. Weekday-major, then by hour — the
-// common case is a therapist filling mornings of one day before
-// moving to the next. Sábado is included as a last resort.
-const SLOT_SEARCH_DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const SLOT_SEARCH_TIMES = [
-  "09:00", "10:00", "11:00", "12:00", "13:00",
-  "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00",
-];
-
-/**
- * Find the first day/time combination that isn't already booked, either
- * by an existing scheduled session for any patient or by a slot the
- * user has already added in the form. Used to pre-fill the first
- * schedule row and to pick a sensible default when the user clicks
- * "+ Agregar otro horario".
- */
+// Loosely-typed patient/session rows + the form's schedule-row shape.
+// The first-free-slot pre-fill logic lives in utils/scheduleSlots (WS-6).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session rows
 type Row = any;
 interface Schedule { day: string; time: string; duration: string; modality: string; frequency: string }
-
-function findEmptySlot(sessions: Row[] | undefined, extraTaken: string[]) {
-  const taken = new Set<string>([
-    ...((sessions || []).filter((s: Row) => s.status === "scheduled").map((s: Row) => `${s.day}|${s.time}`)),
-    ...(extraTaken || []),
-  ]);
-  for (const day of SLOT_SEARCH_DAYS) {
-    for (const time of SLOT_SEARCH_TIMES) {
-      if (!taken.has(`${day}|${time}`)) return { day, time };
-    }
-  }
-  // Whole search space is full — fall back to the original hardcoded
-  // default. The conflict banner will still warn the user.
-  return { day: "Lunes", time: "16:00" };
-}
 
 export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating, patients, sessions, initialMode = "patient" }: {
   onClose: () => void;
