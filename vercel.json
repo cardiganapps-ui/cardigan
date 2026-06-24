@@ -1,5 +1,6 @@
 {
   "regions": ["iad1"],
+  "git": { "deploymentEnabled": { "main": false } },
   "crons": [
     {
       "path": "/api/send-session-reminders",
