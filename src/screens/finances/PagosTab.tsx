@@ -9,6 +9,7 @@ import { Avatar } from "../../components/Avatar";
 import { SwipeableRow } from "../../components/SwipeableRow";
 import { EmptyState } from "../../components/EmptyState";
 import { useT } from "../../i18n/index";
+import { clickableProps } from "../../utils/a11y";
 import { FINANCES_INITIAL_WINDOW, FINANCES_WINDOW_INCREMENT, getDateFrom } from "./financesShared";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed payment/patient rows
@@ -104,9 +105,7 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
     const rowBody = (
       <div
         className="bal-row"
-        role="button"
-        tabIndex={0}
-        onClick={() => setExpandedId(isExpanded ? null : p.id)}
+        {...clickableProps(() => setExpandedId(isExpanded ? null : p.id))}
         style={{
           cursor: "pointer",
           // SwipeableRow stages a red delete button BEHIND the row and

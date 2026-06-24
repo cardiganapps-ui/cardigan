@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../../i18n/index";
+import { clickableProps } from "../../utils/a11y";
 import { useCardiganMain } from "../../context/CardiganContext";
 import { SwipeableRow } from "../../components/SwipeableRow";
 import { EmptyState } from "../../components/EmptyState";
@@ -412,15 +413,13 @@ export function MedicionesTab({ patient }: { patient: Row }) {
             const row = (
               <div
                 className="mediciones-row"
-                role="button"
-                tabIndex={0}
                 style={{
                   // Stagger entry only on first paint. The animation
                   // delay is computed off the row's index so newer
                   // rows cascade in on add (still subtle: 32ms each).
                   animation: `listEntryIn 0.4s var(--ease-spring) ${i * 32}ms both`,
                 }}
-                onClick={() => !readOnly && setEditing(m)}>
+                {...clickableProps(() => !readOnly && setEditing(m))}>
                 <div className="mediciones-row-main">
                   <div className="mediciones-row-date">
                     {formatDateShort(m.taken_at)}

@@ -1,5 +1,6 @@
 import React from "react";
 import { IconDownload, IconDocument, IconChevron } from "../../components/Icons";
+import { clickableProps } from "../../utils/a11y";
 import { useT } from "../../i18n/index";
 
 export const DataPrivacyPanel = React.memo(function DataPrivacyPanel({
@@ -18,7 +19,7 @@ export const DataPrivacyPanel = React.memo(function DataPrivacyPanel({
       <div className="card" style={{ margin:"0 16px" }}>
         {!readOnly && (
           <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }}
-            onClick={() => { if (!exporting) onOpenExport(); }}>
+            {...clickableProps(() => { if (!exporting) onOpenExport(); })}>
             <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDownload size={18} /></div>
             <div style={{ flex:1 }}>
               <div className="settings-row-title">{t("settings.privacyExport")}</div>
@@ -27,7 +28,7 @@ export const DataPrivacyPanel = React.memo(function DataPrivacyPanel({
             {exporting ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
           </div>
         )}
-        <div className="settings-row" onClick={onOpenPrivacyPolicy}>
+        <div className="settings-row" {...clickableProps(onOpenPrivacyPolicy)}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDocument size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.privacyPolicy")}</div>

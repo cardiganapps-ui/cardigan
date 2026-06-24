@@ -1,5 +1,6 @@
 import React from "react";
 import { IconBell, IconCalendar, IconCreditCard, IconChevron } from "../../components/Icons";
+import { clickableProps } from "../../utils/a11y";
 import { useT } from "../../i18n/index";
 import { ProBadge } from "./ProBadge";
 
@@ -32,7 +33,7 @@ export const NotificationsCalendarPanel = React.memo(function NotificationsCalen
       <div className="settings-label">{t("settings.sectionNotifCal")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         {notifications?.supported && (
-          <div className="settings-row" onClick={() => onOpenSheet("notifications")}>
+          <div className="settings-row" {...clickableProps(() => onOpenSheet("notifications"))}>
             <div
               className={`settings-row-icon${bellFx ? " bell-ring bell-glow" : ""}`}
               style={{ color:"var(--teal-dark)" }}
@@ -49,7 +50,7 @@ export const NotificationsCalendarPanel = React.memo(function NotificationsCalen
         {!readOnly && (
           <div
             className="settings-row"
-            onClick={() => isPro ? onOpenSheet("calendar") : requirePro?.("calendar")}
+            {...clickableProps(() => isPro ? onOpenSheet("calendar") : requirePro?.("calendar"))}
           >
             <div className="settings-row-icon" style={{ color: isPro ? "var(--teal-dark)" : "var(--charcoal-xl)" }}><IconCalendar size={18} /></div>
             <div style={{ flex:1 }}>
@@ -65,7 +66,7 @@ export const NotificationsCalendarPanel = React.memo(function NotificationsCalen
         {!readOnly && (
           <div
             className="settings-row"
-            onClick={() => isPro ? onOpenSheet("onlinePayments") : requirePro?.("onlinePayments")}
+            {...clickableProps(() => isPro ? onOpenSheet("onlinePayments") : requirePro?.("onlinePayments"))}
           >
             <div className="settings-row-icon" style={{ color: isPro ? "var(--teal-dark)" : "var(--charcoal-xl)" }}><IconCreditCard size={18} /></div>
             <div style={{ flex:1 }}>

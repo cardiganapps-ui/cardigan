@@ -5,6 +5,7 @@ import { SegmentedControl } from "../../components/SegmentedControl";
 import { SwipeableRow } from "../../components/SwipeableRow";
 import { useT } from "../../i18n/index";
 import { formatMXN } from "../../utils/format";
+import { clickableProps } from "../../utils/a11y";
 import { EmptyState } from "../../components/EmptyState";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/payment rows
@@ -86,7 +87,7 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
             {payFiltered.map((p: Row, i: number) => {
               const isDeleting = confirmDeletePayId === p.id;
               const row = (
-                <div className="bal-row" role="button" tabIndex={0} onClick={() => setConfirmDeletePayId(isDeleting ? null : p.id)} style={{ cursor:"pointer", background:"var(--white)" }}>
+                <div className="bal-row" {...clickableProps(() => setConfirmDeletePayId(isDeleting ? null : p.id))} style={{ cursor:"pointer", background:"var(--white)" }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6 }}>
                       <span>{p.date}</span>

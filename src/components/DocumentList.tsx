@@ -3,6 +3,7 @@ import { IconEdit, IconTag, IconTrash } from "./Icons";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EmptyState } from "./EmptyState";
 import { getFileIcon, formatFileSize } from "../utils/files";
+import { clickableProps } from "../utils/a11y";
 import { useT } from "../i18n/index";
 import { formatDate } from "../utils/format";
 
@@ -105,12 +106,12 @@ export function DocumentList({
                 ) : (
                   <>
                     <div style={{ fontSize:13, fontWeight:600, color:"var(--teal-dark)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", cursor:"pointer" }}
-                      onClick={() => onOpen(doc)}>
+                      {...clickableProps(() => onOpen(doc))}>
                       {doc.name}
                     </div>
                     <div style={{ fontSize:10, color:"var(--charcoal-xl)", marginTop:2 }}>
                       {p && <span style={{ fontWeight:600, cursor: onPatientClick ? "pointer" : undefined, color: onPatientClick ? "var(--teal-dark)" : undefined }}
-                        onClick={onPatientClick ? (e) => { e.stopPropagation(); onPatientClick(p); } : undefined}>{p.name} · </span>}
+                        {...(onPatientClick ? clickableProps((e) => { e?.stopPropagation(); onPatientClick(p); }) : {})}>{p.name} · </span>}
                       {formatFileSize(doc.file_size)}
                       {doc.created_at && ` · ${formatDate(doc.created_at, "shortYear")}`}
                       {/* Patient-uploaded marker — when uploaded_by_user_id

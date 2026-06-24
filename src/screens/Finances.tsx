@@ -7,6 +7,7 @@ import { SegmentedControl } from "../components/SegmentedControl";
 import { Avatar } from "../components/Avatar";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { useT } from "../i18n/index";
+import { clickableProps } from "../utils/a11y";
 import { isPotentialOrDiscarded } from "../data/constants";
 import { PagosTab } from "./finances/PagosTab";
 import { ProyeccionTab } from "./finances/ProyeccionTab";
@@ -107,8 +108,7 @@ export function Finances() {
                 {regularPatients.filter((p: Row)=>p.amountDue>0).sort((a: Row, b: Row)=>b.amountDue-a.amountDue).map((p: Row, i: number) => (
                   <div className="bal-row" key={p.id} style={{ gap:8 }}>
                     <div
-                      role="button" tabIndex={0}
-                      onClick={() => openExpediente(p)}
+                      {...clickableProps(() => openExpediente(p))}
                       style={{ display:"flex", alignItems:"center", gap:12, flex:1, minWidth:0, cursor:"pointer" }}>
                       <Avatar initials={p.initials} color={getClientColor(i)} size="sm" />
                       <div style={{ flex:1, minWidth:0 }}>
@@ -132,8 +132,7 @@ export function Finances() {
               <div className="section-title" style={{ marginBottom:10 }}>{t("patients.upToDate")}</div>
               <div className="card">
                 {regularPatients.filter((p: Row)=>p.amountDue<=0).map((p: Row, i: number) => (
-                  <div className="bal-row" key={p.id} role="button" tabIndex={0}
-                    onClick={() => openExpediente(p)}
+                  <div className="bal-row" key={p.id} {...clickableProps(() => openExpediente(p))}
                     style={{ cursor:"pointer" }}>
                     <Avatar initials={p.initials} color={getClientColor(i + 4)} size="sm" />
                     <div style={{ flex:1 }}>

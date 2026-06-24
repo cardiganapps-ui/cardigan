@@ -1,5 +1,6 @@
 import { Avatar } from "./Avatar";
 import { IconUsers } from "./Icons";
+import { clickableProps } from "../utils/a11y";
 import { useT } from "../i18n/index";
 import { getClientColor } from "../data/seedData";
 import { SESSION_STATUS } from "../data/constants";
@@ -33,7 +34,7 @@ export function GroupSessionRow({ occ, onClick }: {
   })();
 
   return (
-    <div className={`row-item session-row rail-${rail}`} onClick={onClick} style={{ cursor:"pointer" }}>
+    <div className={`row-item session-row rail-${rail}`} {...clickableProps(() => onClick?.())} style={{ cursor:"pointer" }}>
       <Avatar initials={groupInitials} color={getClientColor(colorIdx)} size="md" />
       <div className="row-content">
         <div className="row-title" style={{ display:"inline-flex", alignItems:"center", gap:6 }}>

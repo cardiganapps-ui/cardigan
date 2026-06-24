@@ -1,5 +1,6 @@
 import React from "react";
 import { IconSparkle, IconUsers, IconKey, IconChevron } from "../../components/Icons";
+import { clickableProps } from "../../utils/a11y";
 import { useT } from "../../i18n/index";
 import { MONETIZATION_ENABLED } from "../../config/monetization";
 import { rowSubLine } from "../../utils/subscriptionStatus";
@@ -23,7 +24,7 @@ export const SubscriptionPanel = React.memo(function SubscriptionPanel({
       <div className="settings-label">{t("settings.sectionAccount")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         {MONETIZATION_ENABLED && (
-        <div className="settings-row" onClick={() => onOpenSheet("plan")}>
+        <div className="settings-row" {...clickableProps(() => onOpenSheet("plan"))}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconSparkle size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.subscriptionTitle")}</div>
@@ -47,7 +48,7 @@ export const SubscriptionPanel = React.memo(function SubscriptionPanel({
             fetch is running on first open). Tapping opens a dedicated sheet
             with the share UI + rewards tally. */}
         {MONETIZATION_ENABLED && (
-        <div className="settings-row" onClick={() => onOpenSheet("referral")}>
+        <div className="settings-row" {...clickableProps(() => onOpenSheet("referral"))}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUsers size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.referralRowTitle")}</div>
@@ -66,7 +67,7 @@ export const SubscriptionPanel = React.memo(function SubscriptionPanel({
         </div>
         )}
         <div className="settings-row"
-          onClick={onOpenChangePassword}>
+          {...clickableProps(onOpenChangePassword)}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.changePassword")}</div>

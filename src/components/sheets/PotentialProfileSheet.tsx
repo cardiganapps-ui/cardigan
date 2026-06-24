@@ -9,6 +9,7 @@ import { useSheetExit } from "../../hooks/useSheetExit";
 import { useLayer } from "../../hooks/useLayer";
 import { SESSION_STATUS } from "../../data/constants";
 import { statusClass, statusLabel, railClass } from "../../utils/sessions";
+import { clickableProps } from "../../utils/a11y";
 import { formatPhoneMX, phoneHref, emailHref, phoneDigits } from "../../utils/contact";
 import { formatMXN } from "../../utils/format";
 import { isNative } from "../../lib/platform";
@@ -204,8 +205,7 @@ export function PotentialProfileSheet({
                   <div className="card" style={{ overflow:"hidden" }}>
                     <div
                       className={`row-item session-row ${railClass(interviewSession.status)}`}
-                      onClick={() => onOpenSession?.(interviewSession)}
-                      role="button" tabIndex={0}>
+                      {...clickableProps(() => onOpenSession?.(interviewSession))}>
                       <Avatar initials={patient.initials} color="var(--rose)" size="md" />
                       <div className="row-content">
                         <div className="row-title">{interviewSession.date}</div>

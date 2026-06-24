@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { IconChevron } from "./Icons";
 import { getFileIcon, formatFileSize, isImageDoc, isPdfDoc } from "../utils/files";
+import { clickableProps } from "../utils/a11y";
 import { useT } from "../i18n/index";
 
 export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, onPatientClick }: {
@@ -38,7 +39,7 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, 
                 {doc.name}
               </div>
               <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:1 }}>
-                {patientName && <span onClick={onPatientClick ? (e) => { e.stopPropagation(); onPatientClick(); } : undefined}
+                {patientName && <span {...(onPatientClick ? clickableProps((e) => { e?.stopPropagation(); onPatientClick(); }) : {})}
                   style={onPatientClick ? { cursor:"pointer", color:"var(--teal-dark)", fontWeight:600 } : undefined}>{patientName}</span>}
                 {patientName && " · "}{formatFileSize(doc.file_size)}
                 {linkedSession && ` · ${t("sessions.session")} ${linkedSession.date}`}

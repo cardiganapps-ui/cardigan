@@ -5,6 +5,7 @@ import { LogoIcon } from "./LogoMark";
 import { AvatarContent } from "./Avatar";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
+import { clickableProps } from "../utils/a11y";
 import { useT } from "../i18n/index";
 import { useCardiganMain } from "../context/CardiganContext";
 import { MONETIZATION_ENABLED } from "../config/monetization";
@@ -260,8 +261,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
           style={{ transform: transformCss, transition }}>
           <div className="drawer-header">
             <div className="drawer-logo"><LogoIcon size={24} color="var(--teal-light)" /><span>cardigan</span></div>
-            <div className="drawer-user" role="button" tabIndex={0}
-              onClick={() => handleNav("settings")}
+            <div className="drawer-user" {...clickableProps(() => handleNav("settings"))}
               style={{ cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
               <div className="drawer-avatar">
                 <AvatarContent

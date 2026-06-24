@@ -4,6 +4,7 @@ import { isTutorSession, isInterviewSession, statusClass } from "../../utils/ses
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
+import { clickableProps } from "../../utils/a11y";
 import { useCardiganMain } from "../../context/CardiganContext";
 import { usesVisitTypes, VISIT_TYPES } from "../../data/constants";
 import { EmptyState } from "../../components/EmptyState";
@@ -264,7 +265,7 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
           const showVisitChip = showVisitTypes && !tutor && !interview;
           const hasSecondLine = tutor || interview || oneOff || hasNote || showVisitChip;
           return (
-            <div className="row-item list-entry-stagger" key={s.id} style={{ "--stagger-i": Math.min(i, 12) } as React.CSSProperties} onClick={() => onSelect(s)}>
+            <div className="row-item list-entry-stagger" key={s.id} style={{ "--stagger-i": Math.min(i, 12) } as React.CSSProperties} {...clickableProps(() => onSelect(s))}>
               <div className="row-content">
                 {/* Title row: time on the left, status pill pinned to the
                     right of the same line. Keeps the row a single line when

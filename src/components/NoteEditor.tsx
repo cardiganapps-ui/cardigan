@@ -23,6 +23,7 @@ import { supabase } from "../supabaseClient";
 import { enqueue } from "../lib/mutationQueue";
 import { extractOutline } from "./notes/outlineUtil";
 import { useNoteOutline } from "./notes/useNoteOutline";
+import { clickableProps } from "../utils/a11y";
 import { useNoteAutosave } from "./notes/useNoteAutosave";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";
@@ -1135,7 +1136,7 @@ export function NoteCard({ note, onClick, patientName, sessionLabel, onPatientCl
   const timeAgo = relativeTime(note.updated_at, t);
   const hasLink = patientName || sessionLabel;
   return (
-    <div role="button" tabIndex={0} onClick={onClick}
+    <div {...clickableProps(() => onClick?.())}
       style={{ padding: "12px 16px", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
         {note.pinned && <IconStar size={11} style={{ color: "var(--amber)", flexShrink: 0 }} />}

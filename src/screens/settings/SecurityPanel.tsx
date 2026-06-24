@@ -1,5 +1,6 @@
 import React from "react";
 import { IconShield, IconKey, IconLock, IconChevron } from "../../components/Icons";
+import { clickableProps } from "../../utils/a11y";
 import { useT } from "../../i18n/index";
 import { ProBadge } from "./ProBadge";
 
@@ -29,7 +30,7 @@ export const SecurityPanel = React.memo(function SecurityPanel({
       <div className="settings-label">{t("settings.sectionSecurity")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         <div className="settings-row" style={{ cursor: mfa.loading ? "default" : "pointer" }}
-          onClick={onOpenMfa}>
+          {...clickableProps(onOpenMfa)}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconShield size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.mfaTitle")}</div>
@@ -41,7 +42,7 @@ export const SecurityPanel = React.memo(function SecurityPanel({
         </div>
         {passkeys.supported && (
           <div className="settings-row" style={{ cursor: passkeys.loading ? "default" : "pointer" }}
-            onClick={() => { if (!passkeys.loading) onOpenPasskeys(); }}>
+            {...clickableProps(() => { if (!passkeys.loading) onOpenPasskeys(); })}>
             <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
             <div style={{ flex:1 }}>
               <div className="settings-row-title">{t("settings.passkeyTitle")}</div>
@@ -57,7 +58,7 @@ export const SecurityPanel = React.memo(function SecurityPanel({
           </div>
         )}
         {noteCrypto && noteCrypto.status !== "loading" && (showEncryptionSetup || noteCrypto.status !== "disabled") && (
-          <div className="settings-row" onClick={onOpenEncryption}>
+          <div className="settings-row" {...clickableProps(onOpenEncryption)}>
             <div className="settings-row-icon" style={{ color: noteCrypto.status === "unlocked" ? "var(--green)" : noteCrypto.status === "locked" ? "var(--charcoal-md)" : (!isPro && noteCrypto.status === "disabled" ? "var(--charcoal-xl)" : "var(--teal-dark)") }}>
               <IconLock size={18} />
             </div>

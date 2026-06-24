@@ -26,6 +26,7 @@ import { haptic } from "../utils/haptics";
 import { SwipeRevealRow } from "../components/SwipeRevealRow";
 import { IconCheck } from "../components/Icons";
 import { AnimatedNumber } from "../components/AnimatedNumber";
+import { clickableProps } from "../utils/a11y";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session/note/group rows
 type Row = any;
@@ -267,7 +268,7 @@ export function Home({ setScreen, userName }: HomeProps) {
     // sheet on tap so users keep full access to revert / re-mark.
     const swipeEnabled = !readOnly && !interview && s.status === SESSION_STATUS.SCHEDULED;
     const rowBody = (
-      <div className={`row-item session-row ${railClass(s.status)}`} onClick={swipeEnabled ? undefined : () => setSelectedSession(s)}>
+      <div className={`row-item session-row ${railClass(s.status)}`} {...(swipeEnabled ? {} : clickableProps(() => setSelectedSession(s)))}>
         <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="md" />
         <div className="row-content">
           <div className="row-title">
@@ -615,7 +616,7 @@ export function Home({ setScreen, userName }: HomeProps) {
           {owingPatients.length === 0
             ? emptyHint(t("home.emptyBalances"))
             : owingPatients.slice(0,4).map((p: Row, i: number) => (
-                <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
+                <div className="row-item" key={p.id} {...clickableProps(() => setSelected(p))}>
                   <Avatar initials={p.initials} color={getClientColor(p.colorIdx ?? i)} size="md" />
                   <div className="row-content">
                     <div className="row-title">{p.name}</div>
@@ -654,7 +655,7 @@ export function Home({ setScreen, userName }: HomeProps) {
                 setTutorBooking(r.patient);
               };
               return (
-                <div className="row-item" key={r.patient.id} onClick={handleClick}>
+                <div className="row-item" key={r.patient.id} {...clickableProps(handleClick)}>
                   <Avatar initials={r.patient.initials} color="var(--purple)" size="md" />
                   <div className="row-content">
                     <div className="row-title">{r.patient.name}</div>
@@ -701,7 +702,7 @@ export function Home({ setScreen, userName }: HomeProps) {
               const pat = n.patient_id ? patients.find((p: Row) => p.id === n.patient_id) : null;
               const preview = n.content?.replace(/[*~#[\]]/g, "").replace(/\n/g, " ").slice(0, 60) || "";
               return (
-                <div className="row-item" key={n.id} onClick={() => setEditingNote(n)}>
+                <div className="row-item" key={n.id} {...clickableProps(() => setEditingNote(n))}>
                   <div className="row-icon" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}><IconClipboard size={18} /></div>
                   <div className="row-content">
                     <div className="row-title">{n.title || t("notes.noTitle")}</div>
@@ -771,7 +772,7 @@ export function Home({ setScreen, userName }: HomeProps) {
             <div style={{ padding:"0 20px 22px" }}>
               {/* Tappable patient block — matches SessionSheet identity row */}
               <div className="flex items-center gap-3" style={{ marginBottom:20, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}
-                onClick={() => { const p = selected; setSelected(null); openExpediente(p); }}>
+                {...clickableProps(() => { const p = selected; setSelected(null); openExpediente(p); })}>
                 <Avatar initials={selected.initials} color={getClientColor(selected.colorIdx ?? 0)} size="lg" />
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)" }}>

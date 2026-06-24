@@ -4,6 +4,7 @@ import { collapseGroupOccurrences } from "../../utils/groups";
 import { formatShortDate, toISODate } from "../../utils/dates";
 import { isCancelledStatus, isTutorSession, isInterviewSession } from "../../utils/sessions";
 import { useT } from "../../i18n/index";
+import { clickableProps } from "../../utils/a11y";
 import { LongPressEvent } from "./LongPressEvent";
 import { getWeekDays, isSameDay, timeToFloat } from "./agendaShared";
 
@@ -51,7 +52,7 @@ export const WeekDaysPanel = memo(function WeekDaysPanel({ weekDate, selectedDat
           const isActive = isSameDay(d, selectedDate);
           const isToday = isSameDay(d, TODAY);
           return (
-            <div key={i} className="week-day-head" style={{ cursor:"pointer" }} onClick={() => { setSelectedDate(d); setView("day"); }}>
+            <div key={i} className="week-day-head" style={{ cursor:"pointer" }} {...clickableProps(() => { setSelectedDate(d); setView("day"); })}>
               <span className="week-day-name">{visibleDow[i]}</span>
               <span className={`week-day-num ${isActive?"active":""} ${isToday&&!isActive?"today":""}`}>{d.getDate()}</span>
             </div>

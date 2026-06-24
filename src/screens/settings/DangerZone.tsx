@@ -1,6 +1,7 @@
 import React from "react";
 import { IconSmartphone, IconLogOut, IconTrash, IconChevron } from "../../components/Icons";
 import { isNative } from "../../lib/platform";
+import { clickableProps } from "../../utils/a11y";
 import { useT } from "../../i18n/index";
 
 export const DangerZone = React.memo(function DangerZone({
@@ -23,7 +24,7 @@ export const DangerZone = React.memo(function DangerZone({
           surfaces platform/push/haptic state plus test buttons. */}
       {(isNative() || import.meta.env.DEV) && (
         <div className="card" style={{ margin:"0 16px", marginBottom: 12 }}>
-          <div className="settings-row" onClick={onOpenDiagnostics}>
+          <div className="settings-row" {...clickableProps(onOpenDiagnostics)}>
             <div className="settings-row-icon"><IconSmartphone size={18} /></div>
             <div style={{ flex:1 }}>
               <div className="settings-row-title">Diagnóstico</div>
@@ -38,7 +39,7 @@ export const DangerZone = React.memo(function DangerZone({
         {/* Confirm before signing out — same ConfirmDialog the Drawer
             uses, so the affordance is consistent across both entry
             points (drawer chip + this row). */}
-        <div className="settings-row" onClick={onSignOut}>
+        <div className="settings-row" {...clickableProps(onSignOut)}>
           <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("nav.signOut")}</div>
@@ -46,7 +47,7 @@ export const DangerZone = React.memo(function DangerZone({
           <IconChevron />
         </div>
         {!readOnly && (
-          <div className="settings-row" onClick={onOpenSignOutEverywhere}>
+          <div className="settings-row" {...clickableProps(onOpenSignOutEverywhere)}>
             <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
             <div style={{ flex:1 }}>
               <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.signOutEverywhere")}</div>
@@ -64,7 +65,7 @@ export const DangerZone = React.memo(function DangerZone({
         <>
           <div className="settings-label">{t("settings.dangerZone")}</div>
           <div className="card" style={{ margin:"0 16px" }}>
-            <div className="settings-row" onClick={onOpenDeleteAccount}>
+            <div className="settings-row" {...clickableProps(onOpenDeleteAccount)}>
               <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconTrash size={18} /></div>
               <div style={{ flex:1 }}>
                 <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.privacyDelete")}</div>

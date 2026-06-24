@@ -5,6 +5,7 @@ import { isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass, 
 import { SESSION_STATUS } from "../../data/constants";
 import { SwipeRevealRow } from "../../components/SwipeRevealRow";
 import { Avatar } from "../../components/Avatar";
+import { clickableProps } from "../../utils/a11y";
 import { useT } from "../../i18n/index";
 
 /* ── SESSION ROW (shared) ──
@@ -51,7 +52,7 @@ export const SessionRow = memo(function SessionRow({ s, onClick, compact, select
   const rowBody = (
     <div
       className={`row-item session-row ${railClass(s.status)}`}
-      onClick={swipeEnabled ? undefined : handleClick}
+      {...(swipeEnabled ? {} : clickableProps(handleClick))}
       style={selectionMode && selected ? { background: "var(--teal-pale)" } : undefined}
     >
       <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="sm" />

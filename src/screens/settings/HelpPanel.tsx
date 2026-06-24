@@ -1,6 +1,7 @@
 import React from "react";
 import { IconStar, IconRefresh, IconChevron } from "../../components/Icons";
 import { isNative } from "../../lib/platform";
+import { clickableProps } from "../../utils/a11y";
 import { useT } from "../../i18n/index";
 
 export const HelpPanel = React.memo(function HelpPanel({
@@ -17,7 +18,7 @@ export const HelpPanel = React.memo(function HelpPanel({
       {/* ── AYUDA ── */}
       <div className="settings-label">{t("settings.sectionHelp")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
-        <div className="settings-row" onClick={onRestartTutorial}>
+        <div className="settings-row" {...clickableProps(onRestartTutorial)}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("tutorial.settingsRow")}</div>
@@ -29,7 +30,7 @@ export const HelpPanel = React.memo(function HelpPanel({
             native app the App Store handles updates and the SW path just
             reports "tu navegador no soporta…", so hide the row on native. */}
         {!isNative() && (
-          <div className="settings-row" style={{ cursor: updateChecking ? "default" : "pointer" }} onClick={onCheckForUpdate}>
+          <div className="settings-row" style={{ cursor: updateChecking ? "default" : "pointer" }} {...clickableProps(onCheckForUpdate)}>
             <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconRefresh size={18} /></div>
             <div style={{ flex:1 }}>
               <div className="settings-row-title">{t("settings.checkUpdate") || "Buscar actualización"}</div>

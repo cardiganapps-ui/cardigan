@@ -9,6 +9,7 @@ import { TagFilterPills } from "../components/notes/TagFilterPills";
 import { NoteTagPicker } from "../components/notes/NoteTagPicker";
 import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { clickableProps } from "../utils/a11y";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -255,12 +256,12 @@ export function Notes() {
           {showTemplates && (
             <div className="card" style={{ marginTop:8, padding:0 }}>
               {noteTemplates.map((tmpl: Row) => (
-                <div key={tmpl.id} className="row-item" role="button" tabIndex={0} style={{ cursor:"pointer" }}
-                  onClick={async () => {
+                <div key={tmpl.id} className="row-item" style={{ cursor:"pointer" }}
+                  {...clickableProps(async () => {
                     setShowTemplates(false);
                     const note = await createNote({ patientId: null, sessionId: null, title: tmpl.title, content: tmpl.content });
                     if (note) setEditingNote(note);
-                  }}>
+                  })}>
                   <span style={{ display:"flex", alignItems:"center", justifyContent:"center", width:28, height:28, borderRadius:"var(--radius)", background:"var(--teal-pale)", color:"var(--teal-dark)", flexShrink:0 }}>
                     {(() => { const Ic = TEMPLATE_ICONS[tmpl.icon]; return Ic ? <Ic size={15} /> : null; })()}
                   </span>

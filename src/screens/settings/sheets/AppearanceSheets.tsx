@@ -1,6 +1,7 @@
 import { useT } from "../../../i18n/index";
 import { IconX, IconCheck, IconSun, IconMoon, IconSmartphone } from "../../../components/Icons";
 import { SheetOverlay } from "../../../components/SheetOverlay";
+import { clickableProps } from "../../../utils/a11y";
 
 /* ── Apariencia (tema) + Color de acento sheets ───────────────────────
    Extracted from Settings.tsx. PRESENTATIONAL: the theme + accent
@@ -52,7 +53,7 @@ export function AppearanceSheets({ mode, theme, accentTheme, onClose, setSheetPa
               {mode === "theme" ? (
                 themeOptions.map(opt => (
                   <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
-                    onClick={() => { theme?.setPreference(opt.key); onClose(); }}>
+                    {...clickableProps(() => { theme?.setPreference(opt.key); onClose(); })}>
                     <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>{opt.icon}</div>
                     <div style={{ flex:1 }}>
                       <div className="settings-row-title">{opt.label}</div>
@@ -63,7 +64,7 @@ export function AppearanceSheets({ mode, theme, accentTheme, onClose, setSheetPa
               ) : (
                 ACCENTS.map(opt => (
                   <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
-                    onClick={() => { accentTheme?.setAccent(opt.key); onClose(); }}>
+                    {...clickableProps(() => { accentTheme?.setAccent(opt.key); onClose(); })}>
                     <div className="settings-row-icon" aria-hidden="true">
                       <span style={{ display:"inline-block", width:18, height:18, borderRadius:"50%", background:opt.swatch, border:"1px solid var(--border-lt)" }} />
                     </div>

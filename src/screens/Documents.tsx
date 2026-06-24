@@ -6,6 +6,7 @@ import { DocumentViewer } from "../components/DocumentViewer";
 import { SheetOverlay } from "../components/SheetOverlay";
 import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { clickableProps } from "../utils/a11y";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 
@@ -197,13 +198,13 @@ export function Documents() {
             </div>
             <div style={{ overflowY:"auto", padding:"0 20px 22px" }}>
               <div className="card" style={{ padding:0 }}>
-                <div className="row-item" role="button" tabIndex={0} style={{ cursor:"pointer" }}
-                  onClick={() => confirmUpload(null)}>
+                <div className="row-item" style={{ cursor:"pointer" }}
+                  {...clickableProps(() => confirmUpload(null))}>
                   <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{t("docs.general")}</span>
                 </div>
                 {activePatients.map((p: Row) => (
-                  <div className="row-item" key={p.id} role="button" tabIndex={0} style={{ cursor:"pointer" }}
-                    onClick={() => confirmUpload(p.id)}>
+                  <div className="row-item" key={p.id} style={{ cursor:"pointer" }}
+                    {...clickableProps(() => confirmUpload(p.id))}>
                     <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{p.name}</span>
                   </div>
                 ))}

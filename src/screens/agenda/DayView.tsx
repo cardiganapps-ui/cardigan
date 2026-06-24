@@ -3,6 +3,7 @@ import { TODAY } from "../../data/seedData";
 import { formatShortDate } from "../../utils/dates";
 import { useSwipe } from "../../hooks/useSwipe";
 import { useT } from "../../i18n/index";
+import { clickableProps } from "../../utils/a11y";
 import { DayPanel } from "./DayPanel";
 import { HeaderLabel } from "./HeaderLabel";
 import { getWeekDays, addDays, isSameDay } from "./agendaShared";
@@ -59,7 +60,7 @@ export function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomi
         const isToday = isSameDay(d, TODAY);
         const hasSess = sessionDateSet.has(ds);
         return (
-          <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""} ${isToday&&!isActive?"today":""}`} role="button" tabIndex={0} onClick={() => setSelectedDate(d)}>
+          <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""} ${isToday&&!isActive?"today":""}`} {...clickableProps(() => setSelectedDate(d))}>
             <span className="cal-day-name">{DOW[i]}</span>
             <span className="cal-day-num">{d.getDate()}</span>
           </div>

@@ -4,6 +4,7 @@ import { haptic } from "../../utils/haptics";
 import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../../hooks/swipeCoordinator";
 import { formatShortDate, toISODate } from "../../utils/dates";
 import { isTutorSession } from "../../utils/sessions";
+import { clickableProps } from "../../utils/a11y";
 import { buildMonthGrid, isSameDay } from "./agendaShared";
 
 /* ── MONTH GRID PANEL (just the calendar cells, no header/dow/sessions) ──
@@ -201,10 +202,9 @@ export const MonthGridPanel = memo(function MonthGridPanel({ year, month, select
         const hasTutor = sessions.some((s: Row) => isTutorSession(s));
         return (
           <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
-            role="button" tabIndex={0}
             data-month-day={toISODate(cellDate)}
             data-month-day-count={sessions.length}
-            onClick={() => setSelectedDate(cellDate)}>
+            {...clickableProps(() => setSelectedDate(cellDate))}>
             <span className="month-cell-num">{cell.num}</span>
             {(hasPresencial || hasVirtual || hasTelefonica || hasTutor) && (
               <div className="month-dots">
