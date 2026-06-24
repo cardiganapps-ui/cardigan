@@ -5,6 +5,7 @@ import { isNative, isIOS } from "../lib/platform";
 import { signInWithAppleNative } from "../lib/nativeAppleSignIn";
 import { signInWithGoogleNative } from "../lib/nativeGoogleSignIn";
 import { clearInviteToken, getInviteContext } from "../utils/inviteTokenStorage";
+import { clearCachedData } from "../lib/dataCache";
 import { track } from "../lib/analytics";
 
 // Field/discipline nouns (gender-neutral). The verification email
@@ -273,6 +274,11 @@ export function useAuth() {
     // safe default rather than blowing up the gesture.
     const safeScope = (scope === "local" || scope === "global" || scope === "others")
       ? scope : "local";
+    // Capture the uid before the auth listener nulls `user` so we can wipe
+    // this user's localStorage data cache (financial rows) below — otherwise
+    // the next person to sign in on a shared device sees the previous user's
+    // cached patients/payments for a beat before refresh() overwrites them.
+    const uid = user?.id;
     // Clear any pending patient-invite token before signing out. A
     // patient who just signed out shouldn't land back on the claim
     // screen with the same token still in storage — they'd see
@@ -288,7 +294,12 @@ export function useAuth() {
       // post-MFA page with no escape.
       console.warn("signOut:", (err as Error)?.message || err);
     }
-    finally { await wipeBrowserCaches(); }
+    finally {
+      // localStorage isn't Cache Storage — wipeBrowserCaches() won't touch
+      // the data cache, so clear it explicitly here.
+      clearCachedData(uid);
+      await wipeBrowserCaches();
+    }
   }
 
   async function wipeBrowserCaches() {
