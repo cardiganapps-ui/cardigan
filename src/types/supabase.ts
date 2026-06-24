@@ -2026,6 +2026,10 @@ export type Database = {
         Args: { report_ids: string[] }
         Returns: undefined
       }
+      create_patient_with_sessions: {
+        Args: { p_patient: Json; p_sessions?: Json }
+        Returns: Json
+      }
       diag_cron_job_state: { Args: never; Returns: Json }
       get_therapists_for_patient: {
         Args: never

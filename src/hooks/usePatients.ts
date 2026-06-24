@@ -185,91 +185,75 @@ export function createPatientActions(
 
     setMutating(true);
     setMutationError("");
-    const { data, error } = await supabase.from("patients").insert({
-      user_id: userId,
+
+    // Single transactional RPC (migration 083): the patient row and all of
+    // its seed sessions commit together or not at all. Replaces the old
+    // insert-patient → insert-sessions → recalc two-step, which could leave
+    // an orphan patient if the second insert failed mid-flight. user_id is
+    // forced from the JWT server-side; duplicate (patient, date, time)
+    // slots are skipped idempotently inside the txn (23505 savepoint).
+    const pPatient = {
       name: name.trim(),
       parent: parent?.trim() || "",
       phone: phone?.trim() || "",
       email: email?.trim() || "",
       initials: getInitials(name),
       rate: patientRate,
-      // Episodic patients have no perpetual slot — leave day/time NULL
-      // so the rest of the app reads "no recurring schedule" cleanly.
+      // Episodic patients have no perpetual slot — leave day/time NULL.
       day:  mode === "recurring" ? sched[0].day  : null,
       time: mode === "recurring" ? sched[0].time : null,
       color_idx: colorIdx,
       start_date: mode === "recurring" && recurring && startDate ? startDate : null,
       scheduling_mode: mode,
       birthdate: birthdate || null,
-      tutor_frequency: (tutorFrequency || null) as number | null,
-      // Anthropometric / health-history fields. Set for nutritionist
-      // + trainer; null/empty for everyone else (the form doesn't
-      // surface them, so the caller passes null/"").
-      height_cm: (heightCm || null) as number | null,
-      goal_weight_kg: (goalWeightKg || null) as number | null,
-      goal_body_fat_pct: (goalBodyFatPct || null) as number | null,
-      goal_skeletal_muscle_kg: (goalSkeletalMuscleKg || null) as number | null,
+      tutor_frequency: tutorFrequency || null,
+      // Anthropometric / health-history fields (nutritionist + trainer).
+      height_cm: heightCm || null,
+      goal_weight_kg: goalWeightKg || null,
+      goal_body_fat_pct: goalBodyFatPct || null,
+      goal_skeletal_muscle_kg: goalSkeletalMuscleKg || null,
       allergies: allergies || "",
       medical_conditions: medicalConditions || "",
       sessions: seedCount,
       billed: seedBilled,
-      // Opening balance (migration 078): signed MXN the patient is
-      // migrated in with. >0 = pre-existing debt, <0 = saldo a favor.
-      // Stored verbatim — it's a standalone amountDue term, never folded
-      // into billed/paid/sessions counters.
+      // Opening balance (migration 078): signed MXN, a standalone amountDue
+      // term — never folded into billed/paid/sessions counters.
       opening_balance: Math.round(Number(openingBalance) || 0),
       whatsapp_enabled: !!whatsappEnabled,
-      // Stamp consent at creation only when the toggle was flipped on
-      // — gives us a clean audit row tying opt-in to a moment.
       whatsapp_consent_at: whatsappEnabled ? new Date().toISOString() : null,
-      // Optional cloud-folder link. Stored as null when blank so the
-      // empty-state branch in ExternalFolderCard renders cleanly.
       external_folder_url: externalFolderUrl || null,
-    }).select().single();
-    if (error) { setMutating(false); setMutationError(error.message); return false; }
+    };
+    const pSessions = sessionSeeds.map(s => ({
+      patient: name.trim(), initials: getInitials(name),
+      time: s.time, day: s.day, date: s.date,
+      duration: s.duration, rate: patientRate,
+      modality: s.modality, color_idx: colorIdx,
+      // Recurring rows seed is_recurring=true (auto-extend derives future
+      // weeks); episodic first-consult rows seed false so it never does.
+      is_recurring: s.is_recurring !== false,
+      recurrence_frequency: s.frequency || "weekly",
+      visit_type: s.visit_type || null,
+    }));
 
-    const newPatient = { ...data, colorIdx: data.color_idx } as Patient;
-    let updatedPatient = newPatient;
-
-    if (sessionSeeds.length > 0) {
-      const allRows = sessionSeeds.map(s => ({
-        user_id: userId, patient_id: data.id, patient: name.trim(),
-        initials: getInitials(name), time: s.time, day: s.day,
-        date: s.date, duration: s.duration, rate: patientRate,
-        modality: s.modality, color_idx: colorIdx,
-        // Recurring patients seed `is_recurring=true` — auto-extend
-        // is allowed to derive future weeks from them. Episodic
-        // patients seed at most ONE row, `is_recurring=false`, so
-        // auto-extend never picks it up.
-        is_recurring: s.is_recurring !== false,
-        // Stamp recurrence_frequency on every recurring row so
-        // auto-extend can read the slot's stride later. Episodic
-        // first-consult rows pass through with the DB default
-        // ('weekly') — harmless because is_recurring=false keeps
-        // them out of the schedule-derivation path entirely.
-        recurrence_frequency: s.frequency || "weekly",
-        visit_type: s.visit_type || null,
-      }));
-      const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();
-      if (!sessErr && sessData) {
-        // Match the shape produced by mapRows() so a subsequent full
-        // refresh doesn't introduce reference churn / duplicate keys.
-        setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
-        // If the returned row count doesn't match the counters we
-        // pre-stamped on the patient, reconcile via recalc.
-        if (sessData.length !== seedCount) {
-          const fixed = await recalcPatientCounters(data.id);
-          if (fixed) updatedPatient = { ...newPatient, ...fixed };
-        }
-      } else {
-        // Session insert failed — roll the counters back on the patient
-        // so amountDue doesn't show a phantom balance.
-        const fixed = await recalcPatientCounters(data.id);
-        if (fixed) updatedPatient = { ...newPatient, ...fixed };
-      }
+    const { data: rpcData, error } = await supabase.rpc("create_patient_with_sessions", {
+      p_patient: pPatient,
+      p_sessions: pSessions,
+    });
+    const result = rpcData as unknown as { patient?: Patient; sessions?: Session[] } | null;
+    if (error || !result?.patient) {
+      setMutating(false);
+      setMutationError(error?.message || "No se pudo crear el paciente.");
+      return false;
     }
 
-    setPatients(prev => [...prev, updatedPatient].sort((a, b) => a.name.localeCompare(b.name)));
+    const newPatient = { ...result.patient, colorIdx: result.patient.color_idx } as Patient;
+    // Match mapRows() shape so a later full refresh doesn't churn keys.
+    const newSessions = (result.sessions || []).map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }));
+    if (newSessions.length > 0) {
+      setUpcomingSessions(prev => [...prev, ...newSessions]);
+    }
+
+    setPatients(prev => [...prev, newPatient].sort((a, b) => a.name.localeCompare(b.name)));
     setMutating(false);
     // Activation funnel: the FIRST patient is the key "aha" milestone.
     // `patients` is the pre-insert closure array, so length 0 means this
