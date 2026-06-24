@@ -23,6 +23,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import type { TablesInsert, TablesUpdate } from "../types/db";
 import type { ExpenseRow, RecurringExpenseRow } from "../types/rows";
+import { restoreRows } from "../lib/optimistic";
 import { computeRecurringExpenseRows } from "../utils/recurrence";
 import { shortDateToISO } from "../utils/dates";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
@@ -282,7 +283,7 @@ export function createExpenseActions({
         .eq("id", id).eq("user_id", userId);
       setMutating(false);
       if (error) {
-        setExpenses(arr => arr.map(e => e.id === id ? prev : e));
+        restoreRows(setExpenses, [prev])();
         setMutationError(error.message);
         return false;
       }
@@ -421,7 +422,7 @@ export function createExpenseActions({
       .eq("id", id).eq("user_id", userId);
     setMutating(false);
     if (error) {
-      setRecurringExpenses(arr => arr.map(t => t.id === id ? prev : t));
+      restoreRows(setRecurringExpenses, [prev])();
       setMutationError(error.message);
       return false;
     }

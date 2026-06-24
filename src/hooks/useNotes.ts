@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import type { Database } from "../types/supabase";
 import type { TablesInsert, TablesUpdate } from "../types/db";
 import type { NoteRow } from "../types/rows";
+import { restoreRows } from "../lib/optimistic";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
 // ── Domain row types ────────────────────────────────────────────────
@@ -182,7 +183,7 @@ export function createNoteActions(
     // (PRIME-DIRECTIVE-adjacent: never leave the UI showing content the DB
     // refused). Snapshot before the optimistic apply below.
     const prevNote = notes.find(n => n.id === id);
-    const revert = () => { if (prevNote) setNotes(prev => prev.map(n => n.id === id ? prevNote : n)); };
+    const revert = restoreRows(setNotes, [prevNote]);
     // Optimistic local update first so the UI can dismiss immediately.
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id
@@ -232,7 +233,7 @@ export function createNoteActions(
     const patch: TablesUpdate<"notes"> = { patient_id: patientId || null, session_id: sessionId || null };
     if (groupId !== undefined) patch.group_id = groupId || null;
     const prevNote = notes.find(n => n.id === id);
-    const revert = () => { if (prevNote) setNotes(prev => prev.map(n => n.id === id ? prevNote : n)); };
+    const revert = restoreRows(setNotes, [prevNote]);
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id ? ({ ...n, ...patch, updated_at: nowIso } as Note) : n));
     if (typeof id === "string" && id.startsWith("temp-")) return true;
@@ -327,7 +328,7 @@ export function createNoteActions(
       return true;
     }
     if (error) {
-      setNotes(prev => prev.map(n => n.id === id ? note : n));
+      restoreRows(setNotes, [note])();
       setMutationError(error.message);
       return false;
     }
@@ -354,7 +355,7 @@ export function createNoteActions(
       return true;
     }
     if (error) {
-      setNotes(prev => prev.map(n => n.id === id ? note : n));
+      restoreRows(setNotes, [note])();
       setMutationError(error.message);
       return false;
     }

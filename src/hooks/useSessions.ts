@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import type { Database } from "../types/supabase";
 import type { TablesInsert, TablesUpdate } from "../types/db";
 import type { PatientRow, SessionRow } from "../types/rows";
+import { restoreRows } from "../lib/optimistic";
 import { DAY_ORDER } from "../data/seedData";
 import {
   PATIENT_STATUS,
@@ -229,7 +230,7 @@ export function createSessionActions(
       // pre-attempt snapshot and let recalcPatientCounters reconcile from
       // truth. The recalc is fire-and-forget because the conflict UX is
       // the primary feedback.
-      setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+      restoreRows(setPatients, [prevPatient])();
       recalcPatientCounters(prevPatient.id).then((fixed) => {
         if (fixed) setPatients(prev => prev.map(p => p.id === prevPatient.id ? { ...p, ...fixed } : p));
       }).catch(() => {});
@@ -471,11 +472,11 @@ export function createSessionActions(
           p_expected_version: prevSession.version ?? null,
         } as Database["public"]["Functions"]["update_session_status_atomic"]["Args"]);
         if (error) {
-          setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
+          restoreRows(setUpcomingSessions, [prevSession])();
           if (error.code === "40001") {
             await reconcileSessionConflict(sessionId, prevSession, prevPatient);
           } else {
-            if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+            restoreRows(setPatients, [prevPatient])();
             setMutationError(error.message);
           }
         } else {
@@ -487,8 +488,8 @@ export function createSessionActions(
             : s));
         }
       } catch (e) {
-        setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
-        if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+        restoreRows(setUpcomingSessions, [prevSession])();
+        restoreRows(setPatients, [prevPatient])();
         setMutationError((e as Error)?.message || "Network error");
       }
     })();
@@ -674,8 +675,8 @@ export function createSessionActions(
         if (expectedVersion != null) q = q.eq("version", expectedVersion);
         const { data, error } = await q.select("id");
         if (error) {
-          setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
-          if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+          restoreRows(setUpcomingSessions, [prevSession])();
+          restoreRows(setPatients, [prevPatient])();
           setMutationError(error.message);
           return;
         }
@@ -1028,7 +1029,7 @@ export function createSessionActions(
       return true;
     }
     if (error) {
-      setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
+      restoreRows(setUpcomingSessions, [prevSession])();
       setMutationError(error.message);
       return false;
     }
