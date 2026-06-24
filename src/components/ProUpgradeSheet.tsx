@@ -62,6 +62,7 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
 
   return (
     <>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- backdrop scrim: dismissal is a mouse convenience; keyboard users dismiss via Escape + the in-panel controls */}
       <div
         role="dialog"
         aria-modal="true"
@@ -74,11 +75,10 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
           opacity: mounted ? 1 : 0,
           transition: "opacity 0.28s ease",
         }}
-        onClick={() => onClose?.()}
+        onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
       >
         <div
           ref={(el) => { panelRef.current = el; }}
-          onClick={(e) => e.stopPropagation()}
           style={{
             background: "var(--white)",
             borderTopLeftRadius: 22,

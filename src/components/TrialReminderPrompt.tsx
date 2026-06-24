@@ -63,11 +63,12 @@ export default function TrialReminderPrompt({
   const accentColor = tone === "urgent" ? "var(--amber)" : "var(--teal-dark)";
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- backdrop scrim: dismissal is a mouse convenience; keyboard users dismiss via Escape + the in-panel controls
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="trial-reminder-title"
-      onClick={onDismiss}
+      onClick={(e) => { if (e.target === e.currentTarget) onDismiss?.(); }}
       style={{
         position: "fixed", inset: 0,
         background: "var(--scrim-bg)",
@@ -81,7 +82,6 @@ export default function TrialReminderPrompt({
     >
       <div
         ref={(el) => { panelRef.current = el; }}
-        onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--white)",
           borderRadius: "var(--radius-lg, 16px)",
