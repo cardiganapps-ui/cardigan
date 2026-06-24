@@ -1,4 +1,5 @@
 import { AdminSkeletonRow } from "./AdminSkeletonRow";
+import { clickableProps } from "../../../utils/a11y";
 
 /* ── AdminTable ─────────────────────────────────────────────────────────
    Dense data-table primitive used across every admin list (Audit,
@@ -280,11 +281,8 @@ export function AdminTable({
                 )}
                 <div
                   className="admin-tbl-card-body"
-                  onClick={clickable ? () => onRowClick?.(row) : undefined}
                   style={clickable ? { cursor: "pointer" } : undefined}
-                  role={clickable ? "button" : undefined}
-                  tabIndex={clickable ? 0 : undefined}
-                  onKeyDown={clickable ? (e: React.KeyboardEvent) => { if (e.key === "Enter") onRowClick?.(row); } : undefined}
+                  {...(clickable ? clickableProps(() => onRowClick?.(row)) : {})}
                 >
                   <div className="admin-tbl-card-row">
                     <div className="admin-tbl-card-primary">{layout.primary}</div>

@@ -994,6 +994,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
             onChange={handleTitleChange}
             onKeyDown={handleTitleKeyDown}
             placeholder={t("notes.titlePlaceholder")}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- a brand-new note focuses its title so the user can type immediately
             autoFocus={!readOnly && !note?.id}
             readOnly={readOnly}
             aria-label={t("notes.titlePlaceholder")}

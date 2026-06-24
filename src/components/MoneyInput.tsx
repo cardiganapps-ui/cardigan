@@ -61,6 +61,7 @@ export function MoneyInput({
         onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- opt-in via prop; used only for modal/inline money entry where focus-on-open is the expected UX
         autoFocus={autoFocus}
         inputMode={inputMode}
         required={required}

@@ -22,6 +22,18 @@ const a11yWarnRules = Object.fromEntries(
   }),
 )
 
+/* Promoted to 'error' (WS-9): rules burned down to zero, so they now BLOCK
+   CI — a new violation can't slip in. Spread AFTER a11yWarnRules so it wins.
+   Add rules here as each category reaches zero; the rest stay at 'warn' on
+   the worklist (the big three — click-events-have-key-events /
+   no-static-element-interactions / no-noninteractive-element-interactions —
+   are the remaining div/span-onClick sweep). */
+const a11yErrorRules = {
+  'jsx-a11y/no-autofocus': 'error',
+  'jsx-a11y/interactive-supports-focus': 'error',
+  'jsx-a11y/no-noninteractive-tabindex': 'error',
+}
+
 /* ── Design-system gate ──
    A raw rgba(0,0,0,…) box-shadow in an inline style does NOT flip in
    dark mode — it stays a black shadow on a dark surface and reads as
@@ -117,6 +129,7 @@ export default defineConfig([
     languageOptions: browserLanguageOptions,
     rules: {
       ...a11yWarnRules,
+      ...a11yErrorRules,
       'no-unused-vars': ['error', unusedVarsOpts],
       ...reactJsxRules,
       ...designTokenRules,
@@ -138,6 +151,7 @@ export default defineConfig([
     languageOptions: browserLanguageOptions,
     rules: {
       ...a11yWarnRules,
+      ...a11yErrorRules,
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', unusedVarsOpts],
       ...reactJsxRules,

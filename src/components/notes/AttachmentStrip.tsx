@@ -126,6 +126,7 @@ export function AttachmentStrip({ tiles, retryTile, rows }: {
               className="mde-attach-lightbox-close"
               onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
               aria-label={t("close")}
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- lightbox close gets focus on open so Esc/Enter dismiss works and focus is trapped in the overlay
               autoFocus
             >
               <IconX size={18} />

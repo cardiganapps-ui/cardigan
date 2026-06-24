@@ -59,6 +59,7 @@ export default function ContextMenu({ open, x, y, onClose, items }: { open?: boo
     <div
       ref={panelRef}
       role="menu"
+      tabIndex={-1}
       className="context-menu"
       style={{ top: y, left: x }}
       onContextMenu={(e) => e.preventDefault()}

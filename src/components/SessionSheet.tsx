@@ -186,6 +186,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
                   style={{ display:"flex", alignItems:"center", gap:4 }}>
                   <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)" }}>$</span>
                   <input type="number" className="input" value={rateInput} onChange={e => setRateInput(e.target.value)}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- inline rate edit: focus-on-open is the expected edit UX
                     autoFocus onBlur={async () => { const ok = await onUpdateRate?.(session.id, rateInput); if (ok) setEditingRate(false); else setEditingRate(false); }}
                     onClick={e => e.stopPropagation()}
                     style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, padding:"0 4px", height:22, width:"100%", minHeight:"unset" }} />
@@ -243,6 +244,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
                 <>
                   <textarea className="input" value={reasonInput} onChange={e => setReasonInput(e.target.value)}
                     placeholder={t("sessions.cancelReasonPlaceholder")}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- inline cancel-reason edit: focus-on-open is the expected edit UX
                     rows={2} autoFocus
                     style={{ resize:"none", fontFamily:"var(--font)", fontSize:13, background:"var(--white)" }} />
                   <div style={{ display:"flex", gap:8, marginTop:8 }}>

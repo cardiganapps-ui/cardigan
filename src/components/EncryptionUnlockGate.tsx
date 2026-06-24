@@ -73,6 +73,7 @@ export default function EncryptionUnlockGate({ noteCrypto, onSkip }: {
           <label className="input-label">Contraseña de notas</label>
           <PasswordInput
             autoComplete="off"
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- unlock gate: focus the passphrase field so the user can type immediately
             autoFocus
             value={passphrase}
             onChange={(e) => setPassphrase(e.target.value)}

@@ -1243,6 +1243,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
   return (
     <>
+      {/* contentEditable makes this natively focusable when editable; a tabIndex
+          would be redundant and would wrongly force focus when readOnly. */}
+      {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus */}
       <div
         ref={rootRef}
         className="mde-root"
