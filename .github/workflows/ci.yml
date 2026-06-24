@@ -325,12 +325,15 @@ jobs:
 
       # Build with Vercel's own pipeline so the output matches what the
       # dashboard would have produced, then deploy the prebuilt artifact.
+      # ORG/PROJECT are non-secret identifiers (also in CLAUDE.md + the doc),
+      # hardcoded here so the cutover only needs ONE GitHub secret:
+      # VERCEL_TOKEN. Update both if the project is ever re-linked.
       - name: Build + deploy to production
         if: steps.guard.outputs.ready == 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: team_0rR9OfIKmnJ8xFDrOXUkHcT3
+          VERCEL_PROJECT_ID: prj_b7BGSTkTKwLT1aeKPEiKxAlz9Nmk
         run: |
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
           vercel build --prod --token="$VERCEL_TOKEN"

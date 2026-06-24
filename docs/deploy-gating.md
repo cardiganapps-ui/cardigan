@@ -19,24 +19,31 @@ git auto-deploy is turned off so it can't ship around the gate.
   this branch changes nothing about how deploys work today — Vercel keeps
   auto-deploying `main` exactly as before, and the new job no-ops.
 - ⏳ Activation is a deliberate one-time cutover (below). It was **not** done
-  automatically because the GitHub PAT available in the work session lacked
-  `secrets:write` and `administration` (both 403), so the secrets and branch
-  protection could not be set programmatically.
+  automatically because the GitHub token available in the work session is a
+  fine-grained PAT without `secrets:write` / `administration` (at last check it
+  403s on the REST API entirely — likely expired; the org also hasn't connected
+  the Claude GitHub App for the session). So the GitHub secret and branch
+  protection must be set via the GitHub UI or with a fresh admin token. The
+  **Vercel** API token in `.env.local` DOES work, so step 2 can be scripted
+  once step 1 is in place.
 
 ## Cutover — do these together, in order
 
 Do **all** of step 1 before step 2, or `main` will have no deploy path between
 them.
 
-### 1. Add the three GitHub Actions secrets
+### 1. Add the GitHub Actions secret
 
 Repo → Settings → Secrets and variables → Actions → New repository secret:
 
 | Secret | Value |
 |--------|-------|
 | `VERCEL_TOKEN` | a Vercel access token with deploy rights on the `cardigan` project |
-| `VERCEL_ORG_ID` | `team_0rR9OfIKmnJ8xFDrOXUkHcT3` |
-| `VERCEL_PROJECT_ID` | `prj_b7BGSTkTKwLT1aeKPEiKxAlz9Nmk` |
+
+`VERCEL_ORG_ID` (`team_0rR9OfIKmnJ8xFDrOXUkHcT3`) and `VERCEL_PROJECT_ID`
+(`prj_b7BGSTkTKwLT1aeKPEiKxAlz9Nmk`) are non-secret identifiers, now hardcoded
+in the `deploy-production` job's `env`, so `VERCEL_TOKEN` is the ONLY secret the
+cutover needs.
 
 Once `VERCEL_TOKEN` exists, the `deploy-production` job stops self-skipping and
 starts deploying on the next push to `main`.
