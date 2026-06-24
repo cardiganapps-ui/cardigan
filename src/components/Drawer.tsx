@@ -238,6 +238,8 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   return (
     <>
       {/* Overlay */}
+      {/* backdrop/overlay dismissal is a mouse convenience; keyboard users dismiss via Escape */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div className="drawer-overlay"
         onClick={onClose}
         style={{
@@ -254,9 +256,13 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
           path was previously gated on `open` and stayed dead. Gating on
           `visible` + having onClose reset both state values (App.jsx) lets
           the user always tap the right strip to escape. */}
+      {/* backdrop/overlay dismissal is a mouse convenience; keyboard users dismiss via Escape */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div className="drawer" style={{ pointerEvents: visible ? "auto" : "none" }} onClick={visible ? onClose : undefined}
         onTouchStart={onPanelTouchStart} onTouchMove={onPanelTouchMove}
         onTouchEnd={onPanelTouchEnd} onTouchCancel={onPanelTouchCancel}>
+        {/* backdrop/overlay dismissal is a mouse convenience; keyboard users dismiss via Escape */}
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
         <div className={`drawer-panel${visible ? " drawer-panel--visible" : ""}`} onClick={e => e.stopPropagation()}
           style={{ transform: transformCss, transition }}>
           <div className="drawer-header">

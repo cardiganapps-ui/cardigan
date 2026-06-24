@@ -56,6 +56,8 @@ export function Avatar({ initials, color, size = "md", tutor = false, imageUrl, 
       }}
     >
       {showImage ? (
+        // onError is an image-load fallback, not a user interaction
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         <img
           src={imageUrl}
           alt=""
@@ -79,6 +81,8 @@ export function AvatarContent({ initials, imageUrl }: { initials?: React.ReactNo
   const showImage = imageUrl && failedUrl !== imageUrl;
   if (showImage) {
     return (
+      // onError is an image-load fallback, not a user interaction
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
       <img
         src={imageUrl}
         alt=""

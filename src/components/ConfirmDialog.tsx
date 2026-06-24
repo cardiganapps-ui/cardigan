@@ -147,6 +147,8 @@ export function ConfirmDialog({
       className={`confirm-dialog-overlay${leaving ? " is-leaving" : ""}`}
       onClick={handleOverlayClick}
       role="presentation">
+      {/* stopPropagation guard so backdrop-dismiss doesn't fire on in-panel clicks; the children are the interactive controls */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div
         ref={containerRef as React.RefObject<HTMLDivElement>}
         className={`confirm-dialog ${destructive ? "confirm-dialog--destructive" : ""}${leaving ? " is-leaving" : ""}`}

@@ -279,6 +279,8 @@ export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, 
   }, [touchLongPressable, clearTargetHighlight]);
 
   return (
+    // drag/drop (pan/paste/swipe) gesture surface, not a button
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       ref={elRef}
       className={`week-event ${isCancelledStatus(session.status)?"cancelled":""} ${isDraggable ? "week-event--draggable" : ""} ${touchLongPressable ? "week-event--longpress" : ""} ${pressing ? "week-event--pressing" : ""} ${dragging ? "week-event--dragging" : ""}`}

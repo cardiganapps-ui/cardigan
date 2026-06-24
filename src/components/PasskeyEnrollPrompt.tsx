@@ -29,11 +29,13 @@ export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismis
   if (!open) return null;
 
   return (
+    // backdrop scrim: dismissal is a mouse convenience; keyboard users dismiss via Escape + the in-panel controls
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="passkey-prompt-title"
-      onClick={creating ? undefined : onDismiss}
+      onClick={creating ? undefined : (e) => { if (e.target === e.currentTarget) onDismiss?.(); }}
       style={{
         position: "fixed", inset: 0,
         background: "var(--scrim-bg)",
@@ -47,7 +49,6 @@ export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismis
     >
       <div
         ref={(el) => { panelRef.current = el; }}
-        onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--white)",
           borderRadius: "var(--radius-lg, 16px)",

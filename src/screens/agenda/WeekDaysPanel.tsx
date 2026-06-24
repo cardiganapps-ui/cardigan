@@ -73,6 +73,8 @@ export const WeekDaysPanel = memo(function WeekDaysPanel({ weekDate, selectedDat
               {hours.map((hour, hIdx) => {
                 const isDropTarget = dropTarget === `${dIdx}:${hIdx}`;
                 return (
+                  // drag/drop (pan/paste/swipe) gesture surface, not a button
+                  // eslint-disable-next-line jsx-a11y/click-events-have-key-events
                   <div key={hIdx} className={`week-cell ${isDropTarget ? "week-cell--drop-target" : ""}`}
                     role="button" tabIndex={0}
                     data-cell-day={toISODate(d)}

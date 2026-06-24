@@ -29,6 +29,8 @@ export function AdminBottomTabs({ section, onChange, onMore, moreActive = false 
   const { t } = useT();
   return (
     <>
+      {/* tablist/menu composite widget is keyboard-operable via its tab/item children; the rule flags the container element only */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role */}
       <nav className="admin-bottom-tabs" role="tablist" aria-label="Navegación admin">
         {TABS.map((tab) => {
           const active = section === tab.key;

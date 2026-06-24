@@ -322,8 +322,10 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
   });
 
   return (
-    <div className="cmdp-overlay" onClick={onClose}>
-      <div ref={(el) => { panelRef.current = el; }} className="cmdp-panel" role="dialog" aria-modal="true" aria-label="Command palette" onClick={(e) => e.stopPropagation()}>
+    // backdrop scrim: dismissal is a mouse convenience; keyboard users dismiss via Escape + the in-panel controls
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+    <div className="cmdp-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={(el) => { panelRef.current = el; }} className="cmdp-panel" role="dialog" aria-modal="true" aria-label="Command palette">
         <div className="cmdp-search">
           <IconSearch size={16} />
           <input

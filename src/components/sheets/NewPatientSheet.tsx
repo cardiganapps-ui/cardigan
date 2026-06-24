@@ -464,6 +464,8 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                   placeholder={t("patients.namePlaceholder")} autoCapitalize="words" />
               </div>
 
+              {/* row is a tap-target for the adjacent toggle/checkbox, which is the keyboard-operable control */}
+              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
               <div
                 onClick={() => setIsMinor(v => !v)}
                 style={{
@@ -602,6 +604,8 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
               </div>
 
               {/* 2. Minor toggle — second question, immediately after name */}
+              {/* row is a tap-target for the adjacent toggle/checkbox, which is the keyboard-operable control */}
+              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
               <div
                 onClick={() => setIsMinor(v => !v)}
                 style={{
@@ -690,6 +694,8 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
               {isEpisodicMode && (
                 <>
                   <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", margin:"18px 0 10px" }}>{t("scheduling.firstConsult")}</div>
+                  {/* row is a tap-target for the adjacent toggle/checkbox, which is the keyboard-operable control */}
+                  {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
                   <div
                     onClick={() => setSkipFirstConsult(v => !v)}
                     style={{
@@ -849,6 +855,8 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                   <label className="input-label">{t("patients.start")}</label>
                   <input className="input" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
                 </div>
+                {/* row is a tap-target for the adjacent toggle/checkbox, which is the keyboard-operable control */}
+                {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
                 <div
                   onClick={() => setHasEndDate(v => !v)}
                   style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", marginBottom: hasEndDate ? 8 : 0 }}>

@@ -192,6 +192,8 @@ export function PatientShell({ user, signOut, data }: PatientShellProps) {
           parameterizing. */}
       <nav
         className="bottom-tabs"
+        // tablist/menu composite widget is keyboard-operable via its tab/item children; the rule flags the container element only
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
         role="tablist"
         aria-label={t("patientShell.nav")}
         style={{ "--active-i": activeIndex, "--tab-count": TABS.length } as React.CSSProperties}

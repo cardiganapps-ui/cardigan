@@ -594,6 +594,8 @@ function NoteGroupedList({
                 } as React.CSSProperties}>
                 <div style={{ display: "flex", alignItems: "center" }}>
                   {selectMode && (
+                    // row is a tap-target for the adjacent toggle/checkbox, which is the keyboard-operable control
+                    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
                     <div onClick={(e) => { e.stopPropagation(); onSelectToggle(n.id); }}
                       style={{ padding: "12px 0 12px 12px", cursor: "pointer", flexShrink: 0 }}>
                       <div style={{

@@ -113,10 +113,12 @@ export function AttachmentStrip({ tiles, retryTile, rows }: {
         const tile = safeTiles[lightboxId];
         if (!tile?.url) return null;
         return (
+          // backdrop scrim: dismissal is a mouse convenience; keyboard users dismiss via Escape + the in-panel controls
+          // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
           <div
             ref={lightboxRef as React.RefObject<HTMLDivElement>}
             className="mde-attach-lightbox"
-            onClick={closeLightbox}
+            onClick={(e) => { if (e.target === e.currentTarget) closeLightbox(); }}
             role="dialog"
             aria-modal="true"
             aria-label={t("notes.attachments.preview")}
@@ -131,7 +133,7 @@ export function AttachmentStrip({ tiles, retryTile, rows }: {
             >
               <IconX size={18} />
             </button>
-            <img src={tile.url} alt="" onClick={(e) => e.stopPropagation()} />
+            <img src={tile.url} alt="" />
           </div>
         );
       })()}

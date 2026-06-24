@@ -48,6 +48,8 @@ export function PatientRow({ p, i, swipeEnabled, isInterviewLane, isPotential, i
     { enabled: !!openCtxMenu }
   );
   const rowBody = (
+    // row click + long-press context menu are pointer affordances
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       className={`row-item list-entry-stagger ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""} ${isInterviewLane ? "row-potential" : ""} ${isDiscarded ? "row-discarded" : ""}`}
       style={{ "--stagger-i": Math.min(i, 12) } as React.CSSProperties}

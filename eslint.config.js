@@ -7,33 +7,20 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
-/* Accessibility lint surfaced as WARN (non-blocking) — the Phase 3
-   a11y worklist. Burn the warnings down, then promote individual rules
-   to 'error' as each reaches zero. Downgrading the recommended set keeps
-   CI green during adoption instead of breaking it on day one. */
-const a11yWarnRules = Object.fromEntries(
+/* Accessibility lint — ENFORCED at 'error' (WS-9 complete). The whole
+   recommended jsx-a11y set was burned down to zero (div/span onClick →
+   clickableProps / native buttons; the ~60 sheet backdrops → <SheetOverlay>;
+   labels associated; autofocus/focus/tabindex/role exceptions given
+   justified inline disables), so the rules now BLOCK CI — a new a11y
+   violation can't slip in. The handful the recommended set ships as 'off'
+   (deprecated / overly-strict: label-has-for, control-has-associated-label,
+   anchor-ambiguous-text) stay off. */
+const a11yErrorRules = Object.fromEntries(
   Object.entries(jsxA11y.flatConfigs.recommended.rules).map(([rule, level]) => {
-    // Preserve rules the recommended set ships as 'off' (deprecated /
-    // overly-strict: label-has-for, control-has-associated-label,
-    // anchor-ambiguous-text). Only downgrade the genuinely-recommended
-    // 'error' rules to 'warn' for the non-blocking adoption phase.
     const isOff = level === 'off' || (Array.isArray(level) && level[0] === 'off')
-    return [rule, isOff ? 'off' : 'warn']
+    return [rule, isOff ? 'off' : 'error']
   }),
 )
-
-/* Promoted to 'error' (WS-9): rules burned down to zero, so they now BLOCK
-   CI — a new violation can't slip in. Spread AFTER a11yWarnRules so it wins.
-   Add rules here as each category reaches zero; the rest stay at 'warn' on
-   the worklist (the big three — click-events-have-key-events /
-   no-static-element-interactions / no-noninteractive-element-interactions —
-   are the remaining div/span-onClick sweep). */
-const a11yErrorRules = {
-  'jsx-a11y/no-autofocus': 'error',
-  'jsx-a11y/interactive-supports-focus': 'error',
-  'jsx-a11y/no-noninteractive-tabindex': 'error',
-  'jsx-a11y/label-has-associated-control': 'error',
-}
 
 /* ── Design-system gate ──
    A raw rgba(0,0,0,…) box-shadow in an inline style does NOT flip in
@@ -129,7 +116,6 @@ export default defineConfig([
     plugins: { react: reactPlugin, 'jsx-a11y': jsxA11y },
     languageOptions: browserLanguageOptions,
     rules: {
-      ...a11yWarnRules,
       ...a11yErrorRules,
       'no-unused-vars': ['error', unusedVarsOpts],
       ...reactJsxRules,
@@ -151,7 +137,6 @@ export default defineConfig([
     plugins: { react: reactPlugin, 'jsx-a11y': jsxA11y },
     languageOptions: browserLanguageOptions,
     rules: {
-      ...a11yWarnRules,
       ...a11yErrorRules,
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', unusedVarsOpts],

@@ -29,6 +29,8 @@ export function NoteOutline({ content, onJump, variant = "drawer", activeLine = 
                   key={idx}
                   className={"mde-outline-item note-outline-entry mde-outline-lvl-" + it.level + (isActive ? " is-active" : "")}
                   onClick={() => onJump(it.line)}
+                  // tablist/menu composite widget is keyboard-operable via its tab/item children; the rule flags the container element only
+                  // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
                   role="button"
                   tabIndex={0}
                   aria-current={isActive ? "true" : undefined}

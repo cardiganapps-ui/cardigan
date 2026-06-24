@@ -416,6 +416,8 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
   return (
     <div className="av-crop-editor">
       <div className="av-crop-stage">
+        {/* drag/drop (pan/paste/swipe) gesture surface, not a button */}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
         <div
           ref={frameRef}
           className="av-crop-frame"

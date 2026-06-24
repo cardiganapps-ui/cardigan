@@ -72,6 +72,8 @@ export function QuickActions() {
 
   return (
     <>
+      {/* backdrop/overlay dismissal is a mouse convenience; keyboard users dismiss via Escape */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       {menuOpen && <div className="fab-overlay" onClick={() => setMenuOpen(false)} />}
       {menuOpen && (
         <div className="fab-menu">

@@ -916,6 +916,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       )}
 
       {/* ── Body (title + markdown editor) ────────────────────── */}
+      {/* drag/drop (pan/paste/swipe) gesture surface, not a button */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
         ref={scrollRef}
         className={"mde-scroll" + (dragOver ? " is-drag-over" : "")}
@@ -1148,6 +1150,8 @@ export function NoteCard({ note, onClick, patientName, sessionLabel, onPatientCl
       <div style={{ fontSize: 12, color: hasLink ? "var(--teal-dark)" : "var(--charcoal-lt)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: hasLink ? 600 : 400 }}>
         {hasLink
           ? <>
+              {/* nested link inside the card button; revisit by promoting to a real button when the card is restructured */}
+              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
               {patientName && <span onClick={onPatientClick ? (e) => { e.stopPropagation(); onPatientClick(); } : undefined}
                 style={onPatientClick ? { cursor: "pointer", textDecoration: "underline", textDecorationColor: "var(--teal-light)", textUnderlineOffset: 2 } : undefined}>
                 {t("sessions.patient")}: {patientName}

@@ -512,6 +512,8 @@ export function PatientExpediente({
     <>
     {/* Backdrop (overlay mode only) */}
     {!inline && (
+      // backdrop/overlay dismissal is a mouse convenience; keyboard users dismiss via Escape
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
       <div className="expediente-open" onClick={startClose}
         style={{
           position:"fixed", inset:0, background:"var(--scrim-bg)", zIndex:"var(--z-expediente-bg)",
@@ -717,6 +719,8 @@ export function PatientExpediente({
       {/* Body — two columns on inline (rail + content), single column otherwise. */}
       <div className={inline ? "expediente-inline-body" : "expediente-overlay-body"}>
         {inline && (
+          // tablist/menu composite widget is keyboard-operable via its tab/item children; the rule flags the container element only
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
           <nav className="expediente-inline-tabs" role="tablist" aria-orientation="vertical">
             {tabs.map(tt => (
               <button key={tt.k} type="button" role="tab" aria-selected={tab === tt.k}
@@ -730,6 +734,8 @@ export function PatientExpediente({
         )}
 
       {/* Content */}
+      {/* drag/drop (pan/paste/swipe) gesture surface, not a button */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div ref={contentRef}
         className={`expediente-scroll ${dragOverFiles && tab === "archivo" ? "expediente-scroll--drop" : ""}`}
         onTouchStart={inline ? undefined : (e) => { onContentTouchStart(e); onTabContentTouchStart(e); }}

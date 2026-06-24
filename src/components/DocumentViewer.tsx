@@ -19,6 +19,8 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, 
 
   return (
     <>
+      {/* backdrop/overlay dismissal is a mouse convenience; keyboard users dismiss via Escape */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div style={{ position:"fixed", inset:0, background:"var(--scrim-bg-strong)", zIndex:"var(--z-doc-viewer-bg)", animation:"fadeIn 0.5s ease" }}
         onClick={onClose} />
       <div style={{
@@ -52,6 +54,8 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, 
           </div>
         </div>
         <div style={{ flex:1, overflow:"auto", display:"flex", alignItems:"center", justifyContent:"center", background: isImage ? "var(--doc-viewer-image-bg)" : "var(--white)" }}>
+          {/* onError is an image-load fallback, not a user interaction */}
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
           {isImage && !imgFailed && <img src={url} alt={doc.name || ""} onError={() => setImgFailed(true)} style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />}
           {isImage && imgFailed && (
             <div style={{ textAlign:"center", padding:32, color:"var(--charcoal-xl)" }}>
