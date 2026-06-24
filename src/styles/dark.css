@@ -179,6 +179,7 @@ html[data-theme="dark"] {
      content is already low-contrast — a light scrim wouldn't produce
      a clear "behind" / "in front" hierarchy. */
   --scrim-bg: rgba(0, 0, 0, 0.55);
+  --scrim-bg-strong: rgba(0, 0, 0, 0.72);
   --doc-viewer-image-bg: #0E0E0E;
   /* Translucent whites keep the same alphas — they're computed against
      whatever surface they overlay, so re-tuning isn't needed. */

@@ -514,7 +514,7 @@ export function PatientExpediente({
     {!inline && (
       <div className="expediente-open" onClick={startClose}
         style={{
-          position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)",
+          position:"fixed", inset:0, background:"var(--scrim-bg)", zIndex:"var(--z-expediente-bg)",
           opacity: entering || closing ? 0 : 1,
           transition: "opacity 0.34s ease",
           pointerEvents: closing ? "none" : undefined,
@@ -546,8 +546,8 @@ export function PatientExpediente({
         transition: dragging
           ? "none"
           : closing
-            ? "transform 0.34s cubic-bezier(0.55, 0.06, 0.68, 0.19)"
-            : "transform 0.62s cubic-bezier(0.32, 0.72, 0, 1)",
+            ? "transform 0.34s var(--ease-in)"
+            : "transform 0.62s var(--ease-out)",
         willChange: "transform",
         overflow:"hidden",
       }}>

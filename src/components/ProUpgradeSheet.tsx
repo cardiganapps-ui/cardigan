@@ -68,7 +68,7 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
         aria-labelledby="pro-upgrade-title"
         style={{
           position: "fixed", inset: 0,
-          background: "rgba(0,0,0,0.55)",
+          background: "var(--scrim-bg)",
           display: "flex", alignItems: "flex-end", justifyContent: "center",
           zIndex: 670,
           opacity: mounted ? 1 : 0,
@@ -87,7 +87,7 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
             maxWidth: 480,
             paddingBottom: "calc(20px + env(safe-area-inset-bottom))",
             transform: mounted ? "translateY(0)" : "translateY(28px)",
-            transition: "transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            transition: "transform 0.42s var(--ease-spring)",
             overflow: "hidden",
             boxShadow: "var(--shadow-sheet-up)",
           }}

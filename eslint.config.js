@@ -32,15 +32,25 @@ const a11yWarnRules = Object.fromEntries(
    color / not under a `style` attribute). First hard-enforced rule of the
    design-token burn-down; fontSize / hex / cream rules join as each
    category reaches zero. */
-/* Inline rgba(0,0,0,…) box-shadow: doesn't flip in dark mode (stays a
-   black shadow on a dark surface). Applied everywhere — harmless in api/
-   (no JSX) and meaningful in the UI. */
-const shadowSelector = {
-  selector: "JSXAttribute[name.name='style'] Property[key.name='boxShadow'] Literal[value=/rgba\\(\\s*0\\s*,\\s*0\\s*,\\s*0/]",
-  message: 'Inline rgba(0,0,0,…) box-shadow breaks dark mode — use a --shadow-* / --shadow-overlay / --shadow-sheet-up token instead.',
+/* Inline rgba(0,0,0,…) in ANY style property: a black shadow / scrim /
+   border that doesn't flip in dark mode (stays black on a dark surface,
+   reading as muddy or invisible). Generalized from the old boxShadow-only
+   selector to also catch backdrops and borders. Use a dark-aware token:
+   --scrim-bg / --scrim-bg-strong (overlays), --shadow-* (elevation), or
+   --border-* (dividers). Applied everywhere — harmless in api/ (no JSX). */
+const blackRgbaSelector = {
+  selector: "JSXAttribute[name.name='style'] Literal[value=/rgba\\(\\s*0\\s*,\\s*0\\s*,\\s*0/]",
+  message: 'Inline rgba(0,0,0,…) does not flip in dark mode — use a --scrim-bg / --scrim-bg-strong / --shadow-* / --border-* token instead.',
+}
+/* Inline cubic-bezier(…) easing: keep motion timing in the --ease-*
+   vocabulary so curves stay consistent and tunable from one place.
+   Matches both string literals and template literals under a style attr. */
+const easingSelector = {
+  selector: "JSXAttribute[name.name='style'] :matches(Literal[value=/cubic-bezier/], TemplateElement[value.raw=/cubic-bezier/])",
+  message: 'Inline cubic-bezier(…) easing — use an --ease-out / --ease-in / --ease-in-out / --ease-spring / --ease-spring-soft token instead.',
 }
 const designTokenRules = {
-  'no-restricted-syntax': ['error', shadowSelector],
+  'no-restricted-syntax': ['error', blackRgbaSelector, easingSelector],
 }
 
 /* Relative imports in the Vite-bundled frontend (src/) must be
@@ -53,7 +63,8 @@ const srcImportExtMessage =
   'Use an extensionless relative import (drop the .js/.jsx) — explicit extensions break the Vite build when the target migrates to TypeScript.'
 const frontendRestrictedSyntax = {
   'no-restricted-syntax': ['error',
-    shadowSelector,
+    blackRgbaSelector,
+    easingSelector,
     { selector: "ImportDeclaration[source.value=/^\\.\\.?\\/.*\\.jsx?$/]", message: srcImportExtMessage },
     { selector: "ImportExpression[source.value=/^\\.\\.?\\/.*\\.jsx?$/]", message: srcImportExtMessage },
   ],

@@ -986,8 +986,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
           <div style={{
             flex: 1, minHeight: 0, display: "flex", flexDirection: "column",
             transition: direction ? "none" : undefined,
-            animation: direction === "left" ? "screenSlideLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" :
-                       direction === "right" ? "screenSlideRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : undefined,
+            animation: direction === "left" ? "screenSlideLeft 0.5s var(--ease-spring)" :
+                       direction === "right" ? "screenSlideRight 0.5s var(--ease-spring)" : undefined,
           }}>
             <SkeletonCrossfade
               showContent={!(loading && patients.length === 0)}

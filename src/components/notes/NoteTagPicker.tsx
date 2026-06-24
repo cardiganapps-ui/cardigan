@@ -89,7 +89,7 @@ export function NoteTagPicker({ noteId, tags, tagLinks, upsertTag, linkTag, unli
                 onClick={() => unlinkTag?.(noteId, tag.id)}
                 style={{
                   width: 22, height: 22, minWidth: 22, minHeight: 22,
-                  borderRadius: "50%", background: "rgba(0,0,0,0.06)",
+                  borderRadius: "50%", background: "var(--border-lt)",
                   border: "none", color: "inherit", cursor: "pointer",
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   padding: 0,

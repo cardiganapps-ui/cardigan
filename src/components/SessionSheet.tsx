@@ -214,7 +214,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
               return (
                 <div {...clickableProps(() => onUpdateModality?.(session.id, next), { disabled: !onUpdateModality, label: t("sessions.modality") })}
                   className={`stat-tile ${onUpdateModality ? "modality-toggle" : ""}`}
-                  style={{ background: tint.bg, cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.5s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
+                  style={{ background: tint.bg, cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.5s ease, transform 0.4s var(--ease-spring)", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
                   <div className="stat-tile-label">{t("sessions.modality")}</div>
                   <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color: tint.fg, transition:"color 0.5s ease" }}>
                     {t(`sessions.${MODALITY_I18N_KEY[mod]}`)}

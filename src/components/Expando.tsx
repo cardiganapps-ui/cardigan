@@ -41,7 +41,7 @@ export function Expando({ open, duration = 260, children }: { open?: boolean; du
         overflow: "hidden",
         maxHeight: maxH === "none" ? "none" : `${maxH}px`,
         opacity: open ? 1 : 0,
-        transition: `max-height ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity ${Math.max(150, duration - 60)}ms ease`,
+        transition: `max-height ${duration}ms var(--ease-out), opacity ${Math.max(150, duration - 60)}ms ease`,
       }}
     >
       <div ref={innerRef}>{children}</div>

@@ -150,7 +150,7 @@ export function PlanSheet({
                           / "Pierdes acceso a Pro" / "Tu prueba termina") tells
                           the user what the date means. */}
                       {summary.endLabel && summary.endCaption && !isAdminAccess && (
-                        <div style={{ marginTop:16, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.07)" }}>
+                        <div style={{ marginTop:16, paddingTop:14, borderTop:"1px solid var(--border-lt)" }}>
                           <div style={{ fontSize:11, color:"var(--charcoal-xl)", letterSpacing:"0.05em", textTransform:"uppercase", fontWeight:700 }}>
                             {t(summary.endCaption)}
                           </div>
@@ -190,7 +190,7 @@ export function PlanSheet({
                       {/* Price line — checkout flow only. Lives inside the
                           hero so the user perceives value + cost together. */}
                       {!isComp && !isActive && !isAdminAccess && !isIOSReader && (
-                        <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.07)" }}>
+                        <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid var(--border-lt)" }}>
                           <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:6 }}>
                             <span style={{ fontFamily:"var(--font-d)", fontSize:34, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-1px", lineHeight:1 }}>
                               ${selectedPlan === "annual" ? "1,490" : "149"}

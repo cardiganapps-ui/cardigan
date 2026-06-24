@@ -211,7 +211,7 @@ export function UpdatePrompt() {
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: "var(--z-install)",
-        animation: "updatePromptIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        animation: "updatePromptIn 0.4s var(--ease-spring)",
       }}>
       <button
         type="button"

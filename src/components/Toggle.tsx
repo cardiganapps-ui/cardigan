@@ -33,7 +33,7 @@ export function Toggle({ on, onToggle, pending = false, disabled: disabledProp =
         background: "var(--white)",
         boxShadow: "var(--shadow-sm)",
         transform: on ? "translateX(18px)" : "translateX(0)",
-        transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        transition: "transform 0.4s var(--ease-spring)",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         {pending && (
@@ -41,7 +41,7 @@ export function Toggle({ on, onToggle, pending = false, disabled: disabledProp =
             aria-hidden="true"
             style={{
               width: 10, height: 10, borderRadius: "50%",
-              border: "2px solid rgba(0,0,0,0.18)",
+              border: "2px solid var(--border-lt)",
               borderTopColor: on ? "var(--teal-dark, #1a7870)" : "var(--charcoal-md, #555)",
               animation: "togglePendingSpin 0.7s linear infinite",
               boxSizing: "border-box",

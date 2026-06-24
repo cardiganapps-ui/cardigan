@@ -418,7 +418,7 @@ export function MedicionesTab({ patient }: { patient: Row }) {
                   // Stagger entry only on first paint. The animation
                   // delay is computed off the row's index so newer
                   // rows cascade in on add (still subtle: 32ms each).
-                  animation: `listEntryIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 32}ms both`,
+                  animation: `listEntryIn 0.4s var(--ease-spring) ${i * 32}ms both`,
                 }}
                 onClick={() => !readOnly && setEditing(m)}>
                 <div className="mediciones-row-main">
