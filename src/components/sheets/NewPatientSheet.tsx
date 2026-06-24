@@ -16,6 +16,7 @@ import { useCardiganMain } from "../../context/CardiganContext";
 import { parseFolderLink } from "../../utils/folderLinks";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
 import { findEmptySlot } from "../../utils/scheduleSlots";
+import { detectScheduleConflicts } from "../../utils/scheduleConflicts";
 import { buildNewPatientPayload, buildPotentialPayload, type Schedule, type NewPatientFormState } from "./newPatientPayload";
 
 // Loosely-typed patient/session rows. The form's schedule-row shape
@@ -213,22 +214,10 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   // scheduled session for another patient at the same day/time.
   // Internal conflicts: the form has two schedule rows at the same
   // day/time (can happen after user edits). Both block progression.
-  const { externalConflicts, internalConflictRows } = useMemo(() => {
-    const external: { row: number; match: Row }[] = [];
-    const internal = new Set<number>();
-    const seen = new Map<string, number>(); // `${day}|${time}` -> first row index
-    for (let i = 0; i < schedules.length; i++) {
-      const s = schedules[i];
-      const key = `${s.day}|${s.time}`;
-      if (seen.has(key)) { internal.add(i); internal.add(seen.get(key)!); }
-      else seen.set(key, i);
-      const match = (sessions || []).find(
-        (x: Row) => x.status === "scheduled" && x.day === s.day && x.time === s.time
-      );
-      if (match) external.push({ row: i, match });
-    }
-    return { externalConflicts: external, internalConflictRows: [...internal] };
-  }, [schedules, sessions]);
+  const { externalConflicts, internalConflictRows } = useMemo(
+    () => detectScheduleConflicts(schedules, sessions),
+    [schedules, sessions],
+  );
 
   const hasConflict = externalConflicts.length > 0 || internalConflictRows.length > 0;
 
