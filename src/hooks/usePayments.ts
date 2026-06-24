@@ -6,6 +6,7 @@ import { recalcPatientCounters } from "../utils/patients";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 import type { TablesInsert } from "../types/db";
 import type { PatientRow, PaymentRow } from "../types/rows";
+import { restoreRows, composeReverts } from "../lib/optimistic";
 import { track } from "../lib/analytics";
 
 // ── Domain row types ────────────────────────────────────────────────
@@ -156,8 +157,8 @@ export function createPaymentActions(
         const { data, error } = await supabase.from("payments").insert(row).select().single();
 
         if (error) {
-          setPayments(prev => prev.filter(p => p.id !== tempId));
-          if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+          setPayments(prev => prev.filter(p => p.id !== tempId)); // drop the optimistic insert
+          restoreRows(setPatients, [prevPatient])();
           setMutationError(error.message);
           return;
         }
@@ -275,14 +276,10 @@ export function createPaymentActions(
     }
     setMutationError("");
 
-    const revertOptimistic = () => {
-      setPayments(prev => prev.map(p => p.id === paymentId ? prevPayment : p));
-      setPatients(prev => prev.map(p => {
-        if (prevOldPatient && p.id === prevOldPatient.id) return prevOldPatient;
-        if (prevNewPatient && p.id === prevNewPatient.id) return prevNewPatient;
-        return p;
-      }));
-    };
+    const revertOptimistic = composeReverts(
+      restoreRows(setPayments, [prevPayment]),
+      restoreRows(setPatients, [prevOldPatient, prevNewPatient]),
+    );
 
     // Optimistic locking (migration 066). The version filter rejects
     // a write when another tab / device bumped the row under us — we
@@ -310,11 +307,7 @@ export function createPaymentActions(
       }
       // Patient counters were mutated optimistically; restore the
       // pre-attempt snapshot and let recalc reconcile from truth.
-      setPatients(prev => prev.map(p => {
-        if (prevOldPatient && p.id === prevOldPatient.id) return prevOldPatient;
-        if (prevNewPatient && p.id === prevNewPatient.id) return prevNewPatient;
-        return p;
-      }));
+      restoreRows(setPatients, [prevOldPatient, prevNewPatient])();
       for (const patientId of patientUpdates.keys()) {
         recalcPatientCounters(patientId).then((fixed) => {
           if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
