@@ -21,6 +21,7 @@ import { useT } from "../i18n/index";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic, PATIENT_STATUS, SESSION_TYPE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../data/constants";
 import { filterPatients } from "../utils/patientFilter";
 import { signedOpeningBalance } from "../utils/openingBalance";
+import { buildPatientEditPayload } from "../utils/patientEditPayload";
 import { PotentialProfileSheet } from "../components/sheets/PotentialProfileSheet";
 import { ConvertPotentialSheet } from "../components/sheets/ConvertPotentialSheet";
 import { SegmentedControl } from "../components/SegmentedControl";
@@ -248,22 +249,23 @@ export function Patients() {
     // Signed opening balance for every save path (positive = owes, negative
     // = saldo a favor, 0 = none / cleared). Shared money rule — see helper.
     const editOpeningBalance = signedOpeningBalance(editOpeningAmount, editOpeningDir);
+    // The updatePatient payload is the same across all three save branches
+    // (differing only in status/rate) — built via buildPatientEditPayload so
+    // the WhatsApp-consent + contact rules live in one tested place.
+    const nowIso = new Date().toISOString();
+    const editForm = {
+      name: editName, isMinor: editIsMinor, parent: editParent, tutorFrequency: editTutorFrequency,
+      phone: editPhone, email: editEmail, birthdate: editBirthdate, startDate: editStartDate,
+      status: editStatus, rate: editRate, openingBalance: editOpeningBalance,
+      whatsappEnabled: editWhatsappEnabled, whatsappConsentAt: editWhatsappConsentAt,
+    };
     // Finalizing a patient — delete future sessions and set inactive
     if (isFinalizingPatient) {
       const ok = await finalizePatient(selected.id, finishDate);
       if (ok) {
         haptic.success();
-        // Also save any basic info changes
-        await updatePatient(selected.id, {
-          name: editName.trim(),
-          parent: editIsMinor ? editParent.trim() : "",
-          tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
-          phone: phoneDigits(editPhone), email: editEmail.trim(),
-          birthdate: editBirthdate || null, start_date: editStartDate || null,
-          opening_balance: editOpeningBalance,
-          whatsapp_enabled: !!editWhatsappEnabled && !!phoneDigits(editPhone),
-          whatsapp_consent_at: (editWhatsappEnabled && phoneDigits(editPhone)) ? (editWhatsappConsentAt || new Date().toISOString()) : null,
-        });
+        // Also save any basic info changes (no status/rate on finalize).
+        await updatePatient(selected.id, buildPatientEditPayload(editForm, nowIso));
         setSelected(null);
         setEditing(false);
       }
@@ -287,35 +289,15 @@ export function Patients() {
         endDate: hasEndDate ? endDate : undefined,
       });
       if (ok) {
-        // Also save basic info
-        await updatePatient(selected.id, {
-          name: editName.trim(),
-          parent: editIsMinor ? editParent.trim() : "",
-          tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
-          phone: phoneDigits(editPhone), email: editEmail.trim(),
-          birthdate: editBirthdate || null, start_date: editStartDate || null,
-          status: editStatus,
-          opening_balance: editOpeningBalance,
-          whatsapp_enabled: !!editWhatsappEnabled && !!phoneDigits(editPhone),
-          whatsapp_consent_at: (editWhatsappEnabled && phoneDigits(editPhone)) ? (editWhatsappConsentAt || new Date().toISOString()) : null,
-        });
+        // Also save basic info (schedule path includes status, not rate —
+        // rate is applied via applyScheduleChange above).
+        await updatePatient(selected.id, buildPatientEditPayload(editForm, nowIso, { includeStatus: true }));
         setSelected(null);
         setEditing(false);
       }
     } else {
-      // Only basic info changed
-      const ok = await updatePatient(selected.id, {
-        name: editName.trim(),
-        parent: editIsMinor ? editParent.trim() : "",
-        tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
-        phone: phoneDigits(editPhone), email: editEmail.trim(),
-        birthdate: editBirthdate || null, start_date: editStartDate || null,
-        rate: Number(editRate) || 0,
-        status: editStatus,
-        opening_balance: editOpeningBalance,
-        whatsapp_enabled: !!editWhatsappEnabled && !!phoneDigits(editPhone),
-        whatsapp_consent_at: (editWhatsappEnabled && phoneDigits(editPhone)) ? (editWhatsappConsentAt || new Date().toISOString()) : null,
-      });
+      // Only basic info changed — includes both status and rate.
+      const ok = await updatePatient(selected.id, buildPatientEditPayload(editForm, nowIso, { includeStatus: true, includeRate: true }));
       if (ok) {
         setSelected(null);
         setEditing(false);
