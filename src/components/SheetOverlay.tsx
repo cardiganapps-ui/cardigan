@@ -33,9 +33,9 @@ interface SheetOverlayProps extends Omit<HTMLAttributes<HTMLDivElement>, "onClic
 
 export function SheetOverlay({ onClose, exiting, className, children, ...rest }: SheetOverlayProps) {
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- backdrop click-to-dismiss is a mouse convenience; keyboard dismissal is Escape + the focus-trapped close button (see header)
     <div
       className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}${className ? ` ${className}` : ""}`}
-      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- backdrop click-to-dismiss is a mouse convenience; keyboard dismissal is Escape + the focus-trapped close button (see header)
       onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
       {...rest}
     >
