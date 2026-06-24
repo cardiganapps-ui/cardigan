@@ -21,6 +21,7 @@ import { useVoiceDictation } from "../lib/useVoiceDictation";
 import { supabase } from "../supabaseClient";
 import { enqueue } from "../lib/mutationQueue";
 import { extractOutline } from "./notes/outlineUtil";
+import { useNoteOutline } from "./notes/useNoteOutline";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";
 import { useViewport } from "../hooks/useViewport";
@@ -123,10 +124,6 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const [readingMode, setReadingMode] = useState(false);
   // Cover picker visibility (Phase E.2). Opens from the kebab.
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
-  // Heading scroll-spy state. The IntersectionObserver effect below
-  // updates this whenever the topmost-visible heading changes; the
-  // outline drawer reads it to highlight the matching entry.
-  const [activeHeadingLine, setActiveHeadingLine] = useState<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -252,90 +249,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     setActiveFormats(active || new Set());
   }, []);
 
-  // Cheap signature of the heading set — used by the scroll-spy
-  // effect's deps array below. `content` changes every keystroke;
-  // the heading SET only changes when a line becomes / stops being
-  // a heading. Declared above the effect so it's not in TDZ when
-  // the deps array evaluates during render.
-  const headingsSignature = useMemo(
-    () => extractOutline(content).map(o => `${o.line}-${o.level}`).join(","),
-    [content]
-  );
-
-  /* ── Heading scroll-spy ─────────────────────────────────────────
-     IntersectionObserver tracks h1/h2/h3 lines inside the markdown
-     editor root, identifies the topmost one currently in view, and
-     updates activeHeadingLine. The outline drawer reads this to
-     highlight the matching entry — "you are here" affordance while
-     scrolling through a long note.
-
-     Observer scope = the editor's scroll viewport (.mde-scroll).
-     A small rootMargin pulls the trigger zone toward the top of
-     the viewport so the heading transitions feel anchored to the
-     scroll-top rather than the centre. */
-  useEffect(() => {
-    const scrollEl = scrollRef.current;
-    if (!scrollEl) return;
-    if (typeof IntersectionObserver === "undefined") return;
-    let raf = 0;
-    const visible = new Map(); // lineIdx → top (relative to viewport)
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        const lineIdx = parseInt((entry.target as HTMLElement).dataset.line || "", 10);
-        if (Number.isNaN(lineIdx)) continue;
-        if (entry.isIntersecting) {
-          visible.set(lineIdx, entry.boundingClientRect.top);
-        } else {
-          visible.delete(lineIdx);
-        }
-      }
-      // rAF-coalesce so a burst of crossings doesn't thrash React.
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        if (visible.size === 0) {
-          setActiveHeadingLine(null);
-          return;
-        }
-        // Pick the heading whose top is closest to (but above /
-        // overlapping) the viewport's top edge — i.e. the smallest
-        // line number among visible entries by document order.
-        let best = Infinity;
-        for (const lineIdx of visible.keys()) {
-          if (lineIdx < best) best = lineIdx;
-        }
-        setActiveHeadingLine(best === Infinity ? null : best);
-      });
-    }, {
-      root: scrollEl,
-      // Trigger zone: top 12% of viewport. A heading "becomes
-      // active" as it crosses into the top sliver.
-      rootMargin: "0px 0px -88% 0px",
-      threshold: 0,
-    });
-
-    // Re-observe whenever the content changes (new headings appear /
-    // disappear). MutationObserver on the editor root catches
-    // structural changes the IntersectionObserver doesn't see.
-    const editorRoot = scrollEl.querySelector(".mde-root");
-    if (!editorRoot) return () => { observer.disconnect(); if (raf) cancelAnimationFrame(raf); };
-    const wireUp = () => {
-      observer.disconnect();
-      visible.clear();
-      const headings = editorRoot.querySelectorAll(".mde-line--h1, .mde-line--h2, .mde-line--h3");
-      headings.forEach(h => observer.observe(h));
-    };
-    wireUp();
-    const mut = new MutationObserver(wireUp);
-    mut.observe(editorRoot, { childList: true, subtree: false });
-    return () => {
-      mut.disconnect();
-      observer.disconnect();
-      if (raf) cancelAnimationFrame(raf);
-    };
-    // Only re-attach the IO + MO when the heading set actually
-    // changes. Depending on `content` would re-run per keystroke,
-    // disconnecting + reconnecting both observers on every char.
-  }, [headingsSignature]);
+  // Heading scroll-spy (IntersectionObserver tracking the topmost visible
+  // heading). Extracted to useNoteOutline (WS-6); the outline drawer reads
+  // activeHeadingLine to highlight the "you are here" entry.
+  const activeHeadingLine = useNoteOutline(content, scrollRef);
 
   /* ── Scroll-shadow header ──────────────────────────────────────── */
   useEffect(() => {
