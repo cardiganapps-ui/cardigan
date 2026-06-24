@@ -13,7 +13,11 @@ import { createClient } from "@supabase/supabase-js";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
 
-const ADMIN_EMAIL = "gaxioladiego@gmail.com";
+// Env-gated so the admin identity isn't a hardcoded literal in the
+// bundle/repo. Falls back to the historical value if ADMIN_EMAIL is unset
+// so existing deploys keep working. The SQL is_admin() helper mirrors this
+// (it can't read process.env) — keep the two in sync if ADMIN_EMAIL changes.
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "gaxioladiego@gmail.com";
 
 export async function getAuthUser(req: Row): Promise<Row> {
   const auth = req.headers.authorization;

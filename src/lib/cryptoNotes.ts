@@ -26,6 +26,11 @@
 */
 
 const PBKDF2_ITERS = 600_000;
+// Hard floor for an accepted stored iteration count. New wraps always use
+// PBKDF2_ITERS; this only bounds what we'll honour on read so a tampered /
+// downgraded `passphrase_iters` can never be used. Mirrored server-side by
+// the user_encryption_keys CHECK constraint (migration 084).
+const MIN_PBKDF2_ITERS = 100_000;
 const PBKDF2_HASH = "SHA-256";
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
@@ -171,6 +176,11 @@ export async function wrapMasterWithRecovery(masterKeyBytes: Uint8Array<ArrayBuf
  * (AES-GCM's auth tag fails to verify).
  */
 export async function unwrapMasterWithPassphrase({ passphrase, passphrase_wrap, passphrase_salt, passphrase_iv, passphrase_iters }: { passphrase: string; passphrase_wrap: string; passphrase_salt: string; passphrase_iv: string; passphrase_iters?: number }): Promise<Uint8Array<ArrayBuffer>> {
+  // Fail closed on a sub-floor iteration count rather than derive a key with
+  // weak parameters (defense-in-depth against a tampered stored value).
+  if (passphrase_iters != null && passphrase_iters < MIN_PBKDF2_ITERS) {
+    throw new Error("Parámetros de cifrado inválidos.");
+  }
   const wrapKey = await deriveKeyFromPassphrase(
     passphrase,
     base64ToBytes(passphrase_salt),

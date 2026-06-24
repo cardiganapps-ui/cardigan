@@ -5046,6 +5046,12 @@
       "table_name": "user_consents"
     },
     {
+      "conname": "chk_passphrase_iters_floor",
+      "contype": "c",
+      "definition": "CHECK (((passphrase_iters IS NULL) OR (passphrase_iters >= 100000)))",
+      "table_name": "user_encryption_keys"
+    },
+    {
       "conname": "user_encryption_keys_user_id_fkey",
       "contype": "f",
       "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
