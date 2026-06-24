@@ -40,7 +40,7 @@ If you are about to touch anything in `useCardiganData`, `usePatients`, `useSess
 
 # Cardigan
 
-Mobile-first PWA for therapists to manage patients, sessions, payments, notes, and documents. All UI text is Spanish. No TypeScript — plain JS/JSX.
+Mobile-first PWA for therapists to manage patients, sessions, payments, notes, and documents. All UI text is Spanish. **TypeScript** (`.ts/.tsx`, `strict: true`, `allowJs: false`) — type-checked in CI via `npm run typecheck`. The data layer still leans on loose `Row`/`any` bridges in the domain hooks (a typed-boundary cleanup against the generated `src/types/supabase.ts` is in progress), but the codebase is TS, not plain JS/JSX.
 
 ## Tech Stack
 - **Frontend:** React 19 + Vite 5, custom CSS with design tokens (no UI library)
