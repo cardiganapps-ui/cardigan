@@ -4,6 +4,7 @@ import { BottomTabs } from "../BottomTabs";
 import { BugReportSheet } from "../BugReportFab";
 import { QuickScheduleSheet } from "../sheets/QuickScheduleSheet";
 import type { MutableRefObject } from "react";
+import type { ActionSheetsState } from "../../hooks/useActionSheets";
 
 /* ── AppSheets ────────────────────────────────────────────────────────
    The layer that sits below the active screen in AppShell's main-content
@@ -32,24 +33,17 @@ const Tutorial = lazy(() => import("../Tutorial/Tutorial").then(m => ({ default:
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
 
-export interface AppSheetsProps {
+/* App-shell chrome AppSheets needs that ISN'T action-sheet state: gating
+   flags, the signed-in user, the command-palette + bug-report + admin
+   impersonation handles, and the nav-chrome visibility toggles. Grouped so
+   the component takes two cohesive objects instead of a 30-prop signature. */
+export interface AppShellChrome {
   readOnly?: boolean;
   demo?: boolean;
   user: Row;
   admin?: boolean;
   screen: string;
-  paymentModalOpen: boolean;
-  setPaymentModalOpen: (v: boolean) => void;
-  editingPayment: Row;
-  setEditingPayment: (v: Row) => void;
-  paymentDraft: { patientName: string; amount: string };
   showSuccess: (msg: string) => void;
-  expenseSheetOpen: boolean;
-  setExpenseSheetOpen: (v: boolean) => void;
-  editingExpense: Row;
-  setEditingExpense: (v: Row) => void;
-  recurringExpenseSheetOpen: boolean;
-  setRecurringExpenseSheetOpen: (v: boolean) => void;
   hideFab: boolean;
   hideBottomTabs: boolean;
   paletteOpen: boolean;
@@ -59,20 +53,28 @@ export interface AppSheetsProps {
   navigate: (id: string) => void;
   bugReportOpen: boolean;
   setBugReportOpen: (v: boolean) => void;
-  quickScheduleFor: Row;
-  setQuickScheduleFor: (v: Row) => void;
 }
 
-export function AppSheets({
-  readOnly, demo, user, admin, screen,
-  paymentModalOpen, setPaymentModalOpen, editingPayment, setEditingPayment, paymentDraft, showSuccess,
-  expenseSheetOpen, setExpenseSheetOpen, editingExpense, setEditingExpense,
-  recurringExpenseSheetOpen, setRecurringExpenseSheetOpen,
-  hideFab, hideBottomTabs,
-  paletteOpen, setPaletteOpen, viewAsOriginHashRef, setViewAsUserId, navigate,
-  bugReportOpen, setBugReportOpen,
-  quickScheduleFor, setQuickScheduleFor,
-}: AppSheetsProps) {
+export interface AppSheetsProps {
+  /** The action-sheet state bundle straight from useActionSheets. */
+  sheets: ActionSheetsState;
+  /** Everything else AppSheets needs from the shell. */
+  shell: AppShellChrome;
+}
+
+export function AppSheets({ sheets, shell }: AppSheetsProps) {
+  const {
+    paymentModalOpen, setPaymentModalOpen, editingPayment, setEditingPayment, paymentDraft,
+    expenseSheetOpen, setExpenseSheetOpen, editingExpense, setEditingExpense,
+    recurringExpenseSheetOpen, setRecurringExpenseSheetOpen,
+    quickScheduleFor, setQuickScheduleFor,
+  } = sheets;
+  const {
+    readOnly, demo, user, admin, screen, showSuccess,
+    hideFab, hideBottomTabs,
+    paletteOpen, setPaletteOpen, viewAsOriginHashRef, setViewAsUserId, navigate,
+    bugReportOpen, setBugReportOpen,
+  } = shell;
   return (
     <>
       {!readOnly && (

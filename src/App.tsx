@@ -544,18 +544,15 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // quick-schedule) — state + the openers exposed on context. Extracted
   // to useActionSheets so the shell stops owning the near-identical
   // open-flag + draft boilerplate; gating (readOnly) is preserved.
+  // The whole bundle threads to AppSheets as one `sheets` prop; only the
+  // openers are pulled out here, since the Cardigan context value exposes
+  // them app-wide (FAB / list rows / end-of-visit toast).
+  const actionSheets = useActionSheets(readOnly);
   const {
-    paymentModalOpen, setPaymentModalOpen,
-    paymentDraft,
-    editingPayment, setEditingPayment,
     openEditPaymentModal, openRecordPaymentModal,
-    expenseSheetOpen, setExpenseSheetOpen,
-    editingExpense, setEditingExpense,
     openRecordExpenseModal, openEditExpenseModal,
-    recurringExpenseSheetOpen, setRecurringExpenseSheetOpen,
-    openRecurringExpenseSheet,
-    quickScheduleFor, setQuickScheduleFor, openQuickSchedule,
-  } = useActionSheets(readOnly);
+    openRecurringExpenseSheet, openQuickSchedule,
+  } = actionSheets;
 
   /* ── Toast queue (single source of truth) ──
      Previously three separate toast slots (success, mutationError,
@@ -1017,34 +1014,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
           </div>
         </PullToRefresh>
         <AppSheets
-          readOnly={readOnly}
-          demo={demo}
-          user={user}
-          admin={admin}
-          screen={screen}
-          paymentModalOpen={paymentModalOpen}
-          setPaymentModalOpen={setPaymentModalOpen}
-          editingPayment={editingPayment}
-          setEditingPayment={setEditingPayment}
-          paymentDraft={paymentDraft}
-          showSuccess={showSuccess}
-          expenseSheetOpen={expenseSheetOpen}
-          setExpenseSheetOpen={setExpenseSheetOpen}
-          editingExpense={editingExpense}
-          setEditingExpense={setEditingExpense}
-          recurringExpenseSheetOpen={recurringExpenseSheetOpen}
-          setRecurringExpenseSheetOpen={setRecurringExpenseSheetOpen}
-          hideFab={hideFab}
-          hideBottomTabs={hideBottomTabs}
-          paletteOpen={paletteOpen}
-          setPaletteOpen={setPaletteOpen}
-          viewAsOriginHashRef={viewAsOriginHashRef}
-          setViewAsUserId={setViewAsUserId}
-          navigate={navigate}
-          bugReportOpen={bugReportOpen}
-          setBugReportOpen={setBugReportOpen}
-          quickScheduleFor={quickScheduleFor}
-          setQuickScheduleFor={setQuickScheduleFor}
+          sheets={actionSheets}
+          shell={{
+            readOnly, demo, user, admin, screen, showSuccess,
+            hideFab, hideBottomTabs,
+            paletteOpen, setPaletteOpen, viewAsOriginHashRef, setViewAsUserId, navigate,
+            bugReportOpen, setBugReportOpen,
+          }}
         />
       </div>
     </div>

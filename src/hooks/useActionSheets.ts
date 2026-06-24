@@ -91,3 +91,9 @@ export function useActionSheets(readOnly: boolean) {
     quickScheduleFor, setQuickScheduleFor, openQuickSchedule,
   };
 }
+
+/** The full action-sheet state bundle (flags + drafts + setters + openers).
+   AppSheets consumes the flags/drafts/setters; the openers are read by the
+   Cardigan context value. Exported so AppSheets can type its `sheets` prop
+   against the hook's return without re-listing every field. */
+export type ActionSheetsState = ReturnType<typeof useActionSheets>;

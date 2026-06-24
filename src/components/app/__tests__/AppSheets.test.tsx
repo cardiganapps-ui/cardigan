@@ -28,21 +28,28 @@ afterEach(cleanup);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
+// AppSheets now takes two grouped props: `sheets` (the useActionSheets
+// bundle) and `shell` (the rest). Overrides are merged into BOTH groups —
+// each destructure only reads its own keys, so a stray key is ignored by
+// the other group, which keeps these gating cases as flat overrides.
 function renderSheets(over: Record<string, unknown> = {}) {
-  const props: Any = {
-    readOnly: false, demo: false, user: { id: "u1" }, admin: false, screen: "home",
+  const sheets: Any = {
     paymentModalOpen: false, setPaymentModalOpen: vi.fn(), editingPayment: null, setEditingPayment: vi.fn(),
-    paymentDraft: { patientName: "", amount: "" }, showSuccess: vi.fn(),
+    paymentDraft: { patientName: "", amount: "" },
     expenseSheetOpen: false, setExpenseSheetOpen: vi.fn(), editingExpense: null, setEditingExpense: vi.fn(),
     recurringExpenseSheetOpen: false, setRecurringExpenseSheetOpen: vi.fn(),
-    hideFab: false, hideBottomTabs: false,
-    paletteOpen: false, setPaletteOpen: vi.fn(), viewAsOriginHashRef: { current: null }, setViewAsUserId: vi.fn(), navigate: vi.fn(),
-    bugReportOpen: false, setBugReportOpen: vi.fn(),
     quickScheduleFor: null, setQuickScheduleFor: vi.fn(),
     ...over,
   };
-  const utils = render(<AppSheets {...props} />);
-  return { ...utils, props };
+  const shell: Any = {
+    readOnly: false, demo: false, user: { id: "u1" }, admin: false, screen: "home", showSuccess: vi.fn(),
+    hideFab: false, hideBottomTabs: false,
+    paletteOpen: false, setPaletteOpen: vi.fn(), viewAsOriginHashRef: { current: null }, setViewAsUserId: vi.fn(), navigate: vi.fn(),
+    bugReportOpen: false, setBugReportOpen: vi.fn(),
+    ...over,
+  };
+  const utils = render(<AppSheets sheets={sheets} shell={shell} />);
+  return { ...utils, sheets, shell };
 }
 
 describe("AppSheets gating", () => {
@@ -76,9 +83,9 @@ describe("AppSheets gating", () => {
   });
 
   it("quick-schedule sheet mounts only when a patient is set", () => {
-    const { queryByTestId, rerender, props } = renderSheets({ quickScheduleFor: { id: "p1" } });
+    const { queryByTestId, rerender, sheets, shell } = renderSheets({ quickScheduleFor: { id: "p1" } });
     expect(queryByTestId("quick-schedule")).not.toBeNull();
-    rerender(<AppSheets {...{ ...props, quickScheduleFor: null }} />);
+    rerender(<AppSheets sheets={{ ...sheets, quickScheduleFor: null }} shell={shell} />);
     expect(queryByTestId("quick-schedule")).toBeNull();
   });
 
