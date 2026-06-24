@@ -16,13 +16,13 @@ import { useCardiganMain } from "../../context/CardiganContext";
 import { parseFolderLink } from "../../utils/folderLinks";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
 import { findEmptySlot } from "../../utils/scheduleSlots";
-import { signedOpeningBalance } from "../../utils/openingBalance";
+import { buildNewPatientPayload, buildPotentialPayload, type Schedule, type NewPatientFormState } from "./newPatientPayload";
 
-// Loosely-typed patient/session rows + the form's schedule-row shape.
-// The first-free-slot pre-fill logic lives in utils/scheduleSlots (WS-6).
+// Loosely-typed patient/session rows. The form's schedule-row shape
+// (Schedule) + the submit payload builders live in ./newPatientPayload;
+// the first-free-slot pre-fill logic lives in utils/scheduleSlots (WS-6).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session rows
 type Row = any;
-interface Schedule { day: string; time: string; duration: string; modality: string; frequency: string }
 
 export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating, patients, sessions, initialMode = "patient" }: {
   onClose: () => void;
@@ -291,6 +291,18 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
+    // Snapshot the form into the payload-builder shape once; both the
+    // potential and full-patient branches build their payload from it.
+    const formState: NewPatientFormState = {
+      name, isMinor, parent, rate, openingBalanceAmount, openingBalanceDir,
+      tutorFrequency, phone, email, whatsappEnabled, externalFolderUrl,
+      birthdate, birthdateUntouched, showHealthFields,
+      heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg,
+      allergies, medicalConditions, schedulingMode, schedules,
+      startDate, hasEndDate, endDate, skipFirstConsult,
+      firstConsultDate, firstConsultTime, firstConsultDuration, firstConsultModality,
+    };
+
     // Potential mode — single-step slim form. Validate, then call
     // onPotentialSubmit (createPotential under the hood). Same flash-
     // toast pattern as patient mode for missed-field feedback.
@@ -307,20 +319,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
       setFeedback(null);
       setSubmitting(true);
       try {
-        const ok = await onPotentialSubmit?.({
-          name: name.trim(),
-          parent: isMinor ? parent.trim() : "",
-          rate: Number(rate) || 0,
-          phone: phoneDigits(phone),
-          email: email.trim(),
-          whatsappEnabled: whatsappEnabled && !!phoneDigits(phone),
-          interview: {
-            date: firstConsultDate,
-            time: firstConsultTime,
-            duration: Number(firstConsultDuration) || 60,
-            modality: firstConsultModality,
-          },
-        });
+        const ok = await onPotentialSubmit?.(buildPotentialPayload(formState));
         if (ok) animatedClose();
         else setSubmitting(false);
       } catch (ex) {
@@ -343,42 +342,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     setFeedback(null);
     setSubmitting(true);
     try {
-      // Signed opening balance (positive = owes, negative = saldo a favor,
-      // 0 = none). Shared money rule — see helper.
-      const openingBalance = signedOpeningBalance(openingBalanceAmount, openingBalanceDir);
-      const ok = await onSubmit({
-        name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
-        openingBalance,
-        tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
-        phone: phoneDigits(phone), email: email.trim(),
-        whatsappEnabled: whatsappEnabled && !!phoneDigits(phone),
-        externalFolderUrl: externalFolderUrl.trim() || null,
-        birthdate: (birthdate && !birthdateUntouched) ? birthdate : null,
-        // Health fields. Server-side they're always present as columns;
-        // we just don't surface the form section unless the profession
-        // actually uses them.
-        heightCm: showHealthFields && heightCm ? Number(heightCm) : null,
-        goalWeightKg: showHealthFields && goalWeightKg ? Number(goalWeightKg) : null,
-        goalBodyFatPct: showHealthFields && goalBodyFatPct ? Number(goalBodyFatPct) : null,
-        goalSkeletalMuscleKg: showHealthFields && goalSkeletalMuscleKg ? Number(goalSkeletalMuscleKg) : null,
-        allergies: showHealthFields ? allergies.trim() : "",
-        medicalConditions: showHealthFields ? medicalConditions.trim() : "",
-        schedulingMode,
-        // Recurring path: today's params are unchanged.
-        // Episodic path: pass the optional first consult (or null when
-        // skipFirstConsult is set). schedules/recurring/startDate are
-        // ignored on the hook side when schedulingMode === 'episodic'.
-        schedules: isEpisodicMode ? [] : schedules,
-        recurring: !isEpisodicMode,
-        startDate: isEpisodicMode ? null : startDate,
-        endDate: !isEpisodicMode && hasEndDate ? endDate : null,
-        firstConsult: isEpisodicMode && !skipFirstConsult && firstConsultDate ? {
-          date: firstConsultDate,
-          time: firstConsultTime,
-          duration: Number(firstConsultDuration) || 60,
-          modality: firstConsultModality,
-        } : null,
-      });
+      const ok = await onSubmit(buildNewPatientPayload(formState));
       if (ok) animatedClose();
       else setSubmitting(false);
     } catch (ex) {
