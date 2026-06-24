@@ -20,6 +20,7 @@ import { useCardiganMain } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic, PATIENT_STATUS, SESSION_TYPE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../data/constants";
 import { filterPatients } from "../utils/patientFilter";
+import { signedOpeningBalance } from "../utils/openingBalance";
 import { PotentialProfileSheet } from "../components/sheets/PotentialProfileSheet";
 import { ConvertPotentialSheet } from "../components/sheets/ConvertPotentialSheet";
 import { SegmentedControl } from "../components/SegmentedControl";
@@ -244,14 +245,9 @@ export function Patients() {
   const isFinalizingPatient = editStatus === "ended" && selected?.status === "active";
 
   const saveEdit = async () => {
-    // Sign the opening balance once for every save path: positive = owes
-    // (debt), negative = saldo a favor, 0 = none. Always written so the
-    // user can also CLEAR a previously-set balance back to 0.
-    const obNum = Number(editOpeningAmount);
-    const editOpeningBalance =
-      editOpeningAmount !== "" && Number.isFinite(obNum) && obNum > 0
-        ? (editOpeningDir === "credit" ? -Math.round(obNum) : Math.round(obNum))
-        : 0;
+    // Signed opening balance for every save path (positive = owes, negative
+    // = saldo a favor, 0 = none / cleared). Shared money rule — see helper.
+    const editOpeningBalance = signedOpeningBalance(editOpeningAmount, editOpeningDir);
     // Finalizing a patient — delete future sessions and set inactive
     if (isFinalizingPatient) {
       const ok = await finalizePatient(selected.id, finishDate);

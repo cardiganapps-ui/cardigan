@@ -16,6 +16,7 @@ import { useCardiganMain } from "../../context/CardiganContext";
 import { parseFolderLink } from "../../utils/folderLinks";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
 import { findEmptySlot } from "../../utils/scheduleSlots";
+import { signedOpeningBalance } from "../../utils/openingBalance";
 
 // Loosely-typed patient/session rows + the form's schedule-row shape.
 // The first-free-slot pre-fill logic lives in utils/scheduleSlots (WS-6).
@@ -342,13 +343,9 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     setFeedback(null);
     setSubmitting(true);
     try {
-      // Sign the opening balance: positive = owes (debt), negative =
-      // saldo a favor. Empty / non-positive amount → 0 (no opening row).
-      const obNum = Number(openingBalanceAmount);
-      const openingBalance =
-        openingBalanceAmount !== "" && Number.isFinite(obNum) && obNum > 0
-          ? (openingBalanceDir === "credit" ? -Math.round(obNum) : Math.round(obNum))
-          : 0;
+      // Signed opening balance (positive = owes, negative = saldo a favor,
+      // 0 = none). Shared money rule — see helper.
+      const openingBalance = signedOpeningBalance(openingBalanceAmount, openingBalanceDir);
       const ok = await onSubmit({
         name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
         openingBalance,
