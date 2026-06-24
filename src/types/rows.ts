@@ -73,11 +73,16 @@ export type RescheduleRequestRow = Tables<"session_reschedule_requests">;
 
 export type NoteAttachmentRow = Tables<"note_attachments">;
 
-/** note_tags rows carry a decrypted `label` derived from `label_ciphertext`
-    on read (or a pass-through of the ciphertext when crypto is locked/off). */
-export type TagRow = Tables<"note_tags"> & { label?: string };
+/** note_tags rows carry two in-memory deltas: a decrypted `label` derived
+    from `label_ciphertext` on read (or a ciphertext pass-through when crypto
+    is locked/off), and an `encrypted` flag for whether that ciphertext is
+    actually encrypted. Neither is a DB column. */
+export type TagRow = StateRow<Tables<"note_tags">> & Optimistic & {
+  label?: string;
+  encrypted?: boolean;
+};
 
-export type TagLinkRow = Tables<"note_tag_links">;
+export type TagLinkRow = StateRow<Tables<"note_tag_links">>;
 
 // ── Enriched rows (post-accounting / post-display) ───────────────────
 /** A patient after applyConsumedToPatients folds in the canonical balance.

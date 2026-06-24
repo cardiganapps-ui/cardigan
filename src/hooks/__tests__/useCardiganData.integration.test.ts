@@ -98,18 +98,18 @@ describe("useCardiganData — fetch → normalize → enrich", () => {
     expect(result.current.fetchError).toBe("");
 
     // Enriched balance (the number every money screen reads).
-    const ana = result.current.patients.find((p: Row) => p.id === "p1");
+    const ana = result.current.patients.find((p: Row) => p.id === "p1")!;
     expect(ana.amountDue).toBe(500);
     expect(ana.credit).toBe(0);
     // mapRows field shaping: color_idx → colorIdx.
     expect(ana.colorIdx).toBe(2);
 
     // mapRows date canonicalization reflected through the coordinator.
-    const s1 = result.current.upcomingSessions.find((s: Row) => s.id === "s1");
+    const s1 = result.current.upcomingSessions.find((s: Row) => s.id === "s1")!;
     expect(s1.date).toBe("8-Abr");
 
     // enrichedSessions display-only auto-complete on the past scheduled row.
-    const s2 = result.current.upcomingSessions.find((s: Row) => s.id === "s2");
+    const s2 = result.current.upcomingSessions.find((s: Row) => s.id === "s2")!;
     expect(s2.status).toBe(SESSION_STATUS.COMPLETED);
     expect(s2._autoCompleted).toBe(true);
   });
@@ -132,7 +132,7 @@ describe("useCardiganData — fetch → normalize → enrich", () => {
     const { result } = renderHook(() => useCardiganData({ id: "u1" }));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    const ana = result.current.patients.find((p: Row) => p.id === "p1");
+    const ana = result.current.patients.find((p: Row) => p.id === "p1")!;
     expect(ana.amountDue).toBe(0);
     expect(ana.credit).toBe(500);
   });

@@ -1,24 +1,13 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
+import type { NoteAttachmentRow, NoteRow } from "../types/rows";
 
 // ── Domain row types ────────────────────────────────────────────────
-interface Attachment {
-  id: string;
-  note_id?: string;
-  user_id?: string;
-  r2_path?: string | null;
-  mime?: string;
-  size_bytes?: number | null;
-  width?: number | null;
-  height?: number | null;
-  encrypted?: boolean;
-  iv?: string | null;
-  created_at?: string;
-  [key: string]: unknown;
-}
-
-interface NoteLike { id: string; cover_attachment_id?: string | null; [key: string]: unknown }
+// The note-attachment actions read/write the shared boundary row types
+// (src/types/rows.ts); cover updates patch the note rows.
+type Attachment = NoteAttachmentRow;
+type NoteLike = NoteRow;
 
 interface AttachmentCrypto {
   canEncrypt?: boolean;

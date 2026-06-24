@@ -2,6 +2,11 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { loadCachedData, saveCachedData } from "../lib/dataCache";
 import { supabase } from "../supabaseClient";
 import type { Database } from "../types/supabase";
+import type {
+  PatientRow, SessionRow, PaymentRow, NoteRow, DocumentRow, MeasurementRow,
+  ExpenseRow, RecurringExpenseRow, RescheduleRequestRow, TagRow, TagLinkRow,
+  NoteAttachmentRow, GroupRow, GroupMemberRow, NotificationRow,
+} from "../types/rows";
 import { formatShortDate, normalizeShortDate, parseShortDate, toISODate } from "../utils/dates";
 import {
   ADMIN_EMAIL,
@@ -37,16 +42,15 @@ interface NoteCryptoBag {
   encryptAttachmentBytes?: (bytes: Uint8Array<ArrayBuffer>) => Promise<{ ciphertext: Uint8Array<ArrayBuffer>; iv: string } | null>;
 }
 
-/* The coordinator holds 15 heterogeneous DB row-sets in state and threads
-   them into domain factories that each own their OWN structural types
-   (Patient/Session/Payment/…). Typing the coordinator's state as those
-   concrete shapes would duplicate every factory's interface here and fight
-   the loosely-typed Supabase client (the project's client is untyped, so
-   every `.data` is already `any`). A single deliberate `any` row alias keeps
-   the coordinator a thin pass-through while the factories enforce real types
-   at the only boundary that matters. Mirrors the CardiganContext bridge. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = any;
+/* The coordinator fans out 15 heterogeneous table reads via
+   Promise.allSettled, whose result is a union of 15 different
+   PostgrestResponse shapes. We unwrap each to this uniform shape — `data`
+   stays `unknown` because the union can't be narrowed structurally here;
+   each commit site below casts it to the concrete row type (PatientRow[],
+   SessionRow[], …) right before it lands in typed state. That keeps the
+   per-table typing at the boundary that matters (the state the factories +
+   consumers read) without fighting the allSettled union. */
+type FetchResult = { data: unknown; error: { message?: string; code?: string } | null };
 
 // The public tables that carry a user_id column — the only ones the
 // per-user fetch helper q() can filter on. Constrains q's table param so
@@ -59,21 +63,21 @@ type TableWithUserId = {
 
 /** The localStorage snapshot shape hydrated on cold start. */
 interface CachedData {
-  patients?: Row[];
-  upcomingSessions?: Row[];
-  payments?: Row[];
-  notes?: Row[];
-  documents?: Row[];
-  measurements?: Row[];
-  expenses?: Row[];
-  recurringExpenses?: Row[];
-  rescheduleRequests?: Row[];
-  tags?: Row[];
-  tagLinks?: Row[];
-  noteAttachments?: Row[];
-  groups?: Row[];
-  groupMembers?: Row[];
-  notifications?: Row[];
+  patients?: PatientRow[];
+  upcomingSessions?: SessionRow[];
+  payments?: PaymentRow[];
+  notes?: NoteRow[];
+  documents?: DocumentRow[];
+  measurements?: MeasurementRow[];
+  expenses?: ExpenseRow[];
+  recurringExpenses?: RecurringExpenseRow[];
+  rescheduleRequests?: RescheduleRequestRow[];
+  tags?: TagRow[];
+  tagLinks?: TagLinkRow[];
+  noteAttachments?: NoteAttachmentRow[];
+  groups?: GroupRow[];
+  groupMembers?: GroupMemberRow[];
+  notifications?: NotificationRow[];
 }
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
@@ -242,8 +246,8 @@ export function useCardiganData(
     // plenty for the Gastos / Resumen tabs. Older years are still
     // queryable via the CSV export endpoint when the contador needs them.
     const expensesSince = paymentsSince;
-    let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes;
-    let tRes, tlRes, naRes, gRes, gmRes, nfRes;
+    let pRes: FetchResult, sRes: FetchResult, pmRes: FetchResult, nRes: FetchResult, dRes: FetchResult, mRes: FetchResult, eRes: FetchResult, reRes: FetchResult, rrRes: FetchResult;
+    let tRes: FetchResult, tlRes: FetchResult, naRes: FetchResult, gRes: FetchResult, gmRes: FetchResult, nfRes: FetchResult;
     try {
       const settled = await Promise.allSettled([
         q("patients").order("name"),
@@ -291,15 +295,14 @@ export function useCardiganData(
       // uniform (mapRows(null) → [], etc.).
       // Unwrap to a uniform { data, error } shape. data is intentionally
       // loose here (the read path normalizes every row through mapRows and
-      // treats them dynamically — it was `any` before the client was
-      // typed); the typed-client value is concentrated at the .from(table)
-      // table check above and the .insert/.update shape checks in the
-      // domain hooks. Per-table read typing would fight the allSettled
-      // union for no real gain.
+      // treats them dynamically); the typed-client value is concentrated at
+      // the .from(table) table check above and the .insert/.update shape
+      // checks in the domain hooks, plus the per-table casts at each commit
+      // site below. Per-table read typing would fight the allSettled union.
       [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes] =
-        settled.map(r => r.status === "fulfilled"
-          ? (r.value as { data: Row; error: Row })
-          : { data: null as Row, error: { message: (r.reason as Error)?.message || "Error de red" } as Row });
+        settled.map((r): FetchResult => r.status === "fulfilled"
+          ? (r.value as FetchResult)
+          : { data: null, error: { message: (r.reason as Error)?.message || "Error de red" } });
     } catch (err) {
       // Defensive — allSettled itself never rejects; this only catches a
       // synchronous throw while building the queries.
@@ -310,15 +313,16 @@ export function useCardiganData(
 
     // Surface individual table errors
     const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, gRes, gmRes].find(r => r?.error);
-    if (tableErr) setFetchError((tableErr.error as { message?: string })?.message || "Error al cargar datos");
+    if (tableErr) setFetchError(tableErr.error?.message || "Error al cargar datos");
 
-    // Annotated Row[] (loose): the auto-extend + normalize code below
-    // treats these dynamically (it predates the typed client). The typed
-    // value is at the .from()/.insert() boundaries, not here.
-    let pData: Row[] = mapRows(pRes.data);
-    let sData: Row[] = mapRows(sRes.data);
-    const gData: Row[] = mapRows(gRes?.data);
-    const gmData: Row[] = gmRes?.data || [];
+    // Per-table narrowing cast (the allSettled unwrap left `.data` as
+    // `unknown`): from here down these are the concrete row types the
+    // factories + consumers read. mapRows normalizes each (date / colorIdx /
+    // modality) and preserves the row type.
+    let pData = mapRows(pRes.data as PatientRow[]);
+    let sData = mapRows(sRes.data as SessionRow[]);
+    const gData = mapRows(gRes?.data as GroupRow[] | undefined);
+    const gmData = (gmRes?.data as GroupMemberRow[]) || [];
 
     // Auto-extend recurring sessions (skip in read-only or if already extending).
     // The decision logic — which dates to insert for which schedule —
@@ -379,7 +383,7 @@ export function useCardiganData(
         }
 
         if (insertedRows.length > 0) {
-          sData = [...sData, ...mapRows(insertedRows)];
+          sData = [...sData, ...mapRows(insertedRows as SessionRow[])];
         }
         if (patientUpdates.size > 0) {
           pData = pData.map(p => {
@@ -428,7 +432,7 @@ export function useCardiganData(
             });
           }
         }
-        if (insertedRows.length > 0) sData = [...sData, ...mapRows(insertedRows)];
+        if (insertedRows.length > 0) sData = [...sData, ...mapRows(insertedRows as SessionRow[])];
         if (patientUpdates.size > 0) {
           pData = pData.map(p => {
             const inc = patientUpdates.get(p.id);
@@ -446,8 +450,8 @@ export function useCardiganData(
     // pendientes" prompt on the Gastos tab, surfaced via the `pending`
     // count returned alongside the data. Per CLAUDE.md prime directive:
     // never silently insert money rows beyond the documented cap.
-    let eData: Row[] = eRes?.data || [];
-    const reData: Row[] = reRes?.data || [];
+    let eData = (eRes?.data as ExpenseRow[]) || [];
+    const reData = (reRes?.data as RecurringExpenseRow[]) || [];
     // Failed-read guard (money write path): only generate recurring
     // expense rows when BOTH the expenses and recurring_expenses reads
     // succeeded — otherwise computeRecurringExpenseRows could re-create
@@ -488,18 +492,18 @@ export function useCardiganData(
     // clean read replaces the data.
     if (!pRes.error) setPatients(pData);
     if (!sRes.error) setUpcomingSessions(sData);
-    if (!pmRes.error) setPayments(mapRows(pmRes.data));
+    if (!pmRes.error) setPayments(mapRows(pmRes.data as PaymentRow[]));
     // Decrypt any encrypted notes inline if the user is unlocked.
     // Locked rows keep their ciphertext + encrypted=true flag and are
     // displayed as "[cifrado]" by the consumer until unlock triggers
     // a re-fetch.
-    let notesData = nRes.data || [];
+    let notesData = (nRes.data as NoteRow[]) || [];
     if (!nRes.error) {
       if (noteCrypto?.decrypt) {
         const decrypt = noteCrypto.decrypt;
-        notesData = await Promise.all(notesData.map(async (n: Row) => {
+        notesData = await Promise.all(notesData.map(async (n) => {
           if (!n.encrypted) return n;
-          const plain = await decrypt(n.content, true);
+          const plain = await decrypt(n.content ?? "", true);
           return plain == null ? n : { ...n, content: plain };
         }));
       }
@@ -509,29 +513,29 @@ export function useCardiganData(
     // rows the ciphertext column already holds the plaintext, so we
     // pass it through unchanged. For encrypted rows we run the same
     // decrypt the notes path uses.
-    let tagsData = tRes?.data || [];
+    let tagsData = (tRes?.data as TagRow[]) || [];
     if (!tRes?.error) {
       if (noteCrypto?.decrypt) {
         const decrypt = noteCrypto.decrypt;
-        tagsData = await Promise.all(tagsData.map(async (t: Row) => {
+        tagsData = await Promise.all(tagsData.map(async (t) => {
           const plain = await decrypt(t.label_ciphertext, /* encrypted= */ true).catch(() => null);
           return { ...t, label: plain ?? t.label_ciphertext };
         }));
       } else {
-        tagsData = tagsData.map((t: Row) => ({ ...t, label: t.label_ciphertext }));
+        tagsData = tagsData.map((t) => ({ ...t, label: t.label_ciphertext }));
       }
       setTags(tagsData);
     }
-    if (!tlRes?.error) setTagLinks(tlRes?.data || []);
-    if (!dRes.error) setDocuments(dRes.data || []);
-    if (!mRes.error) setMeasurements(mRes.data || []);
+    if (!tlRes?.error) setTagLinks((tlRes?.data as TagLinkRow[]) || []);
+    if (!dRes.error) setDocuments((dRes.data as DocumentRow[]) || []);
+    if (!mRes.error) setMeasurements((mRes.data as MeasurementRow[]) || []);
     if (!eRes?.error) setExpenses(eData);
     if (!reRes?.error) setRecurringExpenses(reData);
-    if (!rrRes?.error) setRescheduleRequests(rrRes?.data || []);
-    if (!naRes?.error) setNoteAttachments(naRes?.data || []);
+    if (!rrRes?.error) setRescheduleRequests((rrRes?.data as RescheduleRequestRow[]) || []);
+    if (!naRes?.error) setNoteAttachments((naRes?.data as NoteAttachmentRow[]) || []);
     if (!gRes?.error) setGroups(gData);
     if (!gmRes?.error) setGroupMembers(gmData);
-    if (!nfRes?.error) setNotifications(nfRes?.data || []);
+    if (!nfRes?.error) setNotifications((nfRes?.data as NotificationRow[]) || []);
     setLoading(false);
 
     /* Persist the fresh snapshot for next cold start. We do this
@@ -552,17 +556,17 @@ export function useCardiganData(
       saveCachedData(userId, {
         patients: pData,
         upcomingSessions: sData,
-        payments: mapRows(pmRes.data),
+        payments: mapRows(pmRes.data as PaymentRow[]),
         notes: notesData,
-        documents: dRes.data || [],
-        measurements: mRes.data || [],
+        documents: (dRes.data as DocumentRow[]) || [],
+        measurements: (mRes.data as MeasurementRow[]) || [],
         expenses: eData,
         recurringExpenses: reData,
-        rescheduleRequests: rrRes?.data || [],
-        noteAttachments: naRes?.data || [],
+        rescheduleRequests: (rrRes?.data as RescheduleRequestRow[]) || [],
+        noteAttachments: (naRes?.data as NoteAttachmentRow[]) || [],
         groups: gData,
         groupMembers: gmData,
-        notifications: nfRes?.data || [],
+        notifications: (nfRes?.data as NotificationRow[]) || [],
       });
     }
     // Re-run when the crypto status flips so encrypted notes get
