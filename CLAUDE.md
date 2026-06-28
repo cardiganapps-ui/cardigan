@@ -366,6 +366,19 @@ Because a build fires on **every** push to `main` that touches app code, a strin
 
 **Diagnosing a "failed" run:** distinguish a *code* failure (build/archive/export step red → real bug, fix it) from an *upload throttle* (90382 at the `Upload to TestFlight` step → not our code; wait for the limit to reset, then re-trigger by pushing to `main` or re-dispatching the workflow). Check via `mcp__github__get_job_logs` with `failed_only:true`. Note the session-scoped GitHub MCP integration **cannot dispatch or cancel workflow runs** (403 "Resource not accessible by integration") — use a valid `GITHUB_TOKEN` from `.env.local` against the REST API instead, and rotate the token if it 401s.
 
+### Android → Google Play builds (Capacitor + GitHub Actions)
+The native Android app is built and shipped to Google Play's **internal** track by `.github/workflows/android-build.yml` (Ubuntu runner: `npm run build` → `cap sync android` → `@capacitor/assets generate --android` → `gradlew :app:bundleRelease` → upload via the Play Developer API with `r0adkll/upload-google-play`). Unlike iOS, the `android/` dir **is committed** (it carries our launcher icons, shortcuts, strings, splash, and signing wiring), so CI only `cap sync`s — never `cap add`.
+
+**Triggers:** push to `main` touching app code (ignores `**.md`, `ios-config/**`, `api/**`, `supabase/**`, `scripts/**`, and `.github/**` except itself), or a manual `workflow_dispatch` with a `track` input (internal / alpha / beta / production). `versionCode` = `github.run_number` (monotonic — Play rejects duplicate version codes); `build.gradle` reads it via `-PappVersionCode`, falling back to `1` for a local `npm run cap:bundle:android`.
+
+**Full submission walkthrough:** `docs/play-store-submission.md`. The two non-code gotchas, both already documented there:
+- **The FIRST upload must be manual.** Google won't let the API create the very first release of a new app — upload one AAB by hand in the Play Console (and enroll in Play App Signing) before CI's `Upload to Play` step can succeed. After that, every push to `main` ships automatically.
+- **Stripe CTA is currently shown on Android.** The reader-app gate in `ProUpgradeSheet.tsx` / `AppBanners.tsx` is `isNative() && isIOS()`, so Android still renders the price + subscribe CTA — a Play Billing policy risk. Decide before submitting (mirror iOS by switching the gate to `isNative()`, integrate Play Billing, or rely on external-offer allowances). It's a product/legal call, left unchanged in code.
+
+**Required secrets** (Settings → Secrets and variables → Actions): `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, plus the same `VITE_*` build env as the iOS workflow. The workflow verifies all of them up front and exits with a clear "missing secret X" message if any are absent. The upload keystore is generated once via `scripts/android-keystore.sh` (`*.keystore` + `keystore.properties` are gitignored — **back the keystore up; losing it is a 1–2 day Google appeal**). After the first upload, paste the Play **App signing** SHA-256 into `public/.well-known/assetlinks.json` to flip Android App Links to ✓.
+
+Play's TestFlight-equivalent (internal testing) has **no daily upload cap** like Apple's 90382, so Android builds are cheaper to iterate — but the "batch pushes to `main`" rule still holds because the same push also fires the rate-limited iOS build.
+
 ## Conventions
 - **Spanish** for all user-visible text (use `useT()` from `src/i18n`).
 - **Currency MXN**, formatted with `.toLocaleString()`.

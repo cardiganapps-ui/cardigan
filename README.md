@@ -21,7 +21,8 @@ audited nightly against the source of truth. Trust in that number is the product
 - **Serverless:** Vercel functions under `api/` (admin ops, presigned URLs, web-push,
   Stripe billing, webhooks).
 - **PWA:** `vite-plugin-pwa` (`injectManifest`) with a custom service worker.
-- **Native:** Capacitor shells for iOS (TestFlight via GitHub Actions) and Android.
+- **Native:** Capacitor shells for iOS (TestFlight via GitHub Actions) and Android
+  (Google Play via GitHub Actions — see `docs/play-store-submission.md`).
 - **Billing:** Stripe (Cardigan Pro subscription + optional patient payments via Connect).
 - **Observability:** Sentry (web + serverless), `/api/health`.
 

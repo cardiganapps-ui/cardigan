@@ -1,0 +1,242 @@
+# Cardigan Android → Google Play pipeline.
+#
+# Runs on push to main (and manual dispatch). Builds the web bundle,
+# syncs the committed android/ Capacitor project, regenerates app icons
+# + splash from assets/, signs a release AAB with our upload key, and
+# uploads it to the Play Console's **Internal testing** track via the
+# Play Developer API (the Android analogue of TestFlight).
+#
+# Unlike iOS, the android/ directory IS committed (it carries our custom
+# launcher icons, shortcuts, strings, splash, and signing wiring), so we
+# only `cap sync` here — never `cap add`.
+#
+# ─────────────────────────────────────────────────────────────────────
+# ONE-TIME BOOTSTRAP — the FIRST release of a brand-new app CANNOT be
+# uploaded by the API. Google requires you to upload the very first AAB
+# by hand through the Play Console UI (this is also where you enroll in
+# Play App Signing). Until that manual upload exists, the "Upload to
+# Play" step below will fail with a 403 / "Only releases with status
+# draft may be created on draft app". Do the manual upload once, then
+# every subsequent push to main ships automatically. Full walkthrough:
+# docs/play-store-submission.md.
+# ─────────────────────────────────────────────────────────────────────
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#
+#   ANDROID_KEYSTORE_BASE64           — base64 of android/cardigan-upload.keystore
+#                                       (`base64 -w0 cardigan-upload.keystore`)
+#   ANDROID_KEYSTORE_PASSWORD         — store password
+#   ANDROID_KEY_ALIAS                 — key alias (cardigan-upload)
+#   ANDROID_KEY_PASSWORD              — key password
+#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON  — full JSON of a Play Console service
+#                                       account with "Release to testing
+#                                       tracks" permission
+#
+#   VITE_SUPABASE_URL                 — same value as production web
+#   VITE_SUPABASE_ANON_KEY            — same
+#   VITE_VAPID_PUBLIC_KEY             — same
+#   VITE_NOTES_RECOVERY_PUBLIC_KEY    — same
+#   VITE_SENTRY_DSN                   — same
+#   VITE_TURNSTILE_SITE_KEY           — same
+#   VITE_STRIPE_PUBLISHABLE_KEY       — same
+#   VITE_STRIPE_PRICE_ID              — same
+#   VITE_STRIPE_PRICE_ID_ANNUAL       — same
+#
+# Until every required secret is present, the workflow exits early with a
+# clear "missing secret X" message rather than failing partway.
+
+name: Android Build & Play
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      # The native iOS shell is generated/owned by ios-build.yml — its
+      # files never enter the Android AAB.
+      - 'ios-config/**'
+      # Serverless functions are Vercel-only and never bundled into the
+      # app (vite builds src/ → dist/), so api/ changes must not burn an
+      # Android build.
+      - 'api/**'
+      # The database layer (migrations, schema.sql, drift snapshot) is
+      # never bundled into the app.
+      - 'supabase/**'
+      - 'scripts/**'
+      - '.github/**'
+      - '!.github/workflows/android-build.yml'
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Play track to publish to'
+        required: false
+        default: 'internal'
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+      reason:
+        description: 'Why are you triggering manually? (logged in run name)'
+        required: false
+        default: 'manual'
+
+concurrency:
+  # One Android build at a time. Pushes during a build cancel the older.
+  group: android-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build AAB + upload to Play
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify secrets present
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          missing=()
+          [ -z "$KEYSTORE_B64" ] && missing+=("ANDROID_KEYSTORE_BASE64")
+          [ -z "$KEYSTORE_PW" ]  && missing+=("ANDROID_KEYSTORE_PASSWORD")
+          [ -z "$KEY_ALIAS" ]    && missing+=("ANDROID_KEY_ALIAS")
+          [ -z "$KEY_PW" ]       && missing+=("ANDROID_KEY_PASSWORD")
+          [ -z "$PLAY_JSON" ]    && missing+=("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")
+          [ -z "$SUPABASE_URL" ] && missing+=("VITE_SUPABASE_URL")
+          [ -z "$SUPABASE_KEY" ] && missing+=("VITE_SUPABASE_ANON_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}"
+            echo "Add them at Settings → Secrets and variables → Actions."
+            echo "See docs/play-store-submission.md for how to obtain each one."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Java (Temurin 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
+          VITE_NOTES_RECOVERY_PUBLIC_KEY: ${{ secrets.VITE_NOTES_RECOVERY_PUBLIC_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_STRIPE_PRICE_ID: ${{ secrets.VITE_STRIPE_PRICE_ID }}
+          VITE_STRIPE_PRICE_ID_ANNUAL: ${{ secrets.VITE_STRIPE_PRICE_ID_ANNUAL }}
+          VITE_WHATSAPP_UI_ENABLED: ${{ vars.VITE_WHATSAPP_UI_ENABLED }}
+          # Native auth features. Same flags as web, but this build runs
+          # HERE (not on Vercel), so it never sees Vercel's env. Google
+          # OAuth uses the web OAuth redirect on Android (no native Google
+          # picker is wired — see CLAUDE.md), and passkeys are iOS-only at
+          # the UI gate, so these are inert on Android but kept aligned
+          # with the iOS build for a single source of truth.
+          VITE_GOOGLE_OAUTH_ENABLED: "true"
+          VITE_PASSKEYS_UI_ENABLED: "true"
+        run: npm run build
+
+      - name: Sync Capacitor (committed android/ project)
+        run: npx cap sync android
+
+      - name: Generate app icons + splash from assets/
+        # @capacitor/assets reads assets/icon.png (1024×1024) and
+        # assets/splash.png (2732×2732), writing every Android density
+        # variant into android/app/src/main/res/. Mirrors the iOS step in
+        # ios-build.yml. --splashBackgroundColor pins the surrounding
+        # canvas to the Cardigan teal (matches capacitor.config.json).
+        run: npx @capacitor/assets generate --android --splashBackgroundColor "#5B9BAF" --splashBackgroundColorDark "#5B9BAF"
+
+      - name: Decode upload keystore + write keystore.properties
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # storeFile in keystore.properties is resolved relative to the
+          # android/ dir (rootProject), so drop both files there. Both are
+          # gitignored (*.keystore + keystore.properties) — they only ever
+          # live on the runner.
+          echo "$KEYSTORE_B64" | base64 --decode > android/cardigan-upload.keystore
+          cat > android/keystore.properties <<EOF
+          storeFile=cardigan-upload.keystore
+          storePassword=$KEYSTORE_PW
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PW
+          EOF
+
+      - name: Build signed release AAB
+        # versionCode = github.run_number → strictly monotonic per run, so
+        # each upload satisfies Play's "version code must increase" rule.
+        run: |
+          cd android
+          ./gradlew :app:bundleRelease -PappVersionCode=${{ github.run_number }}
+
+      - name: Verify AAB is signed
+        # A misconfigured keystore makes gradle silently produce an
+        # UNSIGNED bundle (see the build.gradle comment) — Play rejects it
+        # with a cryptic error. Fail loudly here instead.
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          if [ ! -f "$AAB" ]; then
+            echo "::error::AAB not found at $AAB"
+            exit 1
+          fi
+          # An unsigned bundle has no META-INF/*.RSA|EC|DSA signature block.
+          if ! unzip -l "$AAB" | grep -qiE 'META-INF/.*\.(RSA|EC|DSA)'; then
+            echo "::error::AAB appears UNSIGNED — check the keystore secrets."
+            exit 1
+          fi
+          echo "✓ signed AAB at $AAB ($(du -h "$AAB" | cut -f1))"
+
+      - name: Write Play service-account JSON
+        env:
+          PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          printf '%s' "$PLAY_JSON" > "$RUNNER_TEMP/play-service-account.json"
+
+      - name: Upload to Play
+        # r0adkll/upload-google-play wraps the Play Developer API. On the
+        # very FIRST run for a new app this fails (see the bootstrap note
+        # at the top) — that is expected, not a code bug. After the manual
+        # first upload, this ships every push to main automatically.
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ runner.temp }}/play-service-account.json
+          packageName: mx.cardigan.app
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ github.event.inputs.track || 'internal' }}
+          status: completed
+
+      - name: Clean up secrets on disk
+        if: always()
+        run: |
+          rm -f android/cardigan-upload.keystore android/keystore.properties
+          rm -f "$RUNNER_TEMP/play-service-account.json"
