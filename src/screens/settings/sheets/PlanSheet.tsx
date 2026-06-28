@@ -4,7 +4,7 @@ import { SegmentedControl } from "../../../components/SegmentedControl";
 import { ProValueWidget } from "../../../components/ProValueWidget";
 import { billingSummary } from "../../../utils/subscriptionStatus";
 import { formatMXNCents, formatDate } from "../../../utils/format";
-import { isNative, isIOS } from "../../../lib/platform";
+import { isNative } from "../../../lib/platform";
 import { SheetOverlay } from "../../../components/SheetOverlay";
 
 /* ── Plan / Suscripción sheet ─────────────────────────────────────────
@@ -76,12 +76,13 @@ export function PlanSheet({
                 // sub so the panel doesn't read as perpetually
                 // loading for the admin.
                 const isAdminAccess = !isComp && !isActive && state === "active";
-                // Reader-app gate: inside the iOS native shell, App Store
-                // Guideline 3.1.3(a) forbids pricing, subscribe CTAs, and
-                // any "purchase via website" call to action. Existing
-                // subscribers can still see status + manage via the
-                // Billing Portal (allowed); only the BUY surfaces hide.
-                const isIOSReader = isNative() && isIOS();
+                // Reader-app gate: inside ANY native shell, the store rules
+                // forbid pricing, subscribe CTAs, and any "purchase via
+                // website" call to action — iOS App Store Guideline
+                // 3.1.3(a) and Google Play's Payments policy alike.
+                // Existing subscribers can still see status + manage via
+                // the Billing Portal (allowed); only the BUY surfaces hide.
+                const isNativeReader = isNative();
                 // Structured hero summary — drives the icon tone, the
                 // emphasized end-date block, the charge chip, and which
                 // secondary action (pause / reactivate / none) to show.
@@ -190,7 +191,7 @@ export function PlanSheet({
 
                       {/* Price line — checkout flow only. Lives inside the
                           hero so the user perceives value + cost together. */}
-                      {!isComp && !isActive && !isAdminAccess && !isIOSReader && (
+                      {!isComp && !isActive && !isAdminAccess && !isNativeReader && (
                         <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid var(--border-lt)" }}>
                           <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:6 }}>
                             <span style={{ fontFamily:"var(--font-d)", fontSize:34, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-1px", lineHeight:1 }}>
@@ -215,7 +216,7 @@ export function PlanSheet({
                         Annual carries a small "ahorra 17%" badge underneath so
                         the discount registers without visual clutter on the
                         toggle itself. */}
-                    {!isComp && !isActive && !isAdminAccess && !isIOSReader && (
+                    {!isComp && !isActive && !isAdminAccess && !isNativeReader && (
                       <div style={{ marginBottom:14 }}>
                         <SegmentedControl
                           items={[
@@ -262,7 +263,7 @@ export function PlanSheet({
                         flows through to handleStartCheckout invisibly.
                         Word-of-mouth users (who never hit a ?ref URL)
                         still see the field and can type their code in. */}
-                    {!isComp && !isActive && !isAdminAccess && !isIOSReader && !inviteCodeFromUrl && (
+                    {!isComp && !isActive && !isAdminAccess && !isNativeReader && !inviteCodeFromUrl && (
                       <div className="input-group" style={{ marginBottom:14 }}>
                         <label className="input-label">{t("subscription.inviteCodeLabel")}</label>
                         <input
@@ -287,7 +288,7 @@ export function PlanSheet({
 
                     {/* Primary action — full-width charcoal button on its own row.
                         Active subs swap to "Administrar" pointing at the Stripe portal. */}
-                    {(!isComp && !isActive && !isAdminAccess && !isIOSReader) && (
+                    {(!isComp && !isActive && !isAdminAccess && !isNativeReader) && (
                       <div style={{ marginBottom:22 }}>
                         <button type="button" className="btn btn-primary"
                           onClick={handleStartCheckout} disabled={subBusy}>
@@ -298,10 +299,10 @@ export function PlanSheet({
                         </div>
                       </div>
                     )}
-                    {/* iOS reader-app substitute — informational only.
-                        No button, no link, no pricing — strictly what
-                        App Store Guideline 3.1.3(a) permits. */}
-                    {(!isComp && !isActive && !isAdminAccess && isIOSReader) && (
+                    {/* Native reader-app substitute — informational only.
+                        No button, no link, no pricing — strictly what iOS
+                        Guideline 3.1.3(a) and Google Play Payments permit. */}
+                    {(!isComp && !isActive && !isAdminAccess && isNativeReader) && (
                       <div style={{
                         marginBottom: 22,
                         padding: "14px 16px",
@@ -310,7 +311,7 @@ export function PlanSheet({
                         fontSize: 13, color: "var(--charcoal-md)",
                         lineHeight: 1.5, textAlign: "center",
                       }}>
-                        {t("subscription.iosReaderHint")}
+                        {t("subscription.nativeReaderHint")}
                       </div>
                     )}
                     {isActive && !isComp && (

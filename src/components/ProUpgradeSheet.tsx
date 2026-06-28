@@ -4,7 +4,7 @@ import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 import { useCardiganMain } from "../context/CardiganContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
-import { isNative, isIOS } from "../lib/platform";
+import { isNative } from "../lib/platform";
 
 const StripePaymentSheet = lazy(() => import("./StripePaymentSheet"));
 
@@ -173,14 +173,16 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
           </div>
 
           {/* Price + CTA section.
-              iOS reader-app branch: per App Store Guideline 3.1.3(a),
-              we cannot show pricing or a subscribe button inside the
-              iOS app, and we cannot link to cardigan.mx as a CTA. We
-              keep the feature explanation above (the user understands
-              what's gated) and replace the price/CTA with an inert
-              informational line — no button, no link. */}
+              Native reader-app branch (iOS App Store Guideline 3.1.3(a)
+              AND Google Play's Payments policy): on every native build we
+              cannot show pricing or a subscribe button, and we cannot link
+              to cardigan.mx as a CTA. We keep the feature explanation above
+              (the user understands what's gated) and replace the price/CTA
+              with an inert informational line — no button, no link. Pro is
+              sold on the web; existing subscribers just sign in. Web keeps
+              the full price + Stripe CTA. */}
           <div style={{ padding: "18px 22px 4px" }}>
-            {isNative() && isIOS() ? (
+            {isNative() ? (
               <>
                 <div style={{
                   padding: "12px 14px",
@@ -190,7 +192,7 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
                   fontSize: 12, color: "var(--charcoal-md)",
                   lineHeight: 1.5, textAlign: "center",
                 }}>
-                  {t("pro.ios.readerHint")}
+                  {t("pro.nativeHint")}
                 </div>
                 <button
                   type="button"

@@ -1,5 +1,5 @@
 import type { MutableRefObject } from "react";
-import { isNative, isIOS } from "../../lib/platform";
+import { isNative } from "../../lib/platform";
 
 /* ── AppBanners ───────────────────────────────────────────────────────
    The stack of full-width status banners that sit at the top of the
@@ -112,13 +112,14 @@ export function AppBanners({
       {!demo && !viewAsUserId && subscription.accessExpired && (
         <div className="app-banner app-banner--expired">
           <span className="app-banner-text">
-            {isNative() && isIOS()
-              ? t("subscription.expiredBannerIOS")
+            {isNative()
+              ? t("subscription.expiredBannerNative")
               : t("subscription.expiredBanner")}
           </span>
-          {/* iOS reader-app: no subscribe CTA. The banner copy above
-              tells the user where to go without an in-app link. */}
-          {!(isNative() && isIOS()) && (
+          {/* Native reader-app (iOS App Store + Google Play): no subscribe
+              CTA. The banner copy above tells the user where to go without
+              an in-app link. */}
+          {!isNative() && (
             <button onClick={() => navigate("settings")} className="app-banner-action">
               {t("subscription.subscribeShort")}
             </button>

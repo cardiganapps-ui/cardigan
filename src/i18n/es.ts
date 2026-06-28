@@ -1401,6 +1401,12 @@ export default {
     statusLoading: "Cargando\u2026",
     expiredExplain: "Suscr\u00edbete para seguir usando Cardigan con todas sus funciones.",
     expiredBanner: "Tu prueba termin\u00f3. Suscr\u00edbete para reanudar.",
+    // Native (iOS + Android) variant of the expired banner: no in-app
+    // subscribe button is shown, so the copy points to the web instead.
+    expiredBannerNative: "Tu prueba termin\u00f3. Suscr\u00edbete en cardigan.mx para reanudar tu acceso.",
+    // Plan sheet (Ajustes \u2192 Suscripci\u00f3n) substitute for the buy surface
+    // on native \u2014 informational only, no button/link/pricing.
+    nativeReaderHint: "Para suscribirte a Cardigan Pro, entra a cardigan.mx desde tu navegador. Si ya eres suscriptor, tu acceso se activa autom\u00e1ticamente al iniciar sesi\u00f3n aqu\u00ed.",
     trialDaysLeftBanner: "Tu prueba termina en {n} d\u00edas.",
     trialEndsTodayBanner: "Tu prueba termina hoy.",
     subscribeShort: "Suscribirme",
@@ -1501,6 +1507,10 @@ export default {
   pro: {
     eyebrow: "Cardigan Pro",
     priceNote: "$149 MXN al mes. Cancela cuando quieras.",
+    // Shown inside the native apps (iOS + Android) in place of the price
+    // and subscribe button — store payment rules forbid a buy CTA or an
+    // external purchase link. Informational only, no URL.
+    nativeHint: "Cardigan Pro se administra desde la web. Si ya tienes una suscripción activa, inicia sesión y tus funciones Pro se activan al instante.",
     subscribeCta: "Suscribirme a Cardigan Pro",
     dismissCta: "Tal vez después",
     footer: "Si aún estás en tu prueba gratuita, no se te cobrará hasta que termine. Las funciones Pro se activan al instante.",

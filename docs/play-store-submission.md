@@ -30,34 +30,103 @@ be created") until you have uploaded **one** AAB manually through the Play
 Console UI and enrolled in Play App Signing. After that single manual
 upload, every push to `main` ships automatically. Walkthrough in §4.
 
-### 0b. Stripe CTA is currently shown on Android (Play Billing risk)
-On **iOS** the Pro upgrade sheet hides all pricing and the subscribe
-button (reader-app pattern, App Store Guideline 3.1.3(a)). The gate is
-`isNative() && isIOS()` in `src/components/ProUpgradeSheet.tsx` — which
-means on **Android native the full price + "Suscribirme" CTA linking to
-web/Stripe checkout is still rendered**, and the same is true of the
-upgrade banners in `src/components/app/AppBanners.tsx`.
+### 0b. Monetization matches iOS — no in-app purchase on native ✅ (done)
+The native apps follow the **reader-app pattern on both platforms**: no
+pricing, no subscribe button, no external purchase link inside the app.
+Pro is sold only on the web (`cardigan.mx`); existing subscribers just
+sign in and their account already has access. This satisfies both iOS App
+Store Guideline 3.1.3(a) **and** Google Play's Payments policy.
 
-Google Play's Payments policy generally requires Google Play Billing for
-in-app digital subscriptions. Sending users to an external web checkout
-can get a build rejected (or the app removed) depending on how Google
-currently enforces it in Mexico. **Decide this before submitting:**
+The gate is now `isNative()` (was `isNative() && isIOS()`) in all three
+monetization surfaces:
+- `src/components/ProUpgradeSheet.tsx` — the Pro feature-gate sheet
+- `src/components/app/AppBanners.tsx` — the trial-expired banner
+- `src/screens/settings/sheets/PlanSheet.tsx` — Ajustes → Suscripción
 
-- **Option A — mirror iOS (lowest risk):** change the gate from
-  `isNative() && isIOS()` to `isNative()` in `ProUpgradeSheet.tsx` and
-  `AppBanners.tsx` so Android also shows the inert informational line with
-  no price/CTA. Pro stays sold on the web; existing subscribers just sign
-  in. This is the safe, ship-it-now choice.
-- **Option B — integrate Google Play Billing:** add the Play Billing
-  flow for Android purchases. Much larger scope; only worth it if you
-  want in-app Android conversions.
-- **Option C — rely on external-offer allowances:** post-*Epic v. Google*
-  some external-link/alternative-billing paths are permitted. This is a
-  legal/policy judgement call — get confirmation before betting a launch
-  on it.
+On native, each shows an inert informational line (`pro.nativeHint`,
+`subscription.expiredBannerNative`, `subscription.nativeReaderHint`)
+instead of price/CTA. Web is unchanged — full price + Stripe checkout.
 
-This kit assumes **Option A** unless you choose otherwise. It is a
-product/legal decision, so the code gate was intentionally left unchanged.
+> If you ever want in-app Android purchases, that's a separate project
+> (integrate Google Play Billing) — out of scope here.
+
+---
+
+## 📱 Publish the first build from your phone (no computer)
+
+You don't need a Mac or PC. Everything below works from an **iPhone or
+Android phone** using just the GitHub web app and the Play Console in your
+mobile browser. The heavy lifting (generating the key, building a signed
+AAB) happens in GitHub Actions; your phone only taps buttons and moves
+files. Steps reference the detailed sections further down.
+
+> Tip: in your mobile browser, use **"Request Desktop Site"** for the Play
+> Console — its release pages assume a desktop layout. Safari: `aA` →
+> Request Desktop Website. Chrome: `⋮` → Desktop site.
+
+**1. Create your Play Developer account** (≈10 min + verification wait)
+   - Open <https://play.google.com/console/signup> in your phone browser,
+     pay the one-time **$25 USD**, complete identity verification. (§1)
+   - Create the app: name **Cardigan**, default language es-419, **App**,
+     **Free**. (§1)
+
+**2. Generate the upload key — from GitHub, no `keytool` needed** (≈2 min)
+   - In the GitHub mobile app or `github.com` → repo → **Actions** tab →
+     **"Android Keystore Bootstrap (one-time)"** → **Run workflow** →
+     type `generate` in the confirm box → Run.
+   - When it finishes, open the run → **Artifacts** → download
+     **`cardigan-android-keystore`** (a zip). Your phone's Files app can
+     unzip it. Inside:
+     - `ANDROID_KEYSTORE_BASE64.txt` — the base64 of the key
+     - `SECRETS-to-add.txt` — the password + alias values
+     - `cardigan-upload.keystore` — **the key itself: save a copy somewhere
+       safe (e.g. your password manager). Losing it = 1–2 day Google
+       appeal.**
+
+**3. Add the secrets** (≈5 min)
+   - Repo → **Settings → Secrets and variables → Actions → New repository
+     secret**. Add the four `ANDROID_*` values from `SECRETS-to-add.txt`
+     (paste the base64 file's contents for `ANDROID_KEYSTORE_BASE64`), plus
+     the `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` and `VITE_*` values. (§3)
+   - **Then delete the `cardigan-android-keystore` artifact** from the run
+     page (it's sensitive). Retention is already 1 day as a backstop.
+
+**4. Build a signed AAB in CI** (≈5 min, hands-off)
+   - Actions → **"Android Build & Play"** → **Run workflow** (leave track =
+     `internal`). It builds and signs the AAB. The **`Upload to Play` step
+     will fail — that's expected** for a brand-new app (§0a). The build
+     itself succeeds.
+   - Open the finished run → **Artifacts** → download
+     **`cardigan-release-aab`** → unzip to get `app-release.aab`.
+
+**5. Do the one manual upload in the Play Console** (≈10 min)
+   - Play Console (desktop-site mode) → your app → **Testing → Internal
+     testing → Create new release**.
+   - **Enroll in Play App Signing** when prompted (let Google manage the
+     signing key; you keep the upload key). Accept.
+   - Upload `app-release.aab` (tap the upload area → pick the file from
+     Files), add release notes, **save → review → roll out** to internal
+     testing. (§4)
+   - Add yourself as a tester (Testers tab), open the opt-in link, install
+     from the Play Store on your phone, and confirm the app launches +
+     signs in.
+
+**6. Flip on auto-publishing + finish deep links**
+   - From now on, every push to `main` (or a manual *Android Build & Play*
+     run) ships to internal testing automatically — the `Upload to Play`
+     step succeeds once the manual release above exists.
+   - Play Console → **Setup → App integrity → App signing** → copy the
+     **App signing key SHA-256**, paste it into
+     `public/.well-known/assetlinks.json`, commit. (§4)
+
+**7. When you're ready for the public**
+   - Promote internal → production from the Play Console, or run *Android
+     Build & Play* with `track = production`. New personal accounts must
+     run closed/open testing with a minimum tester count for ~14 days
+     before production unlocks. (§7)
+
+That's the whole path from a phone. The sections below are the reference
+detail for each step.
 
 ---
 
@@ -85,6 +154,13 @@ someone else can publish updates as you.** Generate it once and store it
 somewhere durable (password manager / encrypted backup), never in git
 (`android/.gitignore` already excludes `*.keystore`, `*.jks`, and
 `keystore.properties`).
+
+**No computer? Use the GitHub Action instead** — the *Android Keystore
+Bootstrap (one-time)* workflow mints the key in CI and hands you the
+base64 + passwords to paste into secrets (see the 📱 phone section above,
+step 2). Skip the script below in that case.
+
+On a computer:
 
 ```bash
 # from the repo root — wraps keytool with the right dname/validity
@@ -258,7 +334,7 @@ timeline around that if the account is an individual one.
 
 - [ ] Play Developer account created + verified ($25)
 - [ ] App created in Play Console (`mx.cardigan.app`)
-- [ ] Decision made on §0b (Stripe CTA on Android) — code adjusted if Option A
+- [x] Monetization matches iOS — no in-app purchase on native (§0b, done in code)
 - [ ] Upload keystore generated + backed up (§2)
 - [ ] All CI secrets added (§3)
 - [ ] First AAB uploaded manually + Play App Signing enrolled (§4)

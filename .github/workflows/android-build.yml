@@ -216,6 +216,17 @@ jobs:
           fi
           echo "✓ signed AAB at $AAB ($(du -h "$AAB" | cut -f1))"
 
+      - name: Upload AAB as a downloadable artifact
+        # Runs BEFORE the Play upload, so the AAB is always downloadable
+        # from the run page — including the very first run, where the Play
+        # upload step is expected to fail (§0a bootstrap). Download it on
+        # your phone, unzip, and upload it by hand in the Play Console.
+        uses: actions/upload-artifact@v4
+        with:
+          name: cardigan-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
       - name: Write Play service-account JSON
         env:
           PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
