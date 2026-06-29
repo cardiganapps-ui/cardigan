@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -78,4 +79,16 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        Strip the advertising-ID permission that Google Play services
+        (pulled in transitively by @capacitor/push-notifications / FCM)
+        auto-adds at manifest-merge time. Cardigan shows no ads and does
+        not read the advertising ID, so its presence would contradict the
+        "No advertising ID" declaration in Play Console and block release
+        validation (error: "release includes the AD_ID permission but your
+        declaration says your app doesn't use advertising ID"). Removing it
+        keeps the manifest consistent with the declaration.
+    -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
 </manifest>
