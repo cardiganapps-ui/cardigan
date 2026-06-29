@@ -216,9 +216,10 @@ fi
 # "train is closed"). So this must be bumped whenever the previous value
 # has shipped a build to App Store Connect — the build NUMBER
 # (CURRENT_PROJECT_VERSION = run_number) increments every run, but the
-# version string has to move forward across releases. 20.3 and 20.4 are
-# closed (a build on each was approved/released).
-MARKETING_VERSION="${MARKETING_VERSION:-20.5}"
+# version string has to move forward across releases. 20.3, 20.4 and
+# 20.5 are closed (a build on each was approved/released — 20.5 hit
+# error 90062 on the 2026-06-28 upload).
+MARKETING_VERSION="${MARKETING_VERSION:-20.6}"
 APPLE_TEAM_ID="$APPLE_TEAM_ID" MARKETING_VERSION="$MARKETING_VERSION" python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
 import re, sys, os
 p = sys.argv[1]
