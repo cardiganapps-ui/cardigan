@@ -98,6 +98,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Verify secrets present
+        id: secretcheck
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -107,12 +108,17 @@ jobs:
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
+          # Signing + web-build secrets are REQUIRED — without them we
+          # can't produce a valid AAB. The Play service-account JSON is
+          # OPTIONAL: when absent we still build + sign the AAB and upload
+          # it as an artifact, but skip the Play upload (this is exactly
+          # the state for the manual first upload — §0a). When present, the
+          # upload step runs and ships to Play automatically.
           missing=()
           [ -z "$KEYSTORE_B64" ] && missing+=("ANDROID_KEYSTORE_BASE64")
           [ -z "$KEYSTORE_PW" ]  && missing+=("ANDROID_KEYSTORE_PASSWORD")
           [ -z "$KEY_ALIAS" ]    && missing+=("ANDROID_KEY_ALIAS")
           [ -z "$KEY_PW" ]       && missing+=("ANDROID_KEY_PASSWORD")
-          [ -z "$PLAY_JSON" ]    && missing+=("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")
           [ -z "$SUPABASE_URL" ] && missing+=("VITE_SUPABASE_URL")
           [ -z "$SUPABASE_KEY" ] && missing+=("VITE_SUPABASE_ANON_KEY")
           if [ ${#missing[@]} -gt 0 ]; then
@@ -120,6 +126,12 @@ jobs:
             echo "Add them at Settings → Secrets and variables → Actions."
             echo "See docs/play-store-submission.md for how to obtain each one."
             exit 1
+          fi
+          if [ -n "$PLAY_JSON" ]; then
+            echo "play_upload=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "play_upload=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No GOOGLE_PLAY_SERVICE_ACCOUNT_JSON set — building + signing the AAB and publishing it as an artifact only. Skipping the Play upload (do the first upload manually, or add the secret to auto-publish)."
           fi
 
       - name: Setup Node
@@ -228,16 +240,21 @@ jobs:
           retention-days: 14
 
       - name: Write Play service-account JSON
+        if: steps.secretcheck.outputs.play_upload == 'true'
         env:
           PLAY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           printf '%s' "$PLAY_JSON" > "$RUNNER_TEMP/play-service-account.json"
 
       - name: Upload to Play
-        # r0adkll/upload-google-play wraps the Play Developer API. On the
-        # very FIRST run for a new app this fails (see the bootstrap note
-        # at the top) — that is expected, not a code bug. After the manual
-        # first upload, this ships every push to main automatically.
+        # Runs only when a Play service account is configured. r0adkll/
+        # upload-google-play wraps the Play Developer API. On the very
+        # FIRST run for a new app this fails (see the bootstrap note at the
+        # top) — that is expected, not a code bug. After the manual first
+        # upload, this ships every push to main automatically. With no
+        # service account at all, this step is skipped and the build just
+        # publishes the AAB artifact above.
+        if: steps.secretcheck.outputs.play_upload == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ runner.temp }}/play-service-account.json
