@@ -81,15 +81,21 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
-        Strip the advertising-ID permission that Google Play services
-        (pulled in transitively by @capacitor/push-notifications / FCM)
+        Strip the advertising-ID + Privacy Sandbox AdServices permissions
+        that Google Play services (pulled in transitively by
+        @capacitor/push-notifications / play-services-measurement)
         auto-adds at manifest-merge time. Cardigan shows no ads and does
-        not read the advertising ID, so its presence would contradict the
-        "No advertising ID" declaration in Play Console and block release
+        not read the advertising ID, so their presence contradicts the
+        "No advertising ID" declaration in Play Console and blocks release
         validation (error: "release includes the AD_ID permission but your
-        declaration says your app doesn't use advertising ID"). Removing it
-        keeps the manifest consistent with the declaration.
+        declaration says your app doesn't use advertising ID" — Play's gate
+        is triggered by the whole AdServices family, not just AD_ID).
+        Removing all of them keeps the manifest consistent with the
+        declaration.
     -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_CUSTOM_AUDIENCE" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_TOPICS" tools:node="remove" />
 </manifest>
