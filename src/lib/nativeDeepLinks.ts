@@ -1,9 +1,13 @@
 // Native deep-link bridge.
 //
-// On Android (and later iOS), tapping a cardigan.mx link from email,
-// WhatsApp, or another app routes the tap through Capacitor's App
-// plugin via the `appUrlOpen` event when the OS decides our app
-// handles the link (Android App Links / iOS Universal Links).
+// On Android and iOS, tapping a cardigan.mx link from email, WhatsApp,
+// or another app routes the tap through Capacitor's App plugin via the
+// `appUrlOpen` event when the OS decides our app handles the link
+// (Android App Links / iOS Universal Links). Home Screen quick actions
+// on both platforms arrive through the same event: Android's
+// shortcuts.xml intents carry cardigan.mx URLs, and iOS's AppDelegate
+// (patched by scripts/apply-ios-config.sh) forwards the tapped
+// shortcut's UserInfo URL into Capacitor's open-url path.
 //
 // The app's existing URL-parsing logic (patient invite /i/<token>,
 // influencer code /c/<code>, referral ?ref=, Stripe return ?billing=)
