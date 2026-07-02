@@ -80,12 +80,17 @@ const DISPLAY_ONLY_GUARD = !!(import.meta.env && import.meta.env.DEV);
 // flips a past-scheduled date >~6 months old into a FUTURE year, which
 // silently drops it out of `consumed` and understates amountDue (and the
 // drift is invisible to the audit because every predicate shared the same
-// today-anchoring). Falls back to today when created_at is absent (unit
-// fixtures) — i.e. the prior behavior. MUST stay in sync with the SQL
-// session_counts_at and the api/_cardiTools + audit-accounting mirrors.
-function sessionEndMoment(session: BalanceSession): Date {
+// today-anchoring). Falls back to the caller's `now` when created_at is
+// absent — in production that IS today (the previous behavior), while
+// callers that pin `now` (unit fixtures, batch audits) get year inference
+// consistent with the same reference instant they compare against;
+// anchoring the fallback to the real clock instead made the Dec-31 unit
+// fixture flip red every time the calendar crossed the 6-month nearest-
+// year boundary. MUST stay in sync with the SQL session_counts_at and
+// the api/_cardiTools + audit-accounting mirrors.
+function sessionEndMoment(session: BalanceSession, now?: Date): Date {
   const created = session.created_at ? new Date(session.created_at) : null;
-  const anchor = created && !isNaN(created.getTime()) ? created : undefined;
+  const anchor = created && !isNaN(created.getTime()) ? created : now;
   const d = parseShortDate(session.date, anchor);
   if (session.time) {
     const [h, m] = session.time.split(":");
@@ -102,7 +107,7 @@ export function sessionCountsTowardBalance(session: BalanceSession | null | unde
   if (session.status === SESSION_STATUS.COMPLETED) return true;
   if (session.status === SESSION_STATUS.CHARGED) return true;
   if (session.status === SESSION_STATUS.SCHEDULED) {
-    return now >= sessionEndMoment(session);
+    return now >= sessionEndMoment(session, now);
   }
   return false;
 }
