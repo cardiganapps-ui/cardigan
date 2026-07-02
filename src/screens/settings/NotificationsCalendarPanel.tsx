@@ -1,7 +1,8 @@
 import React from "react";
-import { IconBell, IconCalendar, IconCreditCard, IconChevron } from "../../components/Icons";
+import { IconBell, IconCalendar, IconCreditCard, IconChevron, IconSmartphone } from "../../components/Icons";
 import { clickableProps } from "../../utils/a11y";
 import { useT } from "../../i18n/index";
+import { isNative, isIOS } from "../../lib/platform";
 import { ProBadge } from "./ProBadge";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed notifications hook object
@@ -59,6 +60,18 @@ export const NotificationsCalendarPanel = React.memo(function NotificationsCalen
                 {!isPro && <ProBadge />}
               </div>
               <div className="settings-row-sub">{isPro ? calendarSummary : t("settings.proRowLockedSub")}</div>
+            </div>
+            <IconChevron />
+          </div>
+        )}
+        {/* iOS home/lock-screen widgets — the row only exists inside the
+           native iOS shell, where the WidgetBridge plugin is compiled in. */}
+        {!readOnly && isNative() && isIOS() && (
+          <div className="settings-row" {...clickableProps(() => onOpenSheet("widgets"))}>
+            <div className="settings-row-icon" style={{ color: "var(--teal-dark)" }}><IconSmartphone size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title">{t("settings.widgetsLabel")}</div>
+              <div className="settings-row-sub">{t("settings.widgetsSub")}</div>
             </div>
             <IconChevron />
           </div>

@@ -27,6 +27,7 @@ import { SubscriptionPanel } from "./settings/SubscriptionPanel";
 import { AppearancePanel } from "./settings/AppearancePanel";
 import { FeaturesPanel } from "./settings/FeaturesPanel";
 import { NotificationsCalendarPanel } from "./settings/NotificationsCalendarPanel";
+import { WidgetsPanel } from "./settings/WidgetsPanel";
 import { SecurityPanel } from "./settings/SecurityPanel";
 import { DataPrivacyPanel } from "./settings/DataPrivacyPanel";
 import { HelpPanel } from "./settings/HelpPanel";
@@ -575,6 +576,19 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         sheetPanelHandlers={sheetPanelHandlers}
       >
         <CalendarLinkPanel readOnly={readOnly} />
+      </PanelSheet>
+
+      {/* ── iOS WIDGETS SHEET ──
+         Only reachable from the widgets row, which itself renders only
+         inside the native iOS shell. */}
+      <PanelSheet
+        open={activeSheet === "widgets"}
+        title={t("settings.widgetsLabel")}
+        onClose={() => setActiveSheet(null)}
+        setSheetPanel={setSheetPanel}
+        sheetPanelHandlers={sheetPanelHandlers}
+      >
+        <WidgetsPanel readOnly={readOnly} />
       </PanelSheet>
 
       {/* ── ONLINE PAYMENTS (STRIPE CONNECT) SHEET ── */}

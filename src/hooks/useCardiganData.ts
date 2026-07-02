@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { loadCachedData, saveCachedData } from "../lib/dataCache";
+import { syncWidgets } from "../lib/widgetSync";
 import { supabase } from "../supabaseClient";
 import type { Database } from "../types/supabase";
 import type {
@@ -568,6 +569,19 @@ export function useCardiganData(
         groupMembers: gmData,
         notifications: (nfRes?.data as NotificationRow[]) || [],
       });
+      // iOS widgets ride the same coherence point as the cold-start
+      // cache: full-success data only, raw (un-enriched) rows. Skipped
+      // in readOnly (admin "view as user") so another user's data never
+      // lands in the admin's own home-screen widgets. Fire-and-forget —
+      // a bridge failure means stale widgets, never a broken refresh.
+      if (!readOnly) {
+        void syncWidgets({
+          patients: pData,
+          sessions: sData,
+          payments: mapRows(pmRes.data as PaymentRow[]),
+          groups: gData,
+        });
+      }
     }
     // Re-run when the crypto status flips so encrypted notes get
     // re-fetched + decrypted right after the user unlocks. We can't

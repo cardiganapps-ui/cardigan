@@ -6,6 +6,7 @@ import { signInWithAppleNative } from "../lib/nativeAppleSignIn";
 import { signInWithGoogleNative } from "../lib/nativeGoogleSignIn";
 import { clearInviteToken, getInviteContext } from "../utils/inviteTokenStorage";
 import { clearCachedData } from "../lib/dataCache";
+import { clearWidgets } from "../lib/widgetSync";
 import { track } from "../lib/analytics";
 
 // Field/discipline nouns (gender-neutral). The verification email
@@ -298,6 +299,10 @@ export function useAuth() {
       // localStorage isn't Cache Storage — wipeBrowserCaches() won't touch
       // the data cache, so clear it explicitly here.
       clearCachedData(uid);
+      // iOS widgets read from the App Group container, which none of the
+      // web-side wipes reach — clear it so no patient data (or live data
+      // token) survives on a signed-out device. No-op on web/Android.
+      void clearWidgets();
       await wipeBrowserCaches();
     }
   }
