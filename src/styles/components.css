@@ -2067,6 +2067,16 @@ html[data-theme="dark"] .update-prompt-spinner--inline {
   visibility: hidden;
 }
 
+/* Android native: no rubber-band to preserve (Chromium shows a stretch/
+   glow affordance instead), and that stretch animates SIMULTANEOUSLY
+   with the custom PullToRefresh spinner on .page — a double-indicator
+   that reads broken. `none` kills the OS affordance so the Cardigan
+   pull-to-refresh owns the top-edge gesture, matching iOS. */
+html.cap-android .page,
+html.cap-android .scroll-bounce {
+  overscroll-behavior-y: none;
+}
+
 /* ── Notifications soft-ask card ──
    Polished entrance + bell ring + soft halo on the icon. The card
    itself lives on Home and replaces the bare OS notification prompt

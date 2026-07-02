@@ -311,9 +311,10 @@
       (function(){try{var p=localStorage.getItem('cardigan-theme')||'system';
       var h=document.documentElement;
       var d=p==='dark'||(p==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
-      if(d){h.setAttribute('data-theme','dark');h.style.colorScheme='dark';
-      document.querySelector('meta[name="theme-color"]').content='#1A1A1A';}
+      if(d){h.setAttribute('data-theme','dark');h.style.colorScheme='dark';}
       else if(p==='light'){h.setAttribute('data-theme','light');h.style.colorScheme='light';}
+      if(p!=='system'){var m=document.querySelectorAll('meta[name="theme-color"]');
+      for(var i=0;i<m.length;i++){m[i].content=d?'#1A1A1A':'#FFFFFF';}}
       }catch(e){}})();
     </script>
   </head>

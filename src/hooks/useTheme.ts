@@ -14,8 +14,14 @@ function apply(resolved: string) {
   } else {
     document.documentElement.removeAttribute("data-theme");
   }
-  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  if (meta) meta.content = resolved === "dark" ? "#1A1A1A" : "#FFFFFF";
+  // index.html carries TWO media-scoped theme-color metas (light +
+  // dark). Update both — querySelector only reached the first (light)
+  // one, so on Android Chrome with system=dark + user-pinned light
+  // theme the untouched dark meta kept winning and painted a dark
+  // status strip over the light app.
+  document
+    .querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
+    .forEach((meta) => { meta.content = resolved === "dark" ? "#1A1A1A" : "#FFFFFF"; });
   // Keep the native iOS status-bar glyphs legible over the new
   // background. No-op on web; fire-and-forget on native.
   applyStatusBarStyle(resolved === "dark");

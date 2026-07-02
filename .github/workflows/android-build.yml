@@ -63,6 +63,9 @@ on:
       # never bundled into the app.
       - 'supabase/**'
       - 'scripts/**'
+      # …except the one script that shapes the Android build output
+      # (mirrors ios-build.yml's apply-ios-config.sh exception).
+      - '!scripts/apply-android-config.sh'
       - '.github/**'
       - '!.github/workflows/android-build.yml'
   workflow_dispatch:
@@ -166,10 +169,10 @@ jobs:
           VITE_WHATSAPP_UI_ENABLED: ${{ vars.VITE_WHATSAPP_UI_ENABLED }}
           # Native auth features. Same flags as web, but this build runs
           # HERE (not on Vercel), so it never sees Vercel's env. Google
-          # OAuth uses the web OAuth redirect on Android (no native Google
-          # picker is wired — see CLAUDE.md), and passkeys are iOS-only at
-          # the UI gate, so these are inert on Android but kept aligned
-          # with the iOS build for a single source of truth.
+          # sign-in is native on Android too (Credential Manager via
+          # @capgo/capacitor-social-login — see nativeGoogleSignIn.ts);
+          # passkeys stay iOS-only at the UI gate. Kept aligned with the
+          # iOS build for a single source of truth.
           VITE_GOOGLE_OAUTH_ENABLED: "true"
           VITE_PASSKEYS_UI_ENABLED: "true"
         run: npm run build
@@ -184,6 +187,13 @@ jobs:
         # ios-build.yml. --splashBackgroundColor pins the surrounding
         # canvas to the Cardigan teal (matches capacitor.config.json).
         run: npx @capacitor/assets generate --android --splashBackgroundColor "#5B9BAF" --splashBackgroundColorDark "#5B9BAF"
+
+      - name: Re-apply Android config the assets generator clobbers
+        # @capacitor/assets rewrites mipmap-anydpi-v26/ic_launcher{,_round}.xml
+        # from a hardcoded template with no <monochrome> slot, silently
+        # dropping the Android 13+ themed icon. The script re-inserts it
+        # (idempotent). Mirrors apply-ios-config.sh on the iOS side.
+        run: bash scripts/apply-android-config.sh
 
       - name: Decode upload keystore + write keystore.properties
         env:
