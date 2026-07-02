@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "mx.cardigan.app",
-      "sha256_cert_fingerprints": []
+      "sha256_cert_fingerprints": [
+        "01:47:36:3F:6B:A3:73:D5:75:BB:7D:8E:3E:62:4A:6E:B7:57:B6:E7:81:02:2F:26:99:13:7A:81:29:84:8B:36"
+      ]
     }
   }
 ]
