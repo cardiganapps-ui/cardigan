@@ -17,6 +17,18 @@
 #   APP_STORE_CONNECT_API_KEY_ISSUER  — UUID of the issuing team
 #   APP_STORE_CONNECT_API_KEY_BASE64  — base64-encoded .p8 file contents
 #
+#   BUILD_CERTIFICATE_P12_BASE64      — Apple Distribution cert (.p12, base64)
+#   BUILD_CERTIFICATE_P12_PASSWORD    — its password
+#   BUILD_PROVISIONING_PROFILE_BASE64 — "Cardigan App Store" profile (base64).
+#                                       Must include the App Groups capability
+#                                       (group.mx.cardigan.app) — regenerate it
+#                                       after enabling the capability on the
+#                                       App ID or signing fails.
+#   BUILD_WIDGET_PROVISIONING_PROFILE_BASE64 — "Cardigan Widgets App Store"
+#                                       profile for mx.cardigan.app.widgets
+#                                       (same distribution cert, App Groups
+#                                       capability), base64.
+#
 #   VITE_SUPABASE_URL                 — same value as production web
 #   VITE_SUPABASE_ANON_KEY            — same
 #   VITE_VAPID_PUBLIC_KEY             — same (used for web push; unused on iOS
@@ -52,6 +64,9 @@ on:
       # marketing version, etc.) MUST trigger a new build. Re-include
       # via the negation prefix.
       - '!scripts/apply-ios-config.sh'
+      # Same story for the widget-extension target script — it shapes
+      # the generated Xcode project, so it's on the iOS critical path.
+      - '!scripts/add-widget-target.rb'
       - '.github/**'
       - '!.github/workflows/ios-build.yml'
   workflow_dispatch:
@@ -89,6 +104,7 @@ jobs:
           ASC_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          WIDGET_PROFILE: ${{ secrets.BUILD_WIDGET_PROVISIONING_PROFILE_BASE64 }}
         run: |
           missing=()
           [ -z "$APPLE_TEAM_ID" ] && missing+=("APPLE_TEAM_ID")
@@ -97,6 +113,12 @@ jobs:
           [ -z "$ASC_KEY" ]       && missing+=("APP_STORE_CONNECT_API_KEY_BASE64")
           [ -z "$SUPABASE_URL" ]  && missing+=("VITE_SUPABASE_URL")
           [ -z "$SUPABASE_KEY" ]  && missing+=("VITE_SUPABASE_ANON_KEY")
+          # The CardiganWidgets extension signs with its own App Store
+          # profile ("Cardigan Widgets App Store", App ID
+          # mx.cardigan.app.widgets, App Groups capability). Checked up
+          # front because its absence otherwise surfaces 20 minutes in,
+          # at export time.
+          [ -z "$WIDGET_PROFILE" ] && missing+=("BUILD_WIDGET_PROVISIONING_PROFILE_BASE64")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Missing required secrets: ${missing[*]}"
             echo "Add them at Settings → Secrets and variables → Actions."
@@ -153,6 +175,12 @@ jobs:
         # backgroundColor configured in capacitor.config.json).
         run: npx @capacitor/assets generate --ios --splashBackgroundColor "#5B9BAF" --splashBackgroundColorDark "#5B9BAF"
 
+      - name: Install xcodeproj gem (widget target creation)
+        # scripts/add-widget-target.rb (invoked by apply-ios-config.sh)
+        # builds the CardiganWidgets app-extension target with the
+        # xcodeproj gem. Pinned to the 1.x line we validated against.
+        run: sudo gem install xcodeproj -v '~> 1.27' --no-document
+
       - name: Layer entitlements + Privacy Manifest
         env:
           # Used by the pbxproj patch inside apply-ios-config.sh to set
@@ -187,12 +215,15 @@ jobs:
           P12_BASE64: ${{ secrets.BUILD_CERTIFICATE_P12_BASE64 }}
           P12_PASSWORD: ${{ secrets.BUILD_CERTIFICATE_P12_PASSWORD }}
           PROFILE_BASE64: ${{ secrets.BUILD_PROVISIONING_PROFILE_BASE64 }}
+          WIDGET_PROFILE_BASE64: ${{ secrets.BUILD_WIDGET_PROVISIONING_PROFILE_BASE64 }}
         run: |
           # Decode artifacts
           CERT_PATH="$RUNNER_TEMP/build_certificate.p12"
           PROFILE_PATH="$RUNNER_TEMP/build.mobileprovision"
+          WIDGET_PROFILE_PATH="$RUNNER_TEMP/widget.mobileprovision"
           echo "$P12_BASE64" | base64 --decode > "$CERT_PATH"
           echo "$PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+          echo "$WIDGET_PROFILE_BASE64" | base64 --decode > "$WIDGET_PROFILE_PATH"
 
           # Create + unlock a temporary keychain. Default-keychain switch
           # so codesign reaches into it without needing extra flags.
@@ -218,6 +249,13 @@ jobs:
           UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID raw -)
           cp "$PROFILE_PATH" "$PROFILES_DIR/$UUID.mobileprovision"
           echo "✓ installed profile UUID=$UUID"
+
+          # Same dance for the widget extension's profile — both must be
+          # on disk for the archive (per-target signing) AND mapped in
+          # ExportOptions (per-bundle-id) below.
+          WIDGET_UUID=$(security cms -D -i "$WIDGET_PROFILE_PATH" | plutil -extract UUID raw -)
+          cp "$WIDGET_PROFILE_PATH" "$PROFILES_DIR/$WIDGET_UUID.mobileprovision"
+          echo "✓ installed widget profile UUID=$WIDGET_UUID"
 
           # Confirm the identity is visible to codesign.
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
@@ -269,6 +307,7 @@ jobs:
             <key>provisioningProfiles</key>
             <dict>
               <key>mx.cardigan.app</key><string>Cardigan App Store</string>
+              <key>mx.cardigan.app.widgets</key><string>Cardigan Widgets App Store</string>
             </dict>
             <key>uploadSymbols</key><true/>
             <key>stripSwiftSymbols</key><true/>

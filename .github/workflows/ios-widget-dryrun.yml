@@ -1,0 +1,108 @@
+# iOS widget dry-run — compile gate without TestFlight.
+#
+# The CardiganWidgets extension (Swift sources in ios-config/widgets/,
+# target created by scripts/add-widget-target.rb) can't be compiled
+# anywhere but a macOS runner, and the real ios-build.yml both consumes
+# an Apple TestFlight upload slot (daily cap, error 90382) and requires
+# every signing secret. This workflow is the cheap integration test:
+# it generates the iOS project exactly like the real pipeline and runs
+# an UNSIGNED xcodebuild, proving
+#   - apply-ios-config.sh + add-widget-target.rb produce a valid project
+#   - every Swift source (widgets + WidgetBridgePlugin) compiles
+#   - the embed-app-extensions phase and plists are well-formed
+# No secrets needed: dummy VITE env (the web bundle only has to exist
+# for cap sync), dummy team id, WIDGET_SIGNING=none, and
+# CODE_SIGNING_ALLOWED=NO.
+#
+# Run it manually (workflow_dispatch) from any branch before merging
+# iOS-touching work to main; it also fires automatically on PRs that
+# touch the iOS-native surface.
+
+name: iOS Widget Dry-Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you triggering manually? (logged in run name)'
+        required: false
+        default: 'manual'
+  pull_request:
+    paths:
+      - 'ios-config/**'
+      - 'scripts/apply-ios-config.sh'
+      - 'scripts/add-widget-target.rb'
+      - '.github/workflows/ios-widget-dryrun.yml'
+
+concurrency:
+  group: ios-widget-dryrun-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Unsigned iOS build (widgets)
+    # Same image as ios-build.yml so the toolchain matches what ships.
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle (dummy env)
+        # cap sync just needs dist/ to exist; no secret reaches the
+        # artifact and nothing here is uploaded anywhere.
+        env:
+          VITE_SUPABASE_URL: 'https://dryrun.supabase.co'
+          VITE_SUPABASE_ANON_KEY: 'dryrun'
+        run: npm run build
+
+      - name: Generate iOS project (cap add ios + sync)
+        run: |
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Install xcodeproj gem
+        run: sudo gem install xcodeproj -v '~> 1.27' --no-document
+
+      - name: Apply iOS config (unsigned widget target)
+        env:
+          APPLE_TEAM_ID: 'XXXXXXXXXX'
+          WIDGET_SIGNING: 'none'
+        run: bash scripts/apply-ios-config.sh
+
+      - name: Build (no signing)
+        run: |
+          cd ios/App
+          xcodebuild -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Confirm the extension was built + embedded
+        run: |
+          APPEX=$(find "$RUNNER_TEMP/DerivedData" -type d -name "CardiganWidgets.appex" | head -1)
+          if [ -z "$APPEX" ]; then
+            echo "::error::CardiganWidgets.appex not found in build products"
+            exit 1
+          fi
+          echo "✓ built: $APPEX"
+          EMBEDDED=$(find "$RUNNER_TEMP/DerivedData" -type d -path "*App.app/PlugIns/CardiganWidgets.appex" | head -1)
+          if [ -z "$EMBEDDED" ]; then
+            echo "::error::CardiganWidgets.appex not embedded in App.app/PlugIns"
+            exit 1
+          fi
+          echo "✓ embedded: $EMBEDDED"
