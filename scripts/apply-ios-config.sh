@@ -169,6 +169,84 @@ else
   echo "AppDelegate badge-clear already present (or file missing) — skipping"
 fi
 
+# ── Home Screen quick actions (long-press app icon) ──
+# Static UIApplicationShortcutItems mirroring Android's
+# res/xml/shortcuts.xml and the PWA manifest's `shortcuts` array — the
+# same three actions on every install surface: Nuevo paciente, Hoy,
+# Cobrar. Each item carries its cardigan.mx URL in UserInfo; the
+# AppDelegate handler injected below routes it through Capacitor's
+# open-url path, where the existing appUrlOpen → nativeDeepLinks →
+# useLaunchParams pipeline (the one Android shortcuts already use)
+# drains the fab=/screen= param. Idempotent — replaces the whole array
+# so label/url edits here propagate on re-run.
+python3 - "$PLIST" <<'PY'
+import plistlib, sys
+p = sys.argv[1]
+items = [
+    {
+        "UIApplicationShortcutItemType": "mx.cardigan.app.new_patient",
+        "UIApplicationShortcutItemTitle": "Nuevo paciente",
+        "UIApplicationShortcutItemSubtitle": "Registrar un nuevo paciente",
+        "UIApplicationShortcutItemIconSymbolName": "person.badge.plus",
+        "UIApplicationShortcutItemUserInfo": {"url": "https://cardigan.mx/?fab=patient"},
+    },
+    {
+        "UIApplicationShortcutItemType": "mx.cardigan.app.today",
+        "UIApplicationShortcutItemTitle": "Hoy",
+        "UIApplicationShortcutItemSubtitle": "Ver sesiones de hoy",
+        "UIApplicationShortcutItemIconSymbolName": "calendar",
+        "UIApplicationShortcutItemUserInfo": {"url": "https://cardigan.mx/?screen=agenda"},
+    },
+    {
+        "UIApplicationShortcutItemType": "mx.cardigan.app.record_payment",
+        "UIApplicationShortcutItemTitle": "Cobrar",
+        "UIApplicationShortcutItemSubtitle": "Registrar un pago",
+        "UIApplicationShortcutItemIconSymbolName": "dollarsign.circle",
+        "UIApplicationShortcutItemUserInfo": {"url": "https://cardigan.mx/?fab=payment"},
+    },
+]
+with open(p, "rb") as f:
+    pl = plistlib.load(f)
+pl["UIApplicationShortcutItems"] = items
+with open(p, "wb") as f:
+    plistlib.dump(pl, f)
+print("✓ Info.plist patched with %d Home Screen quick actions" % len(items))
+PY
+
+# ── Quick actions: forward shortcut taps into Capacitor ──
+# iOS delivers a tapped quick action to
+# application(_:performActionFor:completionHandler:) — nothing in the
+# Capacitor template implements it, so without this patch the app just
+# foregrounds. Convert the item's UserInfo url into the same
+# ApplicationDelegateProxy open-url call custom-scheme links use: the
+# App plugin fires appUrlOpen with retainUntilConsumed, so even a COLD
+# start (JS listener not yet attached) keeps the event until
+# nativeDeepLinks consumes it — no race, no lost tap.
+if [ -f "$APPDELEGATE" ] && ! grep -q "performActionFor shortcutItem" "$APPDELEGATE"; then
+  python3 - "$APPDELEGATE" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+method = (
+    "\n"
+    "    func application(_ application: UIApplication, performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {\n"
+    "        guard let raw = shortcutItem.userInfo?[\"url\"] as? String, let url = URL(string: raw) else {\n"
+    "            completionHandler(false)\n"
+    "            return\n"
+    "        }\n"
+    "        completionHandler(ApplicationDelegateProxy.shared.application(application, open: url, options: [:]))\n"
+    "    }\n"
+)
+idx = s.rstrip().rfind("}")  # final brace = AppDelegate class close
+if idx == -1:
+    sys.exit("AppDelegate.swift: no closing brace found")
+open(p, "w").write(s[:idx] + method + s[idx:])
+print("✓ AppDelegate patched with quick-action → appUrlOpen forwarding")
+PY
+else
+  echo "AppDelegate quick-action handler already present (or file missing) — skipping"
+fi
+
 # CFBundleURLTypes for custom-scheme deep links isn't needed —
 # Universal Links via the associated-domains entitlement cover the
 # tap-from-email flow, and we don't expose a cardigan:// scheme.

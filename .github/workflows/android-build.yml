@@ -49,7 +49,11 @@ name: Android Build & Play
 
 on:
   push:
-    branches: [main]
+    # TEMPORARY second branch: verification builds for the Android
+    # parity batch go to the internal track from the feature branch
+    # (workflow_dispatch is unavailable from this session's tooling).
+    # REMOVE the claude/* entry before merging to main.
+    branches: [main, claude/android-ios-parity-review-1lhlum]
     paths-ignore:
       - '**.md'
       # The native iOS shell is generated/owned by ios-build.yml — its
