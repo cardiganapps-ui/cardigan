@@ -98,10 +98,16 @@ export async function sendFCM({ token, payload, platform }: Row): Promise<Row> {
       collapseKey: payload?.tag,
       notification: {
         tag: payload?.tag,
-        // Default channel — the app's native code can override with a
-        // dedicated "session-reminders" channel for finer-grained user
-        // control; until then FCM creates a default channel on first send.
+        // Created by nativePush.ts on permission grant ("Recordatorios
+        // de sesión", heads-up importance); FCM falls back to its
+        // default channel if a legacy install never created it.
         channelId: "session_reminders",
+        // Small icon + accent. The drawable ships in the APK
+        // (android/app/src/main/res/drawable/ic_stat_cardigan.xml) and
+        // is also the manifest-level default — sent explicitly so the
+        // shade icon stays branded even if the manifest defaults drift.
+        icon: "ic_stat_cardigan",
+        color: "#5B9BAF",
       },
     },
     apns: {

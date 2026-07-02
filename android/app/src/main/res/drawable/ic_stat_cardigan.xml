@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Notification small icon (status bar / shade). Android renders this
+    as an alpha mask — only opaque pixels matter, tinted by the system
+    (or by default_notification_color from the manifest). Traced from
+    public/icon-mono.svg (the Cardigan glyph): the inner SVG maps
+    viewBox (330,240 370x280) onto rect (92,132 328x248.2) inside the
+    512 grid — that's a uniform scale of 0.88649 with translate
+    (-200.54, -80.76), reproduced by the group transform below.
+    Referenced by com.google.firebase.messaging.default_notification_icon
+    in AndroidManifest.xml.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:scaleX="0.88649"
+        android:scaleY="0.88649"
+        android:translateX="-200.54"
+        android:translateY="-80.76">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M465.49,353.57 C474.09,336.41 482.11,319.35 491.05,302.79 C507.5,272.35 533.54,256.79 567.99,255.75 C599.45,254.8 625.35,266.96 644.41,291.84 C680.56,339.02 657,409.88 600.11,427.02 C588.79,430.43 577.29,431.82 565.64,432.09 C551.63,432.42 541.5,437.84 534.49,450.59 C520.5,476.01 498.81,491.66 470.56,498.63 C426.78,509.42 378.4,487.56 359.41,446.86 C338.09,401.17 357.4,347.12 407.48,325.79 C425.93,317.93 445.23,317.53 464.52,317.98 C464.9,318.82 465.23,319.21 465.14,319.39 C460.13,329.89 455.13,340.39 449.99,350.83 C448.65,353.56 445.78,353.05 443.33,353.22 C427.54,354.3 413.34,359.11 401.96,370.65 C382.45,390.43 380.66,420.76 397.71,442.68 C420.05,471.41 461.03,475.68 488.68,451.99 C494.77,446.77 499.89,440.58 503.63,433.39 C516.23,409.18 536.94,398.49 563.45,397.79 C573.52,397.53 583.41,396.57 592.82,392.81 C617.52,382.93 628.67,357.78 626.33,337.89 C622.86,308.38 595.71,290.76 574.52,290.04 C549.8,289.2 531.91,298.97 520.92,321.53 C508.44,347.13 495.43,372.48 482.61,397.92 C478.61,405.86 472.9,411.53 463.26,411.2 C450.85,410.78 442.99,397.96 448.45,386.8 C453.86,375.73 459.68,364.86 465.49,353.57z" />
+    </group>
+</vector>

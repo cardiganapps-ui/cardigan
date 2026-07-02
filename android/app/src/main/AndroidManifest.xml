@@ -79,6 +79,23 @@
         <meta-data
             android:name="asset_statements"
             android:resource="@string/capacitor_passkey_asset_statements" />
+
+        <!--
+            FCM notification defaults. Without an explicit small icon,
+            Android falls back to the launcher icon rendered as an alpha
+            mask — a white square. The channel id matches what the
+            reminder cron sends (api/_fcm.ts channelId) and what
+            nativePush.ts creates on permission grant.
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_cardigan" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/colorPrimary" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="session_reminders" />
     </application>
 
     <!-- Permissions -->

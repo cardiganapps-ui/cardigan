@@ -114,6 +114,25 @@ export async function subscribeNative(): Promise<PushResult> {
     return { ok: false, code: "permission-denied" };
   }
 
+  // Android: create the channel the reminder cron targets
+  // (api/_fcm.ts sends channelId: "session_reminders") BEFORE the first
+  // notification arrives — otherwise FCM dumps it on the fallback
+  // "Miscellaneous" channel with default importance and the user sees a
+  // nameless, silent-ish entry in system notification settings.
+  // Idempotent: recreating an existing channel is a no-op.
+  if (platform === "android") {
+    try {
+      await PushNotifications.createChannel({
+        id: "session_reminders",
+        name: "Recordatorios de sesión",
+        description: "Avisos antes de cada sesión agendada",
+        importance: 4, // heads-up banner
+        visibility: 1, // full content on the lock screen
+        vibration: true,
+      });
+    } catch { /* non-fatal — worst case FCM uses its fallback channel */ }
+  }
+
   // Register, then await the listener that fires with the token. The
   // listener is one-shot for this call — we detach it once we have the
   // value to avoid resolving twice if the OS re-issues the token mid-
