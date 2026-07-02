@@ -36,6 +36,7 @@ const ALLOWED_NO_AUTH = new Set([
   "push-resubscribe.ts",        // browser SW can't carry JWT; (oldEndpoint, resubToken) pair
   "push-test.ts",               // dev-only diagnostic; not deployed in prod (verify before shipping)
   "calendar/[token].ts",        // token IS the credential; no JWT possible from cal clients
+  "widget-data.ts",             // token IS the credential; WidgetKit extension can't carry a JWT (same model as calendar/[token].ts)
   "stripe-webhook.ts",          // Stripe delivery callback; HMAC verified via STRIPE_WEBHOOK_SECRET
   "patient-invite-preview.ts",  // anonymous invite metadata read; token IS the credential, leaks only therapist's name+profession (no patient PII)
   "r/[token].ts",               // email-link reschedule landing page; token IS the credential, single-use, cleared on apply

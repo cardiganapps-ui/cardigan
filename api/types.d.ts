@@ -9,3 +9,16 @@ declare module "web-push" {
   const webpush: any;
   export default webpush;
 }
+
+// src/utils/accounting.ts (pulled into this project transitively via
+// api/widget-data.ts → src/utils/widgetSnapshot.ts) probes
+// `import.meta.env` behind a truthiness guard that's designed to
+// short-circuit in Node, where the property doesn't exist. The Vite
+// client types it via vite/client; give this project the same shape as
+// an optional so the guard typechecks without changing runtime behavior.
+interface ImportMeta {
+  readonly env?: {
+    readonly DEV?: boolean;
+    readonly [key: string]: unknown;
+  };
+}

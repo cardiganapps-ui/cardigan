@@ -34,8 +34,16 @@
    - SCHEDULED in the future never counts (hasn't happened yet).
 */
 
-import { SESSION_STATUS } from "../data/constants";
-import { parseShortDate } from "./dates";
+// Explicit .js extensions: this module is also consumed from NodeNext
+// contexts (api/widget-data.ts → widgetSnapshot.ts → here) where
+// extensionless relative imports fail `tsc -p api/tsconfig.json`. The
+// production Vite build resolves .js → .ts (verified via `npm run
+// build`), so the src-side extensionless rule's failure mode doesn't
+// apply — hence the targeted disables rather than a rule change.
+// eslint-disable-next-line no-restricted-syntax -- NodeNext consumer requires the extension
+import { SESSION_STATUS } from "../data/constants.js";
+// eslint-disable-next-line no-restricted-syntax -- NodeNext consumer requires the extension
+import { parseShortDate } from "./dates.js";
 
 /** Raw DB session fields the balance math reads. `_displayOnly` is the
     non-enumerable dev marker the guard below trips on. */
