@@ -7,7 +7,8 @@
 // on both platforms arrive through the same event: Android's
 // shortcuts.xml intents carry cardigan.mx URLs, and iOS's AppDelegate
 // (patched by scripts/apply-ios-config.sh) forwards the tapped
-// shortcut's UserInfo URL into Capacitor's open-url path.
+// shortcut's UserInfo URL into Capacitor's open-url path. Both entry
+// points funnel into applyLocalUrl below.
 //
 // The app's existing URL-parsing logic (patient invite /i/<token>,
 // influencer code /c/<code>, referral ?ref=, Stripe return ?billing=)
