@@ -180,8 +180,8 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   // (translateX(-101%), relative to the panel's OWN width) rather than a
   // pixel value. A px translate has to equal the rendered panel width to
   // fully clear it off-screen — but that width is hard to know from JS:
-  // the panel is `width:75%; max-width:320px`, and the native shell wraps
-  // everything in `html.cap-native { zoom: 0.80 }`, so window.innerWidth
+  // the panel is `width:75%; max-width:320px`, and the iOS native shell
+  // wraps everything in `html.cap-ios { zoom: 0.80 }`, so window.innerWidth
   // (device px, unzoomed) and the CSS/transform coordinate space (zoomed)
   // disagree. That mismatch under-translated the panel and left a sliver
   // on the edge in the native app. A percentage is coordinate-system

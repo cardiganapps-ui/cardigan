@@ -11,20 +11,22 @@
 //
 // All operations are no-ops on web (isNative() short-circuits).
 
-import { isNative, isIOS } from "./platform";
+import { isNative, isIOS, isAndroid } from "./platform";
 
 export async function initNativeShell() {
   if (!isNative()) return;
 
-  // Mark the document so CSS can opt into native-only adjustments. The
-  // primary use right now is shrinking text + spacing on iOS, where
-  // WKWebView renders ~17% larger than Safari for the same CSS (even
-  // with `text-size-adjust: none`) — a system-level Dynamic Type pass
-  // that we can't fully opt out of at the CSS layer. Pairs with a
-  // `.cap-native` (and `.cap-ios`) ruleset in base.css that compresses
-  // --text-scale and the largest hard-coded sizes.
+  // Mark the document so CSS can opt into native-only adjustments.
+  // `.cap-ios` carries the WKWebView density compensation (see the
+  // `html.cap-ios { zoom }` block in base.css) — iOS renders ~17%
+  // larger than Safari for the same CSS, a system-level Dynamic Type
+  // pass we can't opt out of at the CSS layer. Android's Chromium
+  // WebView has no such inflation, so `.cap-android` must NEVER get
+  // that zoom; it exists for Android-only tweaks (overscroll
+  // containment, etc.).
   document.documentElement.classList.add("cap-native");
   if (isIOS()) document.documentElement.classList.add("cap-ios");
+  if (isAndroid()) document.documentElement.classList.add("cap-android");
 
   try {
     const { SplashScreen } = await import("@capacitor/splash-screen");

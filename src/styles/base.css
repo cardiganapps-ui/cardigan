@@ -259,11 +259,15 @@ html, body {
 /* WKWebView (Capacitor on iOS) renders 14–17% larger than Safari for
    the same CSS, even with text-size-adjust:none. We can't disable that
    from the CSS layer — it's a WebKit/system decision. So when the
-   native shell flags itself with .cap-native (see lib/nativeBoot.js),
+   native shell flags itself with .cap-ios (see lib/nativeBoot.ts),
    we (a) shrink the design-system text scale and (b) apply a global
    `zoom` to catch every inline `fontSize: 22`, `padding: 20`, etc. that
    isn't routed through --text-scale. Both rules are scoped to
-   .cap-native so the web build is untouched.
+   .cap-ios — NOT .cap-native — because the compensation exists solely
+   for WKWebView's inflation. Android's Chromium WebView renders at
+   parity with Chrome, so applying this there shrank the whole app ~20%
+   below design size (12.8px inputs, ~35px touch targets). Web build is
+   untouched either way.
 
    Density target: noticeably MORE compact than the old PWA. Users
    reported the native build felt "zoomed in" compared to the PWA on
@@ -280,7 +284,7 @@ html, body {
    transform:scale, which only affects the visual layer and leaves
    layout boxes the original size. Safe here because the PWA / desktop
    web build never hits this branch. */
-html.cap-native {
+html.cap-ios {
   --text-scale: 0.80;
   zoom: 0.80;
 }

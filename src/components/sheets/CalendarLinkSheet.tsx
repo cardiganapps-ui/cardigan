@@ -22,7 +22,7 @@ export function CalendarLinkSheet({ onClose, readOnly = false }: { onClose: () =
   return (
     <SheetOverlay exiting={exiting} onClose={animatedClose}>
       {/* No inline maxHeight — defer to .sheet-panel's `max-height: 85svh`
-          in screens.css. On Capacitor iOS the `html.cap-native { zoom: 0.88 }`
+          in screens.css. On Capacitor iOS the `html.cap-ios { zoom: 0.80 }`
           rule interacts strangely with viewport-relative units inside
           position:fixed overlays, occasionally clipping the panel below
           the Activar button. Letting the base svh-based rule own the
