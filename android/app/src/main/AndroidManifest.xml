@@ -75,10 +75,6 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
-            <!-- CapacitorPasskey auto-configuration -->
-        <meta-data
-            android:name="asset_statements"
-            android:resource="@string/capacitor_passkey_asset_statements" />
 
         <!--
             FCM notification defaults. Without an explicit small icon,
@@ -96,6 +92,10 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="session_reminders" />
+            <!-- CapacitorPasskey auto-configuration -->
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/capacitor_passkey_asset_statements" />
     </application>
 
     <!-- Permissions -->
