@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Dark-mode (system night) overrides. Mirrors dark.css: the app's
-    dark surface is #1A1A1A (--white token flipped). Note the in-app
+    dark surface is #1A1A1A (the flipped "white" token). Note the in-app
     theme toggle is JS-driven (html[data-theme]) and can disagree with
     the system setting; the WebView paints everything visible, so this
     only shows in the pre-paint window and the keyboard-inset gap.

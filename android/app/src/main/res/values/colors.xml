@@ -10,7 +10,9 @@
     keyboard-inset gap under edge-to-edge (Capacitor's SystemBars plugin
     re-reads the theme's windowBackground on every setStyle call from
     nativeBoot.ts). The night variant lives in values-night/colors.xml
-    and mirrors dark.css's --white (#1A1A1A).
+    and mirrors dark.css's flipped "white" token (#1A1A1A). (Comments
+    here can't name CSS custom properties literally: a double hyphen is
+    illegal inside XML comments and fails aapt resource merging.)
 -->
 <resources>
     <color name="colorPrimary">#5B9BAF</color>
