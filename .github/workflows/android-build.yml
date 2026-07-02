@@ -243,7 +243,7 @@ jobs:
         # from the run page — including the very first run, where the Play
         # upload step is expected to fail (§0a bootstrap). Download it on
         # your phone, unzip, and upload it by hand in the Play Console.
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cardigan-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
