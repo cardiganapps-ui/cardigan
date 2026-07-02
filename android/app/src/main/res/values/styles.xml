@@ -1,22 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <!-- Customize your theme here. -->
+    <!-- Base application theme. DayNight so the decor window and any
+         native chrome follow the system dark setting (the WebView's own
+         dark mode is JS-driven via html[data-theme], see useTheme). -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.DarkActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/cardigan_window_background</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Painted behind the WebView; shows in the keyboard-inset gap
+             under edge-to-edge. Capacitor's SystemBars re-applies it as
+             the decor background on every setStyle call. Flips with the
+             system via values-night/colors.xml. -->
+        <item name="android:windowBackground">@color/cardigan_window_background</item>
     </style>
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- After the splash, hand the activity the real app theme so
+             windowBackground / DayNight apply (core-splashscreen's
+             installSplashScreen() performs the switch on all API levels). -->
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

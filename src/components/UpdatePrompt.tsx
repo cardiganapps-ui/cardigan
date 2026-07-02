@@ -207,7 +207,7 @@ export function UpdatePrompt() {
       style={{
         // Top-center placement, clears the iOS dynamic-island / notch.
         position: "fixed",
-        top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+        top: "calc(var(--sat) + 12px)",
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: "var(--z-install)",

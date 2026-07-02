@@ -24,7 +24,7 @@
      drop-shadow bled over it, and the page (already at max scroll) just
      rubber-banded. Reserve the pill's real top edge (8px offset) PLUS a
      24px breathing gap. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 32px);
+  padding-bottom: calc(var(--sab) + var(--bottom-tabs-h) + 32px);
 
   /* Content flows from the TOP, top-down, like every normal screen.
      `justify-content: flex-start` (the default) stacks children from
@@ -195,7 +195,7 @@
 
    Pinned to the true viewport bottom via position:fixed — an earlier
    attempt at an in-flow bar collided with an iOS PWA quirk where
-   100dvh excludes env(safe-area-inset-bottom), which pushed the bar
+   100dvh excludes var(--sab), which pushed the bar
    34px up into the FAB's zone. */
 /* ── Bottom tab bar — Liquid Glass pill ──
    Floating, translucent, blurred. Modeled on iOS 26 system bars and
@@ -232,9 +232,9 @@
      margin-top: auto on .page > :last-child (see .page rules above)
      which anchors the last section to the bottom of .page content
      area, just above the pill. */
-  left: max(14px, env(safe-area-inset-left));
-  right: max(14px, env(safe-area-inset-right));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  left: max(14px, var(--sal));
+  right: max(14px, var(--sar));
+  bottom: calc(var(--sab) + 8px);
   height: var(--bottom-tabs-h);
   display: flex; align-items: stretch;
   z-index: 40;
@@ -653,7 +653,7 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
      pill height + a 20px visual gap so the FAB never overlaps the
      tab labels. */
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 30px);
+  bottom: calc(var(--sab) + var(--bottom-tabs-h) + 30px);
   right: 20px;
   width: 54px; height: 54px;
   /* Solid Cardigan teal — same exact color as .btn-primary-teal so

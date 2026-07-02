@@ -85,7 +85,7 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
             borderTopRightRadius: 22,
             width: "100%",
             maxWidth: 480,
-            paddingBottom: "calc(20px + env(safe-area-inset-bottom))",
+            paddingBottom: "calc(20px + var(--sab))",
             transform: mounted ? "translateY(0)" : "translateY(28px)",
             transition: "transform 0.42s var(--ease-spring)",
             overflow: "hidden",

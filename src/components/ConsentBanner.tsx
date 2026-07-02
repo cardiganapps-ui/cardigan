@@ -147,7 +147,7 @@ export default function ConsentBanner({ user, onAccepted }: {
         justifyContent: "center",
         zIndex: 600,
         padding: "16px",
-        paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+        paddingBottom: "calc(16px + var(--sab))",
       }}
     >
       <div

@@ -169,8 +169,8 @@
   justify-content: space-between;
   padding: 0 24px;
   padding-top: var(--sat, 0px);
-  padding-left: max(24px, env(safe-area-inset-left));
-  padding-right: max(24px, env(safe-area-inset-right));
+  padding-left: max(24px, var(--sal));
+  padding-right: max(24px, var(--sar));
   gap: 16px;
 }
 .admin-header-row {
@@ -257,8 +257,8 @@
   flex: 1;
   overflow-y: auto;
   padding: 28px 24px calc(var(--sab, 0px) + 28px);
-  padding-left: max(24px, env(safe-area-inset-left));
-  padding-right: max(24px, env(safe-area-inset-right));
+  padding-left: max(24px, var(--sal));
+  padding-right: max(24px, var(--sar));
   -webkit-overflow-scrolling: touch;
 }
 .admin-content-inner {

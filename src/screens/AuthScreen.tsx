@@ -862,8 +862,8 @@ function NativeAuthShell({ onSignIn, onSignUp, onProvider, onMagicLink, onPasske
         background: "var(--white)",
         display: "flex",
         flexDirection: "column",
-        paddingTop: "calc(var(--sat, env(safe-area-inset-top, 0px)) + 32px)",
-        paddingBottom: "calc(var(--sab, env(safe-area-inset-bottom, 0px)) + 16px)",
+        paddingTop: "calc(var(--sat) + 32px)",
+        paddingBottom: "calc(var(--sab) + 16px)",
       }}
     >
       {/* Branded hero. Compact — no marketing pitch, no screenshot

@@ -47,7 +47,7 @@ export default function EncryptionUnlockGate({ noteCrypto, onSkip }: {
         justifyContent: "center",
         zIndex: 650,
         padding: "16px",
-        paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+        paddingBottom: "calc(16px + var(--sab))",
       }}
     >
       <form

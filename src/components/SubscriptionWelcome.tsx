@@ -76,7 +76,7 @@ export default function SubscriptionWelcome({
         justifyContent: "center",
         zIndex: 660,
         padding: 16,
-        paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+        paddingBottom: "calc(16px + var(--sab))",
         opacity: mounted ? 1 : 0,
         transition: "opacity 0.32s ease",
       }}

@@ -1244,8 +1244,8 @@ html[data-theme="dark"] .admin-shell {
   flex-direction: column;
   box-shadow: -8px 0 24px rgba(15, 23, 42, 0.10);
   animation: adminDrawerSlideIn var(--dur-base) var(--ease-spring);
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
 }
 @keyframes adminDrawerSlideIn {
   from { transform: translateX(100%); }
@@ -1409,7 +1409,7 @@ html[data-theme="dark"] .admin-shell {
 }
 .admin-bottom-tabs-safezone {
   position: fixed; left: 0; right: 0; bottom: 0;
-  height: env(safe-area-inset-bottom);
+  height: var(--sab);
   background: var(--admin-surface);
   z-index: 39;
   pointer-events: none;

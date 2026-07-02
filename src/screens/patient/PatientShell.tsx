@@ -80,7 +80,7 @@ export function PatientShell({ user, signOut, data }: PatientShellProps) {
         // therapist .shell + .main-content classes use.
         //
         // `100%` — NOT `100dvh`. iOS WKWebView/standalone underreport
-        // `100dvh` when env(safe-area-inset-bottom) is present, so this
+        // `100dvh` when var(--sab) is present, so this
         // overflow:hidden box ended SHORT of the visible viewport and
         // clipped the inner scroll content at a line above the true
         // bottom, while the position:fixed .bottom-tabs anchored to the
@@ -173,7 +173,7 @@ export function PatientShell({ user, signOut, data }: PatientShellProps) {
           style={{
             flex: 1,
             minHeight: 0,
-            paddingBottom: "max(80px, calc(env(safe-area-inset-bottom) + 64px))",
+            paddingBottom: "max(80px, calc(var(--sab) + 64px))",
           }}
         >
           {screen === "home" && <PatientHome data={data} user={user} />}

@@ -64,6 +64,10 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    // EdgeToEdge (MainActivity) — capacitor-android pulls androidx.activity
+    // in as an `implementation` dep, which is runtime-only for consumers;
+    // compiling against androidx.activity.EdgeToEdge needs it explicitly.
+    implementation "androidx.activity:activity:$androidxActivityVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')

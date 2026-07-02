@@ -85,7 +85,7 @@
   /* Shell: horizontal layout (sidebar | main) */
   .shell { flex-direction: row; max-width: none; margin: 0; }
   /* .status-bar stays visible at all breakpoints — its height is
-     env(safe-area-inset-top), which is the only thing pushing the
+     var(--sat), which is the only thing pushing the
      topbar below the iOS clock in installed-PWA mode on iPad. It
      collapses to 0 on desktop browsers where the env() resolves to 0. */
 
@@ -127,7 +127,7 @@
      usable after the 240px sidebar, so centering to a narrow cap strands
      content with visible gutters. The cap is reintroduced at 1024px+
      where the canvas is actually wider than the content. */
-  .page { padding: 20px max(24px, env(safe-area-inset-left)) 20px max(24px, env(safe-area-inset-right)); }
+  .page { padding: 20px max(24px, var(--sal)) 20px max(24px, var(--sar)); }
 
   /* Sheets: centered modal instead of bottom sheet. Width fluidly
      scales with the viewport so iPad shows a generously sized panel
@@ -154,7 +154,7 @@
   .topbar {
     background: var(--white); border-bottom: 1px solid var(--border-lt);
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    padding: 10px max(24px, env(safe-area-inset-right)) 10px max(24px, env(safe-area-inset-left));
+    padding: 10px max(24px, var(--sar)) 10px max(24px, var(--sal));
   }
   .topbar-brand { color: var(--charcoal); }
   .topbar-screen-name {
@@ -531,13 +531,13 @@
     border-right: 1px solid var(--border-lt);
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     padding: 14px;
-    padding-left: max(14px, env(safe-area-inset-left));
-    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    padding-left: max(14px, var(--sal));
+    padding-bottom: max(14px, var(--sab));
   }
   .notes-page--split .notes-detail-col {
     flex: 1; min-width: 0; display: flex; flex-direction: column;
     background: var(--white);
-    padding-right: env(safe-area-inset-right, 0px);
+    padding-right: var(--sar);
   }
   .notes-detail-empty {
     flex: 1; display: flex; flex-direction: column;
@@ -592,14 +592,14 @@
     border-right: 1px solid var(--border-lt);
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     background: var(--white);
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: var(--sal);
+    padding-bottom: var(--sab);
   }
   .patients-split-view .patients-detail-pane {
     flex: 1; min-width: 0; display: flex; flex-direction: column;
     background: var(--white);
     border-radius: 0;
-    padding-right: env(safe-area-inset-right, 0px);
+    padding-right: var(--sar);
   }
   /* At ≥1024px the expediente overlay must NOT render when it is inline;
      the Patients.jsx branch already skips the portal, but we also reset
@@ -758,8 +758,8 @@
    inset where the device reports one. */
 @media (min-width: 820px) {
   .page {
-    padding-left: max(32px, env(safe-area-inset-left));
-    padding-right: max(32px, env(safe-area-inset-right));
+    padding-left: max(32px, var(--sal));
+    padding-right: max(32px, var(--sar));
   }
 }
 
@@ -843,8 +843,8 @@
     max-width: none;
     margin: 0;
     padding-top: 24px;
-    padding-left:  max(40px, env(safe-area-inset-left),  calc((100% - 960px) / 2));
-    padding-right: max(40px, env(safe-area-inset-right), calc((100% - 960px) / 2));
+    padding-left:  max(40px, var(--sal),  calc((100% - 960px) / 2));
+    padding-right: max(40px, var(--sar), calc((100% - 960px) / 2));
   }
   /* Single-column list screens (Ajustes, Grupos) don't fill the wide content
      band — their rows stretch edge-to-edge, leaving big empty horizontal gaps
@@ -853,8 +853,8 @@
      outranks the plain `.page` band rule at every tier, so it holds at 1440+
      too without needing to be re-declared. */
   .page.page--reading {
-    padding-left:  max(40px, env(safe-area-inset-left),  calc((100% - 760px) / 2));
-    padding-right: max(40px, env(safe-area-inset-right), calc((100% - 760px) / 2));
+    padding-left:  max(40px, var(--sal),  calc((100% - 760px) / 2));
+    padding-right: max(40px, var(--sar), calc((100% - 760px) / 2));
   }
   .drawer { width: 260px; }
   .drawer-panel { width: 260px; }
@@ -923,8 +923,8 @@
      content band widened to 1120px (the old 1200 max-width minus the
      40px horizontal padding on each side). */
   .page {
-    padding-left:  max(40px, env(safe-area-inset-left),  calc((100% - 1120px) / 2));
-    padding-right: max(40px, env(safe-area-inset-right), calc((100% - 1120px) / 2));
+    padding-left:  max(40px, var(--sal),  calc((100% - 1120px) / 2));
+    padding-right: max(40px, var(--sar), calc((100% - 1120px) / 2));
   }
   .expediente-desktop-panel { width: 780px !important; }
 }

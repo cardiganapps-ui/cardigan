@@ -124,7 +124,7 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }: Patient
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "max(24px, calc(var(--sat, 0px) + 16px)) 16px max(24px, env(safe-area-inset-bottom))",
+    padding: "max(24px, calc(var(--sat, 0px) + 16px)) 16px max(24px, var(--sab))",
     boxSizing: "border-box",
   };
 

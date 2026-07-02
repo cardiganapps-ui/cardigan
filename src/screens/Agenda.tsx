@@ -439,7 +439,7 @@ export function Agenda() {
           bottom tabs are hidden in selection mode). Disabled until ≥1
           selected; opens the canonical action sheet. */}
       {selectionMode && view === "day" && !readOnly && (
-        <div style={{ position:"fixed", left:0, right:0, bottom:"calc(16px + var(--sab, env(safe-area-inset-bottom, 0px)))", display:"flex", justifyContent:"center", padding:"0 16px", zIndex:"var(--z-banner, 30)", pointerEvents:"none" }}>
+        <div style={{ position:"fixed", left:0, right:0, bottom:"calc(16px + var(--sab))", display:"flex", justifyContent:"center", padding:"0 16px", zIndex:"var(--z-banner, 30)", pointerEvents:"none" }}>
           <button type="button"
             disabled={selectedSet.size === 0 || bulkBusy}
             onClick={() => { haptic.tap(); setBulkSheetOpen(true); }}

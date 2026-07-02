@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Brand colors for the native theme layer. Without this file the
+    @color/colorPrimary* references in styles.xml silently resolved to
+    the Capacitor library's template palette (indigo #3F51B5 / pink
+    #FF4081) — an app-module definition always wins over a library one.
+
+    cardigan_window_background paints the decor window behind the
+    WebView: it's what shows during theme transitions and in the
+    keyboard-inset gap under edge-to-edge (Capacitor's SystemBars plugin
+    re-reads the theme's windowBackground on every setStyle call from
+    nativeBoot.ts). The night variant lives in values-night/colors.xml
+    and mirrors dark.css's --white (#1A1A1A).
+-->
+<resources>
+    <color name="colorPrimary">#5B9BAF</color>
+    <color name="colorPrimaryDark">#4A8799</color>
+    <color name="colorAccent">#5B9BAF</color>
+    <color name="cardigan_window_background">#FFFFFF</color>
+</resources>

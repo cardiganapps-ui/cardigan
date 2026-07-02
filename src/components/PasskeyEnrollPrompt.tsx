@@ -42,7 +42,7 @@ export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismis
         display: "flex", alignItems: "center", justifyContent: "center",
         zIndex: 665,
         padding: 16,
-        paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+        paddingBottom: "calc(16px + var(--sab))",
         opacity: mounted ? 1 : 0,
         transition: "opacity 0.32s ease",
       }}

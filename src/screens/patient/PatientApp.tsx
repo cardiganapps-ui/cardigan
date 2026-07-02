@@ -114,7 +114,7 @@ export function PatientApp({ user, signOut, demo = false }: PatientAppProps) {
         {toasts.length > 0 && (
           <div style={{
             position: "fixed",
-            top: "calc(env(safe-area-inset-top) + 16px)",
+            top: "calc(var(--sat) + 16px)",
             left: 0,
             right: 0,
             display: "flex",

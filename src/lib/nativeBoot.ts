@@ -39,13 +39,22 @@ export async function initNativeShell() {
   } catch { /* ignore */ }
 
   try {
-    const { StatusBar } = await import("@capacitor/status-bar");
-    // Overlay mode: WebView extends behind the status bar; the existing
-    // CSS handles vertical clearance via env(safe-area-inset-top). Pairs
-    // with contentInset:"never" in capacitor.config.json — together they
-    // stop iOS from adding its own inset on top of ours (which would
-    // produce a ~300px blank strip above the topbar).
-    await StatusBar.setOverlaysWebView({ overlay: true });
+    if (isIOS()) {
+      const { StatusBar } = await import("@capacitor/status-bar");
+      // Overlay mode: WebView extends behind the status bar; the existing
+      // CSS handles vertical clearance via env(safe-area-inset-top). Pairs
+      // with contentInset:"never" in capacitor.config.json — together they
+      // stop iOS from adding its own inset on top of ours (which would
+      // produce a ~300px blank strip above the topbar).
+      //
+      // iOS-only: on Android this plugin call flips deprecated
+      // SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN (status bar only, no-op on 15+)
+      // and fights Capacitor 8's built-in SystemBars plugin, which
+      // already runs the WebView edge-to-edge (EdgeToEdge.enable in
+      // MainActivity + targetSdk 36) and injects the real inset values
+      // as --safe-area-inset-* CSS vars that --sat/--sab consume.
+      await StatusBar.setOverlaysWebView({ overlay: true });
+    }
     // Set the initial icon style to match the theme already resolved by
     // the boot script in index.html. useTheme keeps it in sync after any
     // runtime theme change (see applyStatusBarStyle below).
@@ -63,19 +72,38 @@ function currentThemeIsDark() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-// Update the native status-bar icon/text color to stay legible over the
+// Update the native system-bar icon/text colors to stay legible over the
 // theme's background. No-op on web. Called at boot AND on every runtime
 // theme change (from useTheme) so the clock/battery/wifi glyphs never
 // end up dark-on-dark.
 //
-// ⚠️ Capacitor's Style enum is named after the BACKGROUND, not the text:
-//   Style.Dark  → LIGHT (white) text — use on a DARK background
-//   Style.Light → DARK  (black) text — use on a LIGHT background
+// ⚠️ Both style enums are named after the BACKGROUND, not the text:
+//   Dark  → LIGHT (white) text — use on a DARK background
+//   Light → DARK  (black) text — use on a LIGHT background
 // (The previous code had this inverted, which left the status bar
 // black-on-charcoal — invisible — in dark mode.)
+//
+// Platform split:
+//   iOS     → @capacitor/status-bar (the only bar iOS has). Do NOT swap
+//             this for core's SystemBars: on iOS that path needs an
+//             Info.plist opt-in the CI-generated project doesn't set.
+//   Android → Capacitor 8's built-in SystemBars, which styles BOTH the
+//             status bar and the navigation/gesture bar (omitting `bar`
+//             applies to both — the @capacitor/status-bar plugin can't
+//             touch the nav bar, which left it mismatched in dark mode).
+//             It also repaints the decor background from the native
+//             theme's windowBackground (values/ + values-night/), which
+//             is what shows behind the keyboard inset gap.
 export async function applyStatusBarStyle(isDark: boolean) {
   if (!isNative()) return;
   try {
+    if (isAndroid()) {
+      const { SystemBars, SystemBarsStyle } = await import("@capacitor/core");
+      await SystemBars.setStyle({
+        style: isDark ? SystemBarsStyle.Dark : SystemBarsStyle.Light,
+      });
+      return;
+    }
     const { StatusBar, Style } = await import("@capacitor/status-bar");
     await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
   } catch { /* ignore */ }

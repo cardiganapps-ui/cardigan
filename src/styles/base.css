@@ -170,13 +170,23 @@
   --dur-base:    250ms;
   --dur-slow:    400ms;
   --dur-slower:  600ms;
-  /* Safe-area insets. Fallback is 0 so desktop browsers (which resolve
-     env() to 0) behave correctly; real iPhone/iPad values come through
-     env(). Previously these fell back to 44/34 and were then blanket-
+  /* Safe-area insets — dual-source, in priority order:
+       1. --safe-area-inset-* : injected on <html> by Capacitor 8's
+          built-in SystemBars plugin on Android, where the WebView draws
+          edge-to-edge but env() often resolves to 0 (only WebView ≥140
+          with viewport-fit=cover passes real values through).
+       2. env(safe-area-inset-*) : iOS WKWebView / iOS Safari PWA, and
+          newer Android WebViews.
+       3. 0px : desktop browsers.
+     ALWAYS consume these tokens (--sat/--sab/--sal/--sar) — never raw
+     env(safe-area-inset-*) — or Android devices silently get 0.
+     Previously these fell back to 44/34 and were then blanket-
      overridden to 0 at 768+, which stole iPad's actual home-indicator
      inset and put the FAB underneath the indicator in landscape. */
-  --sat: env(safe-area-inset-top, 0px);
-  --sab: env(safe-area-inset-bottom, 0px);
+  --sat: var(--safe-area-inset-top, var(--sat));
+  --sab: var(--safe-area-inset-bottom, var(--sab));
+  --sal: var(--safe-area-inset-left, var(--sal));
+  --sar: var(--safe-area-inset-right, var(--sar));
   --week-row-h: 48px;
   /* ── Z-index scale ──
      10   banners (demo, read-only)
@@ -312,7 +322,7 @@ a[href^="tel:"], a[href^="mailto:"] {
   display: flex; flex-direction: column;
   /* height: 100% — NOT 100dvh.
      iOS WKWebView (and standalone PWAs) underreport `100dvh` when
-     env(safe-area-inset-bottom) is present: the value comes back SHORT
+     var(--sab) is present: the value comes back SHORT
      of the actual visible area. Because `.shell` also has `overflow:
      clip`, that short height clipped ALL in-flow content (the scrolling
      `.page`) at a precise line a little above the true bottom — while
@@ -359,7 +369,7 @@ a[href^="tel:"], a[href^="mailto:"] {
      rounded-corner curve in iPad landscape. Vertical safe-area is
      handled by the sibling .status-bar spacer (height: var(--sat))
      above — doubling it here would push content down twice on iPhone. */
-  padding: 6px max(14px, env(safe-area-inset-right)) 6px max(14px, env(safe-area-inset-left));
+  padding: 6px max(14px, var(--sar)) 6px max(14px, var(--sal));
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   position: relative;
@@ -579,7 +589,7 @@ button.avatar-sm::before {
    small breathing buffer, so the last list row never sits on top of
    the indicator's gesture zone. */
 .expediente-scroll {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  padding-bottom: calc(var(--sab) + 12px);
 }
 
 /* Subtle fade when switching tabs so the content change reads as a
@@ -718,7 +728,7 @@ body:has(.mde-attach-lightbox) .bottom-tabs { display: none !important; }
   /* Stops above the floating Liquid Glass pill — pill bottom offset
      (sab + 10) + pill height — so the drawer shadow doesn't bleed
      over the bar. */
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 16px);
+  bottom: calc(var(--sab) + var(--bottom-tabs-h) + 16px);
   background: linear-gradient(to right, rgba(0,0,0,0.22), rgba(0,0,0,0));
   pointer-events: none;
   opacity: 0;
