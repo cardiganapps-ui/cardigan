@@ -374,4 +374,51 @@ open(p, 'w').write(src)
 print(f"✓ pbxproj patched: project-level identity stripped + App target Release manual signing + entitlements + MARKETING_VERSION={marketing_version} (team {team_id})")
 PY
 
+# ── iOS home/lock-screen widgets (CardiganWidgets extension) ─────────
+# Three pieces, all regenerated per-build like everything above:
+#   1. WidgetBridgePlugin.swift → App target (the Capacitor plugin that
+#      writes the snapshot + data token into the App Group).
+#   2. ios-config/widgets/ → ios/App/CardiganWidgets/ (extension
+#      sources; Info.plist/entitlements/privacy manifest included).
+#   3. scripts/add-widget-target.rb (xcodeproj gem) creates the
+#      app-extension target + embed phase. It MUST run after the
+#      python pbxproj patch above — the gem re-serializes the whole
+#      project file, and the Ruby script asserts post-save that the
+#      python-applied App-target signing survived.
+# The plugin class is registered by appending it to packageClassList
+# in the GENERATED capacitor.config.json (cap sync recreates that file
+# from installed npm plugins each run, so a local Swift plugin has to
+# be spliced in here).
+
+cp ios-config/WidgetBridgePlugin.swift ios/App/App/WidgetBridgePlugin.swift
+rm -rf ios/App/CardiganWidgets
+cp -R ios-config/widgets ios/App/CardiganWidgets
+
+CAP_CONFIG="ios/App/App/capacitor.config.json"
+if [ ! -f "$CAP_CONFIG" ]; then
+  echo "✗ $CAP_CONFIG not found — did 'npx cap sync ios' run?"
+  exit 1
+fi
+python3 - "$CAP_CONFIG" <<'PY'
+import json, sys
+
+p = sys.argv[1]
+with open(p) as f:
+    cfg = json.load(f)
+plugins = cfg.setdefault("packageClassList", [])
+if "WidgetBridgePlugin" not in plugins:
+    plugins.append("WidgetBridgePlugin")
+    with open(p, "w") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+    print("✓ WidgetBridgePlugin appended to packageClassList")
+else:
+    print("✓ WidgetBridgePlugin already in packageClassList")
+PY
+
+if ! ruby -e 'require "xcodeproj"' >/dev/null 2>&1; then
+  echo "✗ ruby gem 'xcodeproj' not available — run: gem install xcodeproj"
+  exit 1
+fi
+ruby scripts/add-widget-target.rb
+
 echo "✓ iOS config applied to ios/App/App/"

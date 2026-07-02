@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CardiganWidgets extension entitlements. The App Group is the only
+  capability the extension needs — it's the read side of the snapshot
+  + token the app writes via WidgetBridgePlugin. Must match the group
+  in ios-config/App.entitlements and on both App IDs in the developer
+  portal.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.application-groups</key>
+  <array>
+    <string>group.mx.cardigan.app</string>
+  </array>
+</dict>
+</plist>

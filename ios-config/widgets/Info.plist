@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CardiganWidgets extension Info.plist. Version strings are wired to
+  the same build settings the App target uses (MARKETING_VERSION from
+  apply-ios-config.sh / the Ruby target script, CURRENT_PROJECT_VERSION
+  from the CI xcodebuild invocation, which applies to all targets) —
+  App Store validation requires the extension's versions to match the
+  containing app's exactly.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>es_MX</string>
+  <key>CFBundleDisplayName</key>
+  <string>Cardigan</string>
+  <key>CFBundleExecutable</key>
+  <string>$(EXECUTABLE_NAME)</string>
+  <key>CFBundleIdentifier</key>
+  <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>$(PRODUCT_NAME)</string>
+  <key>CFBundlePackageType</key>
+  <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+  <key>CFBundleShortVersionString</key>
+  <string>$(MARKETING_VERSION)</string>
+  <key>CFBundleVersion</key>
+  <string>$(CURRENT_PROJECT_VERSION)</string>
+  <key>NSExtension</key>
+  <dict>
+    <key>NSExtensionPointIdentifier</key>
+    <string>com.apple.widgetkit-extension</string>
+  </dict>
+</dict>
+</plist>

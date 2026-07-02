@@ -21,6 +21,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- App Group shared with the CardiganWidgets extension. The app
+       writes the widget data snapshot + the /api/widget-data token
+       into UserDefaults(suiteName: "group.mx.cardigan.app") via
+       WidgetBridgePlugin; the WidgetKit extension reads them. Must
+       match ios-config/widgets/CardiganWidgets.entitlements AND the
+       App Groups capability on BOTH App IDs in the developer portal
+       (mx.cardigan.app and mx.cardigan.app.widgets). -->
+  <key>com.apple.security.application-groups</key>
+  <array>
+    <string>group.mx.cardigan.app</string>
+  </array>
   <key>aps-environment</key>
   <string>production</string>
   <key>com.apple.developer.applesignin</key>
