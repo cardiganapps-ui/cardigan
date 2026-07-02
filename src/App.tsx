@@ -40,6 +40,7 @@ const expenseSheetImport = () => import("./components/sheets/ExpenseSheet");
 const commandPaletteImport = () => import("./components/CommandPalette");
 const Drawer = lazy(() => drawerImport().then(m => ({ default: m.Drawer })));
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useEscape } from "./hooks/useEscape";
 import { useViewport } from "./hooks/useViewport";
 import { useEdgeSwipeGesture } from "./hooks/useEdgeSwipeGesture";
 import { PullToRefresh } from "./components/PullToRefresh";
@@ -711,6 +712,29 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
     shellRef, edgeRef, drawerOpenRef, screenSlidingRef,
     isTablet, setSwipeProgress, setDrawerOpen,
   });
+
+  // Register the open drawer on the shared Escape stack so both the
+  // Escape key and the Android hardware back button close it before
+  // anything else. Phone only — at tablet+ the drawer is a persistent
+  // sidebar (responsive.css makes it static), so "dismissing" it would
+  // just flip state with no visual effect.
+  useEscape(drawerOpen && !isTablet ? () => { setDrawerOpen(false); setSwipeProgress(0); } : null);
+
+  // Android hardware back, app-level fallback: when no overlay consumed
+  // the press (nativeBackButton.ts drained the escape stack first),
+  // step back to Home from any inner screen; from Home, let the shell
+  // minimize. Mirrors the platform convention (bottom-tab apps back out
+  // through their root tab before backgrounding).
+  useEffect(() => {
+    const onHardwareBack = (e: Event) => {
+      if (screen !== "home") {
+        e.preventDefault();
+        navigate("home");
+      }
+    };
+    window.addEventListener("cardigan-hardware-back", onHardwareBack);
+    return () => window.removeEventListener("cardigan-hardware-back", onHardwareBack);
+  }, [screen, navigate]);
 
   const [pendingFabAction, setPendingFabAction] = useState<string | null>(null);
 

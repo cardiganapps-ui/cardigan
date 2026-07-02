@@ -15,6 +15,7 @@ import { installBodyScrollLock } from './lib/bodyScrollLock'
 import { isNative } from './lib/platform'
 import { initNativeShell } from './lib/nativeBoot'
 import { initNativeDeepLinks } from './lib/nativeDeepLinks'
+import { initNativeBackButton } from './lib/nativeBackButton'
 import { initNativePasskeys } from './lib/nativePasskeyShim'
 
 /* Defer Sentry init to browser idle. The SDK is dynamic-imported
@@ -43,6 +44,13 @@ initNativeShell()
 // Capacitor-only: route App Links / Universal Links (cardigan.mx/i/<t>,
 // /c/<c>, ?billing=*, etc.) back into the in-app URL parser. No-op on web.
 initNativeDeepLinks()
+
+// Capacitor Android-only: own the hardware/gesture back button —
+// dismiss the topmost overlay (shared Escape stack), then let the
+// shell navigate home, then minimize the task. Without a listener,
+// Capacitor's default finishes the activity from anywhere. Module-
+// level so it also covers the logged-out AuthScreen. No-op on web + iOS.
+initNativeBackButton()
 
 // Capacitor iOS-only: install the WebAuthn shim so Supabase's passkey
 // calls route to native ASAuthorization (Face ID / Touch ID) against the

@@ -19,6 +19,20 @@ function ensureListener() {
   });
 }
 
+// Programmatic equivalent of pressing Escape: fire the topmost
+// registered handler. Returns true when a handler consumed the
+// dismissal (including busy sheets that register a no-op to block
+// closing mid-submit — from the caller's perspective the press was
+// handled). Powers the Android hardware back button
+// (lib/nativeBackButton.ts) so back and Escape share one stack and
+// can never drift apart in which overlay they close first.
+export function dismissTopLayer(): boolean {
+  const top = escapeStack[escapeStack.length - 1];
+  if (!top) return false;
+  top();
+  return true;
+}
+
 export function useEscape(onClose: (() => void) | null | undefined) {
   useEffect(() => {
     if (!onClose) return;

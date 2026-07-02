@@ -7,6 +7,7 @@ import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
 import { NoteEditor } from "./NoteEditor";
 import { QuickCaptureSheet } from "./notes/QuickCaptureSheet";
 import { useCardigan } from "../context/CardiganContext";
+import { useEscape } from "../hooks/useEscape";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 
@@ -33,6 +34,9 @@ export function QuickActions() {
   const isPro = !!subscription?.isPro;
   const actions = ACTIONS.filter(a => a.key !== "group" || groupsEnabled !== false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Escape / Android hardware back close the open FAB menu like any
+  // other overlay (shared stack — see useEscape / nativeBackButton).
+  useEscape(menuOpen ? () => setMenuOpen(false) : null);
   const [activeSheet, setActiveSheet] = useState<string | null>(null);
   const [quickNote, setQuickNote] = useState<Row | null>(null);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
