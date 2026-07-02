@@ -10,7 +10,7 @@ import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useFocusTrap } from "../hooks/useFocusTrap";
-import { isNative } from "../lib/platform";
+import { isNative, isAndroid } from "../lib/platform";
 import { MONETIZATION_ENABLED } from "../config/monetization";
 import { SheetOverlay } from "../components/SheetOverlay";
 
@@ -647,7 +647,13 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
             <span>{t("auth.orContinueWith")}</span>
           </div>
           <div className="auth-social-row">
-            {onProvider && (
+            {/* Apple is hidden on Android native: there's no native Apple
+                SDK there, and the OAuth-redirect fallback can't round-trip
+                back to capacitor://localhost, so the button would dead-end.
+                Revisit if Apple-on-Android is ever wired via a Custom Tab +
+                App Links return. Web (any OS) keeps it — the redirect flow
+                works in a real browser. */}
+            {onProvider && !(isNative() && isAndroid()) && (
               <button
                 type="button"
                 className="auth-social-circle auth-social-circle--apple btn-tap"

@@ -1,15 +1,24 @@
 // Native Google Sign In via @capgo/capacitor-social-login.
 //
-// On iOS native, Google sign-in goes through the system Google Sign-In
-// SDK (a native account picker), which returns an OIDC identity token we
-// hand to supabase.auth.signInWithIdToken({ provider: "google", ... }).
+// On native, Google sign-in goes through the platform's own surface —
+// iOS: the Google Sign-In SDK account picker; Android: the Credential
+// Manager bottom sheet — which returns an OIDC identity token we hand
+// to supabase.auth.signInWithIdToken({ provider: "google", ... }).
 // The OAuth-redirect flow (signInWithOAuth) can't be used in the native
 // shell because its redirect target is capacitor://localhost, which the
 // browser round-trip can't deep-link back to — the same reason Apple
-// uses a native plugin here (see nativeAppleSignIn.js).
+// uses a native plugin here (see nativeAppleSignIn.ts).
 //
-// On web (and Android) we keep Supabase's OAuth redirect flow; only iOS
-// branches into this module.
+// On web we keep Supabase's OAuth redirect flow.
+//
+// Android prerequisite (one-time, Google Cloud console project
+// 17610829726): an Android-type OAuth client for package mx.cardigan.app
+// with the Play App Signing SHA-1 (plus the upload/debug keystore SHA-1
+// for local builds). No ID from it ships in the app — Credential Manager
+// just needs it to exist to verify the caller; the token we receive is
+// minted against webClientId below, whose audience Supabase already
+// accepts. Until that client exists, login() rejects and the button
+// surfaces the error — no silent dead-end.
 //
 // Client IDs are PUBLIC OAuth identifiers (they ship inside the IPA and
 // are visible in every OAuth request) — safe to hard-code, same as the
@@ -24,7 +33,7 @@
 // it. This does not weaken the web flow (which uses code exchange, not an
 // ID token).
 
-import { isNative, isIOS } from "./platform";
+import { isNative } from "./platform";
 
 // Public OAuth client identifiers (Google Cloud project 17610829726).
 const GOOGLE_IOS_CLIENT_ID =
@@ -50,7 +59,7 @@ async function ensureInit(SocialLogin: typeof import("@capgo/capacitor-social-lo
 }
 
 export async function signInWithGoogleNative() {
-  if (!isNative() || !isIOS()) return { ok: false, code: "unsupported" };
+  if (!isNative()) return { ok: false, code: "unsupported" };
 
   let SocialLogin;
   try {

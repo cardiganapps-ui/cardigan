@@ -344,12 +344,15 @@ export function useAuth() {
       }
       return {};
     }
-    // iOS native + Google → native Google Sign-In SDK (account picker) →
-    // signInWithIdToken. Mirrors the Apple branch above; same rationale
-    // (the OAuth redirect can't deep-link back to capacitor://localhost).
-    // No nonce — the project runs external_google_skip_nonce_check=true
-    // (see nativeGoogleSignIn.js for why).
-    if (provider === "google" && isNative() && isIOS()) {
+    // Native + Google → native Google sign-in (iOS: Google SDK account
+    // picker; Android: Credential Manager sheet) → signInWithIdToken.
+    // Mirrors the Apple branch above; same rationale (the OAuth redirect
+    // can't deep-link back to capacitor://localhost). Both platforms
+    // return an ID token whose audience is the WEB client ID, which
+    // Supabase's external_google_client_id already accepts. No nonce —
+    // the project runs external_google_skip_nonce_check=true (see
+    // nativeGoogleSignIn.ts for why).
+    if (provider === "google" && isNative()) {
       const native = await signInWithGoogleNative();
       if (!native.ok) {
         if (native.code === "user-cancelled") return {}; // silent — user dismissed
