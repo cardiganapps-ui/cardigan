@@ -33,6 +33,16 @@ on:
       - 'scripts/apply-ios-config.sh'
       - 'scripts/add-widget-target.rb'
       - '.github/workflows/ios-widget-dryrun.yml'
+  # Feature branches get the compile gate on plain pushes too — no PR
+  # or manual dispatch needed (main is excluded: it runs the real
+  # ios-build.yml instead).
+  push:
+    branches-ignore: [main]
+    paths:
+      - 'ios-config/**'
+      - 'scripts/apply-ios-config.sh'
+      - 'scripts/add-widget-target.rb'
+      - '.github/workflows/ios-widget-dryrun.yml'
 
 concurrency:
   group: ios-widget-dryrun-${{ github.ref }}
