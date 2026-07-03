@@ -44,6 +44,13 @@ WIDGET_BUNDLE_ID = "mx.cardigan.app.widgets"
 WIDGET_PROFILE = "Cardigan Widgets App Store"
 WIDGET_DIR = "ios/App/CardiganWidgets"
 PLUGIN_SWIFT = "ios/App/App/WidgetBridgePlugin.swift"
+# App-target Swift files (beyond Capacitor's own) that must be compiled
+# in: the WidgetBridge plugin + the bridge VC that explicitly registers
+# it. apply-ios-config.sh copies both into ios/App/App/ before this runs.
+APP_TARGET_SWIFT = [
+  "WidgetBridgePlugin.swift",
+  "CardiganBridgeViewController.swift",
+].freeze
 DEPLOYMENT_TARGET = "17.0"
 
 marketing_version = ENV["MARKETING_VERSION"] || "20.6"
@@ -123,8 +130,11 @@ build_file.settings = { "ATTRIBUTES" => ["RemoveHeadersOnCopy"] }
 
 app_group = project.main_group.find_subpath("App", false)
 abort "add-widget-target: App group not found" unless app_group
-plugin_ref = app_group.new_file(File.basename(PLUGIN_SWIFT))
-app_target.source_build_phase.add_file_reference(plugin_ref)
+APP_TARGET_SWIFT.each do |name|
+  abort "add-widget-target: ios/App/App/#{name} not found — apply-ios-config.sh must copy it first" unless File.file?("ios/App/App/#{name}")
+  ref = app_group.new_file(name)
+  app_target.source_build_phase.add_file_reference(ref)
+end
 
 project.save
 

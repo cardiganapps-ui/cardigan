@@ -49,11 +49,23 @@ export function widgetBridgeAvailable(): boolean {
   return isNative() && isIOS();
 }
 
+// Hard timeout on every bridge call. If the native plugin isn't
+// registered, a Capacitor call to it never resolves OR rejects — it just
+// hangs. Without this guard, `void syncWidgets()` on every refresh would
+// leak a forever-pending promise, and the Settings diagnostic would stick
+// on "Ejecutando". Reject after 4s so callers fall back cleanly.
+function withTimeout<T>(p: Promise<T>, ms = 4000): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("widget bridge timeout")), ms)),
+  ]);
+}
+
 export async function setWidgetSnapshot(json: string): Promise<boolean> {
   const plugin = await getPlugin();
   if (!plugin) return false;
   try {
-    await plugin.setSnapshot({ json });
+    await withTimeout(plugin.setSnapshot({ json }));
     return true;
   } catch (err) {
     if (import.meta.env.DEV) console.warn("widgetBridge.setSnapshot:", (err as Error)?.message || err);
@@ -65,7 +77,7 @@ export async function setWidgetToken(token: string): Promise<boolean> {
   const plugin = await getPlugin();
   if (!plugin) return false;
   try {
-    await plugin.setToken({ token });
+    await withTimeout(plugin.setToken({ token }));
     return true;
   } catch (err) {
     if (import.meta.env.DEV) console.warn("widgetBridge.setToken:", (err as Error)?.message || err);
@@ -77,7 +89,7 @@ export async function widgetHasToken(): Promise<boolean> {
   const plugin = await getPlugin();
   if (!plugin) return false;
   try {
-    const { value } = await plugin.hasToken();
+    const { value } = await withTimeout(plugin.hasToken());
     return !!value;
   } catch {
     return false;
@@ -90,7 +102,7 @@ export async function widgetDebugState(): Promise<WidgetDebugState | { error: st
   const plugin = await getPlugin();
   if (!plugin) return null;
   try {
-    return await plugin.debugState();
+    return await withTimeout(plugin.debugState());
   } catch (err) {
     return { error: (err as Error)?.message || String(err) };
   }
@@ -101,7 +113,7 @@ export async function clearWidgetData(): Promise<void> {
   const plugin = await getPlugin();
   if (!plugin) return;
   try {
-    await plugin.clear();
+    await withTimeout(plugin.clear());
   } catch (err) {
     if (import.meta.env.DEV) console.warn("widgetBridge.clear:", (err as Error)?.message || err);
   }

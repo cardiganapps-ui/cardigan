@@ -391,8 +391,40 @@ PY
 # be spliced in here).
 
 cp ios-config/WidgetBridgePlugin.swift ios/App/App/WidgetBridgePlugin.swift
+# Explicit-registration bridge VC — Capacitor's packageClassList auto-
+# registration doesn't reliably pick up this app-target local plugin, so
+# we register the instance in capacitorDidLoad() instead (see the file's
+# header). Requires pointing the storyboard at this subclass (below) and
+# compiling it into the App target (add-widget-target.rb).
+cp ios-config/CardiganBridgeViewController.swift ios/App/App/CardiganBridgeViewController.swift
 rm -rf ios/App/CardiganWidgets
 cp -R ios-config/widgets ios/App/CardiganWidgets
+
+# Point the root view controller at our subclass. Its customModule
+# becomes the App module (Capacitor's default target module name is
+# "App"), not "Capacitor".
+STORYBOARD="ios/App/App/Base.lproj/Main.storyboard"
+if [ -f "$STORYBOARD" ]; then
+  python3 - "$STORYBOARD" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p).read()
+if "CardiganBridgeViewController" in s:
+    print("✓ storyboard already points at CardiganBridgeViewController")
+else:
+    s2 = s.replace(
+        'customClass="CAPBridgeViewController" customModule="Capacitor"',
+        'customClass="CardiganBridgeViewController" customModule="App" customModuleProvider="target"',
+        1,
+    )
+    if s2 == s:
+        sys.exit("✗ could not find CAPBridgeViewController in Main.storyboard to repoint")
+    open(p, "w").write(s2)
+    print("✓ storyboard repointed to CardiganBridgeViewController")
+PY
+else
+  echo "✗ $STORYBOARD not found"; exit 1
+fi
 
 CAP_CONFIG="ios/App/App/capacitor.config.json"
 if [ ! -f "$CAP_CONFIG" ]; then
