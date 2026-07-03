@@ -27,26 +27,62 @@ export function WidgetsPanel({ readOnly = false }: { readOnly?: boolean }) {
   const { patients, upcomingSessions, payments, groups } = useCardigan();
   const [busy, setBusy] = useState(false);
   const [disabled, setDisabled] = useState(widgetsDisabled());
-  const [diag, setDiag] = useState<WidgetDebugState | { error: string } | null | "loading">(null);
+  const [diag, setDiag] = useState<string | null>(null);
 
   // The lazy mint can land after this panel's first GET — refetch on
   // mount so the status doesn't show "inactive" on a fresh login.
   useEffect(() => { refreshWidgetToken(); }, []);
-  useEffect(() => { widgetDebugState().then(setDiag); }, []);
 
-  // Force a snapshot write + token mint, then re-read the bridge/App
-  // Group diagnostic. Surfaces exactly which link is broken when
-  // widgets read "active" but render "Abre Cardigan para configurar".
+  // Force a snapshot write + token mint, then read back the bridge/App
+  // Group state. Built to be UN-STICKABLE: every stage paints into the
+  // readout as it happens, every error is caught and displayed, and a
+  // watchdog force-finishes after 12s — so whatever fails, the readout
+  // says exactly where. (The previous version had no catch: any throw
+  // left the label on "Ejecutando…" forever, which is what masked the
+  // real failure on-device.)
   const runDiagnostic = async () => {
     if (busy) return;
     setBusy(true);
-    setDiag("loading");
+    const lines: string[] = [];
+    const paint = (line: string) => { lines.push(line); setDiag(lines.join("\n")); };
+    let finished = false;
+    const watchdog = setTimeout(() => {
+      if (!finished) paint("✗ watchdog: 12s sin terminar — etapa colgada ↑");
+    }, 12000);
     try {
+      paint(`inicio ${new Date().toISOString().slice(11, 19)}`);
+      paint(`widgetsDisabled(local): ${widgetsDisabled()}`);
+      paint(`datos: p=${patients?.length ?? "?"} s=${upcomingSessions?.length ?? "?"} pay=${payments?.length ?? "?"}`);
+
+      // Ask Capacitor DIRECTLY whether the native class is registered —
+      // synchronous, no bridge round-trip, cannot hang. THE decisive bit.
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        paint(`isPluginAvailable(WidgetBridge): ${Capacitor.isPluginAvailable("WidgetBridge")}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const reg = (window as any).Capacitor?.Plugins ? Object.keys((window as any).Capacitor.Plugins).join(",") : "(n/a)";
+        paint(`native plugins: ${reg.slice(0, 160)}`);
+      } catch (e) { paint(`✗ core import: ${(e as Error)?.message}`); }
+
+      paint("→ syncWidgets…");
       const { syncWidgets } = await import("../../lib/widgetSync");
       await syncWidgets({ patients, sessions: upcomingSessions, payments, groups });
-      await new Promise(r => setTimeout(r, 600));
-      setDiag(await widgetDebugState());
+      paint("✓ syncWidgets volvió");
+
+      paint("→ debugState…");
+      const state = await widgetDebugState();
+      if (!state) paint("✗ bridge no disponible (plugin null)");
+      else if ("error" in state) paint(`✗ debugState: ${state.error}`);
+      else {
+        paint(`appGroup: ${state.appGroupAvailable} | snapshotBytes: ${state.snapshotBytes} | hasToken: ${state.hasToken}`);
+        paint(`widgetLastRun: ${state.widgetLastRun || "(nunca)"} | ${state.widgetLastState || ""}`);
+      }
+      paint("fin ✓");
+    } catch (err) {
+      paint(`✗ excepción: ${(err as Error)?.message || String(err)}`);
     } finally {
+      finished = true;
+      clearTimeout(watchdog);
       setBusy(false);
     }
   };
@@ -179,26 +215,16 @@ export function WidgetsPanel({ readOnly = false }: { readOnly?: boolean }) {
           disabled={busy}
           style={{ width: "100%" }}
         >
-          {diag === "loading" ? "Ejecutando…" : "Forzar sincronización y diagnóstico"}
+          {busy ? "Ejecutando…" : "Forzar sincronización y diagnóstico"}
         </button>
-        {diag && diag !== "loading" && (
+        {diag && (
           <pre style={{
             marginTop: 10, padding: "10px 12px", background: "var(--cream)",
             borderRadius: "var(--radius)", fontSize: 11, lineHeight: 1.5,
             whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--charcoal-md)",
             fontFamily: "ui-monospace, monospace",
           }}>
-            {"error" in diag
-              ? `bridge NO disponible: ${diag.error}`
-              : [
-                  `bridge: OK`,
-                  `appGroup: ${diag.appGroupAvailable}`,
-                  `suite: ${diag.suiteName}`,
-                  `snapshotBytes: ${diag.snapshotBytes}`,
-                  `hasToken: ${diag.hasToken}`,
-                  `widgetLastRun: ${diag.widgetLastRun || "(nunca)"}`,
-                  `widgetLastState: ${diag.widgetLastState || "(n/a)"}`,
-                ].join("\n")}
+            {diag}
           </pre>
         )}
       </div>
