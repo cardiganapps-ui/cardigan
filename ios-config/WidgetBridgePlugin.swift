@@ -54,8 +54,21 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var store: UserDefaults? { UserDefaults(suiteName: Self.suiteName) }
 
+    // WidgetKit's XPC to `chronod` can BLOCK the caller for seconds (or
+    // indefinitely on a freshly-installed / mis-provisioned extension).
+    // Capacitor runs every plugin method on ONE shared serial queue
+    // (DispatchQueue(label: "bridge")); a single blocked call there wedges
+    // the queue and makes EVERY subsequent bridge call — even a trivial
+    // read like debugState — hang forever. That was the real "widgets
+    // active but not rendering" bug: syncWidgets' setSnapshot on foreground
+    // blocked the bridge queue on reloadAllTimelines. So we ALWAYS resolve
+    // the call first and fire the reload asynchronously off the bridge
+    // thread — the write has already landed in the App Group; if the reload
+    // is slow, WidgetKit still picks up the new snapshot on its own timeline.
     private func reloadWidgets() {
-        WidgetCenter.shared.reloadAllTimelines()
+        DispatchQueue.global(qos: .utility).async {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
     }
 
     @objc func setSnapshot(_ call: CAPPluginCall) {
@@ -68,8 +81,8 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         store.set(json, forKey: Self.snapshotKey)
-        reloadWidgets()
         call.resolve()
+        reloadWidgets()
     }
 
     @objc func setToken(_ call: CAPPluginCall) {
@@ -82,8 +95,8 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         store.set(token, forKey: Self.tokenKey)
-        reloadWidgets()
         call.resolve()
+        reloadWidgets()
     }
 
     @objc func hasToken(_ call: CAPPluginCall) {
@@ -98,8 +111,8 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         }
         store.removeObject(forKey: Self.snapshotKey)
         store.removeObject(forKey: Self.tokenKey)
-        reloadWidgets()
         call.resolve()
+        reloadWidgets()
     }
 
     /// Diagnostics for "widgets active but not rendering". Reports, from
