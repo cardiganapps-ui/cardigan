@@ -128,11 +128,16 @@ export function useCardiganContextValue(deps: CardiganContextValueDeps) {
     // wrapper: optimistic remove + "Deshacer" toast + 3s commit
     // window. Recurring-template delete stays straight-through —
     // it's an admin-rare action and undoable wouldn't add much.
-    deleteSession: withUndoableDelete(data.softDeleteSession, "Sesión eliminada"),
-    deletePayment: withUndoableDelete(data.softDeletePayment, "Pago eliminado"),
-    deleteExpense: withUndoableDelete(data.softDeleteExpense, "Gasto eliminado"),
-    deleteRecurringTemplate: data.deleteRecurringTemplate,
-    deleteNote: withUndoableDelete(data.softDeleteNote, "Nota eliminada"),
+    // Gate every destructive action on the COMPOSED readOnly (admin
+    // "view as user" / demo / expired-trial). The undoable overrides
+    // wrap data.softDelete* which don't self-check readOnly, so without
+    // this a read-only viewer could delete another user's sessions /
+    // payments / notes / expenses. (bug-hunt: readOnly delete bypass)
+    deleteSession: readOnly ? (async () => false) : withUndoableDelete(data.softDeleteSession, "Sesión eliminada"),
+    deletePayment: readOnly ? (async () => false) : withUndoableDelete(data.softDeletePayment, "Pago eliminado"),
+    deleteExpense: readOnly ? (async () => false) : withUndoableDelete(data.softDeleteExpense, "Gasto eliminado"),
+    deleteRecurringTemplate: readOnly ? (async () => false) : data.deleteRecurringTemplate,
+    deleteNote: readOnly ? (async () => false) : withUndoableDelete(data.softDeleteNote, "Nota eliminada"),
     noteCrypto,
     profession,
     accentTheme,

@@ -7,7 +7,12 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 // Skew Protection is enabled. Bake it into the bundle so the runtime
 // fetch interceptor can route every /api/* call back to the deployment
 // the user's tab originated from.
-const VERCEL_DEPLOYMENT_ID = JSON.stringify(process.env.VERCEL_DEPLOYMENT_ID || '')
+// Fall back to GITHUB_SHA so the native (iOS/Android) CI builds — which
+// never set VERCEL_DEPLOYMENT_ID — still get a non-constant cache stamp.
+// Without it the stamp was always '' on native, so dataCache's
+// deploy-invalidation never fired and an app update could serve a stale
+// cached snapshot. (bug-hunt: dataCache stamp inert on native)
+const VERCEL_DEPLOYMENT_ID = JSON.stringify(process.env.VERCEL_DEPLOYMENT_ID || process.env.GITHUB_SHA || '')
 
 // Force-inline the Sentry DSN into the bundle. Vite normally exposes
 // VITE_-prefixed env vars via import.meta.env automatically, but on

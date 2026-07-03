@@ -197,7 +197,13 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
   }
 
   for (const s of eventRows) {
-    const parsed = parseShortDate(s.date, ref);
+    // Anchor the yearless "D-MMM" date on the row's created_at, not
+    // today. A session completed 6-12 months ago, today-anchored, infers
+    // to a FUTURE year and resurrects in the subscriber's calendar as a
+    // confirmed upcoming event. created_at is within the recurrence
+    // window of the real date. (bug-hunt: calendar resurrects old rows)
+    const createdRef = s.created_at ? new Date(s.created_at) : ref;
+    const parsed = parseShortDate(s.date, isNaN(createdRef.getTime()) ? ref : createdRef);
     if (!parsed) continue;
     const durationMinutes = Number(s.duration) > 0 ? Number(s.duration) : 60;
     const dtStart = formatLocalDateTime(parsed, s.time);

@@ -96,10 +96,16 @@ if ('serviceWorker' in navigator && !isNative()) {
     // which fires controllerchange too; reloading then made the
     // landing page randomly refresh during the user's first sign-in
     // attempt. Returning visits still reload as designed.
-    const hadInitialController = !!navigator.serviceWorker.controller;
+    let hadInitialController = !!navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!hadInitialController) return;
+      // First-ever visit: the SW installs and claims the tab, firing
+      // controllerchange once with no prior controller — suppress that
+      // reload. But FLIP the flag so a LATER genuine update in the same
+      // session (tap-to-update) still reloads; leaving it captured-false
+      // wedged the update handshake for the rest of the session.
+      // (bug-hunt: hadInitialController captured once)
+      if (!hadInitialController) { hadInitialController = true; return; }
       if (!refreshing) { refreshing = true; window.location.reload(); }
     });
 

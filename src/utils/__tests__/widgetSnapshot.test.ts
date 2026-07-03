@@ -89,6 +89,27 @@ describe("buildWidgetSnapshot — today's agenda", () => {
     expect(snap.sessionsToday.find(s => s.id === "b")?.status).toBe("scheduled");
   });
 
+  it("derives the collapsed group status from all attendees, not the first row", () => {
+    // First attendee (by array order) cancelled, but another still
+    // scheduled → the occurrence must NOT read as cancelled.
+    const rows = [
+      { id: "g1", patient_id: "p1", patient: "Ana", time: "18:00", date: "15-Abr", status: "cancelled", group_id: "G", groups: { name: "Grupo" } },
+      { id: "g2", patient_id: "p2", patient: "Beto", time: "18:00", date: "15-Abr", status: "scheduled", group_id: "G", groups: { name: "Grupo" } },
+    ];
+    const snap = build({ sessions: rows });
+    expect(snap.sessionsToday).toHaveLength(1);
+    expect(snap.sessionsToday[0].status).toBe("scheduled");
+  });
+
+  it("collapsed group reads cancelled only when every attendee cancelled", () => {
+    const rows = [
+      { id: "g1", patient_id: "p1", patient: "Ana", time: "18:00", date: "15-Abr", status: "cancelled", group_id: "G", groups: { name: "Grupo" } },
+      { id: "g2", patient_id: "p2", patient: "Beto", time: "18:00", date: "15-Abr", status: "cancelled", group_id: "G", groups: { name: "Grupo" } },
+    ];
+    const snap = build({ sessions: rows });
+    expect(snap.sessionsToday[0].status).toBe("cancelled");
+  });
+
   it("collapses group occurrences into one entry named after the group", () => {
     const rows = [
       { id: "g1", patient_id: "p1", patient: "Ana", time: "18:00", date: "15-Abr", status: "scheduled", group_id: "G", groups: { name: "Terapia grupal" } },

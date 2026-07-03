@@ -863,9 +863,13 @@ export function PatientExpediente({
           return ok;
         }}
         onDelete={async (id: string) => { await deleteSession(id); setSelectedSession(null); }}
-        onReschedule={async (id: string, date: string, time: string) => {
-          const ok = await rescheduleSession(id, date, time);
-          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, date, time, status: "scheduled" } : prev);
+        onReschedule={async (id: string, date: string, time: string, duration?: number) => {
+          // Forward the user-selected duration — SessionSheet's reschedule
+          // form has a duration <select> and passes it as the 4th arg;
+          // dropping it silently reset the session to the default 60 min.
+          // (bug-hunt: reschedule duration dropped)
+          const ok = await rescheduleSession(id, date, time, duration);
+          if (ok) setSelectedSession((prev: Row) => prev ? { ...prev, date, time, ...(duration ? { duration } : {}), status: "scheduled" } : prev);
           return ok;
         }}
         onUpdateModality={async (id: string, modality: string) => {

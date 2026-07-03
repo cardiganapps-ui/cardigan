@@ -30,7 +30,7 @@
 // eslint-disable-next-line no-restricted-syntax -- NodeNext consumer requires the extension
 import { SHORT_MONTHS, formatShortDate, parseShortDate, getInitials } from "./dates.js";
 // eslint-disable-next-line no-restricted-syntax -- NodeNext consumer requires the extension
-import { enrichPatientsWithBalance } from "./accounting.js";
+import { enrichPatientsWithBalance, sessionCountsTowardBalance } from "./accounting.js";
 // eslint-disable-next-line no-restricted-syntax -- NodeNext consumer requires the extension
 import { SESSION_STATUS, isPotentialOrDiscarded, PATIENT_STATUS } from "../data/constants.js";
 
@@ -129,21 +129,44 @@ function sessionMinutes(time: string | null | undefined): number {
   return (parseInt(h, 10) || 0) * 60 + (parseInt(m, 10) || 0);
 }
 
+// Occurrence status for a collapsed group, mirroring
+// utils/groups.ts::deriveOccurrenceStatus: all-cancelled → cancelled;
+// any still-upcoming attendee → scheduled; otherwise → completed.
+// First-attendee-wins (the old behavior) mislabeled the whole occurrence
+// when e.g. one member cancelled but the class still ran.
+function deriveGroupStatus(attendees: SnapshotSessionRow[], now: Date): string {
+  if (attendees.length === 0) return SESSION_STATUS.SCHEDULED;
+  if (attendees.every(a => a.status === SESSION_STATUS.CANCELLED)) return SESSION_STATUS.CANCELLED;
+  const anyUpcoming = attendees.some(a =>
+    a.status === SESSION_STATUS.SCHEDULED && !sessionCountsTowardBalance(a, now)
+  );
+  return anyUpcoming ? SESSION_STATUS.SCHEDULED : SESSION_STATUS.COMPLETED;
+}
+
 // Collapse group-class occurrences: N member rows sharing
 // (group_id, time) render as ONE agenda entry, same as
-// Home.tsx::collapseGroupOccurrences does for the in-app list.
-function collapseGroups(rows: SnapshotSessionRow[]): SnapshotSessionRow[] {
-  const seen = new Set<string>();
+// Home.tsx::collapseGroupOccurrences does for the in-app list. The
+// representative row's status is replaced with the occurrence-derived
+// status (bug-hunt: group collapse kept an arbitrary member's status).
+function collapseGroups(rows: SnapshotSessionRow[], now: Date): SnapshotSessionRow[] {
+  const buckets = new Map<string, SnapshotSessionRow[]>();
   const out: SnapshotSessionRow[] = [];
   for (const s of rows) {
     if (s.group_id) {
       const key = `${s.group_id}|${s.time || ""}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      const bucket = buckets.get(key);
+      if (bucket) { bucket.push(s); continue; }
+      buckets.set(key, [s]);
+      out.push(s); // representative — original position preserved
+    } else {
+      out.push(s);
     }
-    out.push(s);
   }
-  return out;
+  return out.map(s => {
+    if (!s.group_id) return s;
+    const attendees = buckets.get(`${s.group_id}|${s.time || ""}`) || [s];
+    return { ...s, status: deriveGroupStatus(attendees, now) };
+  });
 }
 
 function toEntry(s: SnapshotSessionRow, displayCompleted: boolean): SnapshotSessionEntry {
@@ -199,7 +222,8 @@ export function buildWidgetSnapshot({
   const todayRows = collapseGroups(
     allSessions
       .filter(s => s.date === todayKey || s.date === todayKeyLegacy)
-      .sort((a, b) => (a.time || "").localeCompare(b.time || ""))
+      .sort((a, b) => (a.time || "").localeCompare(b.time || "")),
+    now
   );
   const sessionsToday = todayRows.map(s =>
     // +60 min grace before a scheduled slot flips to "completed" —
@@ -224,7 +248,8 @@ export function buildWidgetSnapshot({
       const dayRows = collapseGroups(
         allSessions
           .filter(s => (s.date === key || s.date === keyLegacy) && s.status === SESSION_STATUS.SCHEDULED)
-          .sort((a, b) => (a.time || "").localeCompare(b.time || ""))
+          .sort((a, b) => (a.time || "").localeCompare(b.time || "")),
+        now
       );
       if (dayRows.length) {
         const dayLabel = offset === 1 ? "Mañana" : DAYS_FULL[(day.getDay() + 6) % 7];
@@ -244,7 +269,8 @@ export function buildWidgetSnapshot({
       allSessions.filter(s =>
         (s.date === key || s.date === keyLegacy)
         && (s.status === SESSION_STATUS.SCHEDULED || s.status === SESSION_STATUS.COMPLETED)
-      )
+      ),
+      now
     ).length;
     return { d, count, isToday: i === (userNow.getDay() + 6) % 7 };
   });

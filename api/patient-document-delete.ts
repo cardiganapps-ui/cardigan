@@ -67,7 +67,16 @@ async function handler(req: Row, res: Row) {
     }
     // Path shape: ${therapist_user_id}/${patient_id}/patient-...
     const parts = filePath.split("/");
-    if (parts.length < 3 || !parts[0] || !parts[1]) {
+    // The 3rd segment MUST be a patient-uploaded key ("patient-…"). The
+    // caller owning the (therapist/patient) prefix is necessary but not
+    // sufficient: without this, a patient could pass any key under their
+    // prefix (including therapist-uploaded documents, or a traversal
+    // segment) and delete it. Restrict the sweep to patient-authored
+    // orphans only. (bug-hunt: orphan-sweep path shape)
+    if (parts.length < 3 || !parts[0] || !parts[1] || !parts[2].startsWith("patient-")) {
+      return res.status(400).json({ error: "Malformed path" });
+    }
+    if (parts.includes("..") || parts.includes(".")) {
       return res.status(400).json({ error: "Malformed path" });
     }
     const [therapistId, patientId] = parts;

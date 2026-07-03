@@ -121,11 +121,26 @@ extension WidgetSnapshot {
         return (comps.hour ?? 0) * 60 + (comps.minute ?? 0)
     }
 
+    /// True when `date` is the same calendar day (in the snapshot's tz)
+    /// as `generatedAt`. The minute-of-day math below is only meaningful
+    /// within the generated day — after midnight a stale cached snapshot
+    /// would otherwise render YESTERDAY's evening sessions as today's
+    /// "upcoming" (20:00 + 60 > 06:00). (bug-hunt: no calendar-day guard)
+    func rendersOnGeneratedDay(at date: Date) -> Bool {
+        guard let gen = generatedAtDate else { return true }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: tz ?? "America/Mexico_City") ?? .current
+        return cal.isDate(date, inSameDayAs: gen)
+    }
+
     /// Today's sessions that haven't finished yet (same +60 min grace
     /// as the builder). Computed against the ENTRY date so a timeline
     /// entry rendered later in the day stays accurate without a new
-    /// snapshot.
+    /// snapshot. Returns empty once the render date rolls past the
+    /// snapshot's day, so a not-yet-refreshed widget doesn't show
+    /// yesterday's agenda.
     func upcomingToday(at date: Date) -> [SessionEntry] {
+        guard rendersOnGeneratedDay(at: date) else { return [] }
         let now = Self.minutesNow(at: date)
         return sessionsToday.filter { entry in
             guard entry.status == SessionStatus.scheduled,
@@ -160,7 +175,10 @@ extension WidgetSnapshot {
     }
 
     /// Done vs total for the lock-screen gauge (cancelled excluded).
+    /// Zeroed once the snapshot is a day stale so the gauge doesn't show
+    /// yesterday's completion as today's.
     func todayProgress(at date: Date) -> (done: Int, total: Int) {
+        guard rendersOnGeneratedDay(at: date) else { return (0, 0) }
         let total = todayActiveCount
         let remaining = upcomingToday(at: date).count
         return (max(0, total - remaining), total)

@@ -84,15 +84,26 @@ async function handler(req: Row, res: Row) {
   // match by patient_id IN (linked patient rows)). Patient feeds
   // are scoped to their OWN sessions only — they never see the
   // therapist's other patients' calendars.
-  const { data: linkedPatients } = await svc
+  // Therapist precedence (mirror useRoleDetection): a user_profiles
+  // .profession row means therapist even if they are ALSO a linked
+  // patient of another therapist. Without this, such a user's feed
+  // showed their own therapy appointments instead of their practice
+  // calendar. (bug-hunt: therapist-also-patient)
+  const { data: calProfile } = await svc
+    .from("user_profiles")
+    .select("profession")
+    .eq("user_id", row.user_id)
+    .maybeSingle();
+  const isTherapistOwner = !!calProfile?.profession;
+  const { data: linkedPatients } = isTherapistOwner ? { data: [] as Row[] } : await svc
     .from("patients")
     .select("id")
     .eq("patient_user_id", row.user_id)
     .in("status", ["active", "potential"]);
-  const isPatient = (linkedPatients?.length || 0) > 0;
+  const isPatient = !isTherapistOwner && (linkedPatients?.length || 0) > 0;
   const linkedPatientIds = (linkedPatients || []).map((p: Row) => p.id);
 
-  const sessionsBaseSelect = "id, date, time, duration, status, patient, initials, modality, cancel_reason, session_type, group_id, groups(name)";
+  const sessionsBaseSelect = "id, date, time, duration, status, patient, initials, modality, cancel_reason, session_type, group_id, groups(name), created_at";
   const sessionsQuery = isPatient
     ? svc
         .from("sessions")

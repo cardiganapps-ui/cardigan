@@ -299,7 +299,10 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
     try {
       const { error } = await supabase.auth.updateUser({ data: { full_name: editName.trim() } });
       if (error) { setMessage(t("settings.saveError")); return; }
-      setMessage(t("settings.linkSent"));
+      // Profile save only updates user_metadata.full_name — no email is
+      // sent. The old "Enlace enviado a tu correo" copy was wrong here
+      // (it's the password-reset string). (bug-hunt: wrong success msg)
+      setMessage(t("saved"));
       setTimeout(() => { setMessage(""); setActiveSheet(null); }, 1200);
     } catch {
       setMessage(t("settings.saveError"));

@@ -123,17 +123,25 @@ async function handler(req: Row, res: Row) {
       //                  AND status IN active/potential — same gate
       //                  the patient-side RLS uses, so a discarded
       //                  patient stops getting reminders too)
-      // The dual-role edge case (therapist also linked to a patient
-      // row in their own tenant) is exceedingly rare and falls into
-      // the "patient" branch by precedence; that's fine — they'd
-      // still see the right sessions because the patient row's
-      // therapist IS them.
-      const { data: linkedPatients } = await supabase
+      // Dual-role: a THERAPIST can also be a linked patient of ANOTHER
+      // therapist (they see their own therapist). Precedence must match
+      // useRoleDetection — a user_profiles.profession row means
+      // therapist, full stop. Without this, such a user fell into the
+      // patient branch and silently lost ALL their practice reminders
+      // (their sessions come from user_id, not from being someone's
+      // patient). (bug-hunt: therapist-also-patient loses reminders)
+      const { data: profileRow } = await supabase
+        .from("user_profiles")
+        .select("profession")
+        .eq("user_id", user_id)
+        .maybeSingle();
+      const isTherapist = !!profileRow?.profession;
+      const { data: linkedPatients } = isTherapist ? { data: [] as Row[] } : await supabase
         .from("patients")
         .select("id")
         .eq("patient_user_id", user_id)
         .in("status", ["active", "potential"]);
-      const isPatient = (linkedPatients?.length || 0) > 0;
+      const isPatient = !isTherapist && (linkedPatients?.length || 0) > 0;
       const linkedPatientIds = (linkedPatients || []).map((p: Row) => p.id);
 
       // 3. Fetch today's scheduled sessions. Branch by role; the
@@ -322,9 +330,17 @@ async function handler(req: Row, res: Row) {
       // 7a. Web push.
       for (const unit of (webSubs.length > 0 ? toUnits(newPushSessions) : [])) {
         const payload = payloadForUnit(unit);
+        // Only mark the unit sent when it actually reached a device (or
+        // the only failures were terminal — those endpoints are deleted
+        // so there's nobody left to retry). A transient failure (500/503/
+        // network) must NOT dedupe the unit, or the reminder is lost
+        // permanently. (bug-hunt: push marked sent on transient failure)
+        let anyDelivered = false;
+        let anyTransientFail = false;
         for (const sub of webSubs) {
           try {
             await sendPush(sub, payload);
+            anyDelivered = true;
           } catch (err: Row) {
             if (TERMINAL_PUSH_STATUSES.has(err.statusCode)) {
               await supabase
@@ -333,6 +349,7 @@ async function handler(req: Row, res: Row) {
                 .eq("endpoint", sub.endpoint);
               staleRemoved++;
             } else {
+              anyTransientFail = true;
               console.error(JSON.stringify({
                 evt: "push.send.error",
                 endpoint_host: safeHost(sub.endpoint),
@@ -342,8 +359,10 @@ async function handler(req: Row, res: Row) {
             }
           }
         }
-        await markUnitSent(unit, "push");
-        totalSent++;
+        if (anyDelivered || !anyTransientFail) {
+          await markUnitSent(unit, "push");
+          totalSent++;
+        }
       }
 
       // 7b. Native push (FCM for Android, FCM-via-APNs for iOS). Skipped
@@ -362,20 +381,31 @@ async function handler(req: Row, res: Row) {
           if (platform === "ios" ? !doIos : !doAndroid) continue;
           for (const unit of toUnits(platformSessions)) {
             const payload = payloadForUnit(unit);
+            // Same delivery-aware gate as web push above: a transient
+            // APNs/FCM failure must not dedupe the unit and lose the
+            // reminder. (bug-hunt: push marked sent on transient failure)
+            let anyDelivered = false;
+            let anyTransientFail = false;
             for (const sub of platformSubs) {
               const result = platform === "ios"
                 ? await sendAPNs({ token: sub.endpoint, payload })
                 : await sendFCM({ token: sub.endpoint, payload, platform });
-              if (!result.ok && result.terminal) {
+              if (result.ok) {
+                anyDelivered = true;
+              } else if (result.terminal) {
                 await supabase
                   .from("push_subscriptions")
                   .delete()
                   .eq("endpoint", sub.endpoint);
                 staleRemoved++;
+              } else {
+                anyTransientFail = true;
               }
             }
-            await markUnitSent(unit, platform);
-            totalSent++;
+            if (anyDelivered || !anyTransientFail) {
+              await markUnitSent(unit, platform);
+              totalSent++;
+            }
           }
         }
       }

@@ -344,19 +344,26 @@ async function getPatientDetail(svc: Row, userId: Row, input: Row): Promise<Row>
     };
   }
 
+  // Order by created_at (a real timestamp), NOT the yearless "D-MMM"
+  // date text column — Postgres orders text lexicographically, so
+  // .order("date").limit(200) returned an ARBITRARY 200-row subset for a
+  // patient with more history, and `consumed` (summed below) was then
+  // computed over that partial slice → a wrong reported balance. The
+  // limit is raised to 5000 (same ceiling as the calendar feed) so the
+  // balance sums the full history in practice. (bug-hunt: cardi 200-cap)
   const [{ data: sessions, error: se }, { data: payments, error: pe }] = await Promise.all([
     svc.from("sessions")
       .select("date,time,status,rate,duration,modality,session_type,is_recurring,created_at")
       .eq("user_id", userId)
       .eq("patient_id", target.id)
-      .order("date", { ascending: false })
-      .limit(200),
+      .order("created_at", { ascending: false })
+      .limit(5000),
     svc.from("payments")
       .select("date,amount,method,created_at")
       .eq("user_id", userId)
       .eq("patient_id", target.id)
-      .order("date", { ascending: false })
-      .limit(200),
+      .order("created_at", { ascending: false })
+      .limit(5000),
   ]);
   if (se) throw new Error(se.message);
   if (pe) throw new Error(pe.message);
