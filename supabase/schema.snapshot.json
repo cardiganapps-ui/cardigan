@@ -3853,6 +3853,51 @@
       "udt_name": "uuid"
     },
     {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "user_widget_tokens",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "token_hash",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "user_widget_tokens",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "token_prefix",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "user_widget_tokens",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "user_widget_tokens",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "last_accessed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "user_widget_tokens",
+      "udt_name": "timestamptz"
+    },
+    {
       "column_default": "gen_random_uuid()",
       "column_name": "id",
       "data_type": "uuid",
@@ -5154,6 +5199,18 @@
       "table_name": "user_subscriptions"
     },
     {
+      "conname": "user_widget_tokens_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "user_widget_tokens"
+    },
+    {
+      "conname": "user_widget_tokens_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (user_id)",
+      "table_name": "user_widget_tokens"
+    },
+    {
       "conname": "whatsapp_audit_status_check",
       "contype": "c",
       "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'sent'::text, 'delivered'::text, 'read'::text, 'failed'::text])))",
@@ -6071,6 +6128,16 @@
       "tablename": "user_subscriptions"
     },
     {
+      "indexdef": "CREATE UNIQUE INDEX uniq_user_widget_tokens_hash ON public.user_widget_tokens USING btree (token_hash)",
+      "indexname": "uniq_user_widget_tokens_hash",
+      "tablename": "user_widget_tokens"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_widget_tokens_pkey ON public.user_widget_tokens USING btree (user_id)",
+      "indexname": "user_widget_tokens_pkey",
+      "tablename": "user_widget_tokens"
+    },
+    {
       "indexdef": "CREATE INDEX idx_whatsapp_audit_meta_id ON public.whatsapp_audit USING btree (meta_message_id)",
       "indexname": "idx_whatsapp_audit_meta_id",
       "tablename": "whatsapp_audit"
@@ -6953,6 +7020,15 @@
       "with_check": null
     },
     {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_widget_tokens select own",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_widget_tokens",
+      "with_check": null
+    },
+    {
       "cmd": "ALL",
       "permissive": "PERMISSIVE",
       "policyname": "wa_audit_owner",
@@ -7146,6 +7222,10 @@
     },
     {
       "rls_enabled": true,
+      "table_name": "user_widget_tokens"
+    },
+    {
+      "rls_enabled": true,
       "table_name": "whatsapp_audit"
     },
     {
@@ -7282,6 +7362,9 @@
     },
     {
       "table_name": "user_subscriptions"
+    },
+    {
+      "table_name": "user_widget_tokens"
     },
     {
       "table_name": "whatsapp_audit"
