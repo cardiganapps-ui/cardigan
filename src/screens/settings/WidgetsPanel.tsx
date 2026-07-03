@@ -45,44 +45,86 @@ export function WidgetsPanel({ readOnly = false }: { readOnly?: boolean }) {
     setBusy(true);
     const lines: string[] = [];
     const paint = (line: string) => { lines.push(line); setDiag(lines.join("\n")); };
-    let finished = false;
-    const watchdog = setTimeout(() => {
-      if (!finished) paint("✗ watchdog: 12s sin terminar — etapa colgada ↑");
-    }, 12000);
+
+    // Every step runs ISOLATED: its own timer, its own try/catch, its own
+    // race-timeout. One hung step can't block the next, so the readout
+    // always reaches the end and shows exactly which step is slow/broken.
+    // Ordered so the App Group state (debugState) is read FIRST — that's
+    // the fact that decides whether the bridge write ever lands.
+    const step = async <T,>(label: string, ms: number, fn: () => Promise<T>): Promise<T | undefined> => {
+      const t0 = performance.now();
+      try {
+        const race = Promise.race([
+          fn(),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`timeout ${ms}ms`)), ms)),
+        ]);
+        const r = await race;
+        paint(`✓ ${label} (${Math.round(performance.now() - t0)}ms)`);
+        return r;
+      } catch (e) {
+        paint(`✗ ${label} (${Math.round(performance.now() - t0)}ms): ${(e as Error)?.message || String(e)}`);
+        return undefined;
+      }
+    };
+
     try {
       paint(`inicio ${new Date().toISOString().slice(11, 19)}`);
       paint(`widgetsDisabled(local): ${widgetsDisabled()}`);
       paint(`datos: p=${patients?.length ?? "?"} s=${upcomingSessions?.length ?? "?"} pay=${payments?.length ?? "?"}`);
 
-      // Ask Capacitor DIRECTLY whether the native class is registered —
-      // synchronous, no bridge round-trip, cannot hang. THE decisive bit.
+      // (0) Registration — synchronous, cannot hang.
       try {
         const { Capacitor } = await import("@capacitor/core");
         paint(`isPluginAvailable(WidgetBridge): ${Capacitor.isPluginAvailable("WidgetBridge")}`);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const reg = (window as any).Capacitor?.Plugins ? Object.keys((window as any).Capacitor.Plugins).join(",") : "(n/a)";
-        paint(`native plugins: ${reg.slice(0, 160)}`);
       } catch (e) { paint(`✗ core import: ${(e as Error)?.message}`); }
 
-      paint("→ syncWidgets…");
-      const { syncWidgets } = await import("../../lib/widgetSync");
-      await syncWidgets({ patients, sessions: upcomingSessions, payments, groups });
-      paint("✓ syncWidgets volvió");
-
-      paint("→ debugState…");
-      const state = await widgetDebugState();
-      if (!state) paint("✗ bridge no disponible (plugin null)");
-      else if ("error" in state) paint(`✗ debugState: ${state.error}`);
-      else {
-        paint(`appGroup: ${state.appGroupAvailable} | snapshotBytes: ${state.snapshotBytes} | hasToken: ${state.hasToken}`);
-        paint(`widgetLastRun: ${state.widgetLastRun || "(nunca)"} | ${state.widgetLastState || ""}`);
+      // (1) debugState FIRST — reads the App Group directly. The one fact
+      // that's been missing: is the shared container reachable, does it
+      // already hold a snapshot/token, when did the widget last run.
+      const before = await step("debugState#1", 5000, () => widgetDebugState());
+      if (before && !("error" in before)) {
+        paint(`   appGroup=${before.appGroupAvailable} suite=${before.suiteName}`);
+        paint(`   snapshotBytes=${before.snapshotBytes} hasToken=${before.hasToken}`);
+        paint(`   widgetLastRun=${before.widgetLastRun || "(nunca)"} ${before.widgetLastState || ""}`);
+      } else if (before === null) {
+        paint("   (plugin null — bridge no disponible)");
       }
+
+      // (2) Isolated tiny bridge WRITE — proves the native setSnapshot
+      // handler round-trips, independent of the builder.
+      const { setWidgetSnapshot } = await import("../../lib/widgetBridge");
+      await step("setSnapshot(tiny)", 5000, () => setWidgetSnapshot('{"v":1,"probe":1}'));
+
+      // (3) Builder on REAL data — pure CPU, timed on its own. If this is
+      // slow, the hang is data-shape; if instant, it's the bridge.
+      await step("buildSnapshot(real)", 8000, async () => {
+        const { buildWidgetSnapshot } = await import("../../utils/widgetSnapshot");
+        const groupNameById = new Map((groups || []).map((g) => [g.id, g.name]));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const withGroups = (upcomingSessions || []).map((s: any) =>
+          s.group_id ? { ...s, groups: { name: groupNameById.get(s.group_id) || null } } : s
+        );
+        const snap = buildWidgetSnapshot({
+          sessions: withGroups, patients, payments,
+          tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+        const json = JSON.stringify(snap);
+        paint(`   snapshot=${json.length}B sesionesHoy=${snap.sessionsToday.length}`);
+        // (4) Real write, same isolated timer.
+        await setWidgetSnapshot(json);
+        return json.length;
+      });
+
+      // (5) Re-read App Group to confirm the write landed.
+      const after = await step("debugState#2", 5000, () => widgetDebugState());
+      if (after && !("error" in after)) {
+        paint(`   snapshotBytes=${after.snapshotBytes} hasToken=${after.hasToken}`);
+      }
+
       paint("fin ✓");
     } catch (err) {
       paint(`✗ excepción: ${(err as Error)?.message || String(err)}`);
     } finally {
-      finished = true;
-      clearTimeout(watchdog);
       setBusy(false);
     }
   };
