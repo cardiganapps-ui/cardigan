@@ -20,9 +20,20 @@ import Foundation
 import Capacitor
 import WidgetKit
 
-@objc(WidgetBridgePlugin)
+// NOTE: the ObjC-runtime name (@objc(...)) is deliberately "WidgetBridge",
+// MATCHING jsName — not the Swift class name. Capacitor's handleJSCall has
+// a self-healing fallback: `plugins[pluginId] ?? NSClassFromString(pluginId)`
+// where pluginId IS the jsName the JS proxy calls with ("WidgetBridge").
+// Exposing the class under that exact name means that even if BOTH primary
+// registration paths fail (packageClassList auto-register at bridge init,
+// and registerPluginInstance in CardiganBridgeViewController.capacitorDidLoad),
+// the very first method call resolves NSClassFromString("WidgetBridge"),
+// instantiates + registers the plugin, and dispatches — instead of silently
+// hanging forever (Capacitor returns without rejecting on plugin-not-found,
+// which is exactly the "every bridge call times out" symptom we hit).
+@objc(WidgetBridge)
 public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
-    public let identifier = "WidgetBridgePlugin"
+    public let identifier = "WidgetBridge"
     public let jsName = "WidgetBridge"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "setSnapshot", returnType: CAPPluginReturnPromise),
