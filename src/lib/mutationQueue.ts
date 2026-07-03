@@ -202,6 +202,57 @@ export async function retryDeadLetter(): Promise<number> {
   return revived.length;
 }
 
+/** Cancel a not-yet-drained optimistic mutation by its tempId — removes
+    any active AND dead-lettered entry whose optimisticMeta.tempId
+    matches. Use when the user deletes an offline-created row before it
+    drains, so the original insert never resurrects in the DB on
+    reconnect. Returns how many entries were removed. */
+export async function removeByTempId(tempId: string): Promise<number> {
+  if (!tempId) return 0;
+  await load();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const match = (e: QueueEntry) => !!(e.optimisticMeta as any) && (e.optimisticMeta as any).tempId === tempId;
+  const before = entries.length + deadLetter.length;
+  entries = entries.filter((e) => !match(e));
+  deadLetter = deadLetter.filter((e) => !match(e));
+  const removed = before - (entries.length + deadLetter.length);
+  if (removed > 0) {
+    await persist();
+    await persistDeadLetter();
+    notify();
+  }
+  return removed;
+}
+
+/** Patch the args of a not-yet-drained optimistic mutation by its
+    tempId. Use when the user EDITS an offline-created row before it
+    drains, so the queued insert lands with the edited values instead of
+    enqueuing a doomed UPDATE keyed by a non-UUID temp id. `mutator`
+    receives the entry's current args and returns the replacement.
+    Returns true if a matching entry was patched. */
+export async function updateByTempId(
+  tempId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mutator: (args: any) => any,
+): Promise<boolean> {
+  if (!tempId) return false;
+  await load();
+  let changed = false;
+  entries = entries.map((e) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((e.optimisticMeta as any) && (e.optimisticMeta as any).tempId === tempId) {
+      changed = true;
+      return { ...e, args: mutator(e.args) };
+    }
+    return e;
+  });
+  if (changed) {
+    await persist();
+    notify();
+  }
+  return changed;
+}
+
 export async function enqueue(op: string, args: unknown, optimisticMeta?: unknown): Promise<QueueEntry> {
   await load();
   const entry: QueueEntry = {

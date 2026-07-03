@@ -7,6 +7,7 @@ import { signInWithGoogleNative } from "../lib/nativeGoogleSignIn";
 import { clearInviteToken, getInviteContext } from "../utils/inviteTokenStorage";
 import { clearCachedData } from "../lib/dataCache";
 import { clearWidgets } from "../lib/widgetSync";
+import { clearPushState } from "../pushStore";
 import { track } from "../lib/analytics";
 
 // Field/discipline nouns (gender-neutral). The verification email
@@ -287,6 +288,45 @@ export function useAuth() {
     // redeemed it. Cleanup keeps the post-signout state identical
     // to a fresh visitor.
     clearInviteToken();
+
+    // Tear down THIS device's push + live tokens BEFORE revoking the
+    // session (we need the access token for the authed endpoints).
+    // Previously sign-out wiped caches but left the web-push
+    // subscription and the widget data token alive, so a signed-out or
+    // account-switched device kept receiving reminders that name the
+    // (now other user's) patients, and the widget token stayed valid
+    // server-side. (bug-hunt: push not unsubscribed on sign-out)
+    try {
+      const token = (await supabase.auth.getSession()).data?.session?.access_token;
+      // Web push: unregister this endpoint (row delete + browser
+      // unsubscribe). No-op where there's no service worker (native).
+      if (typeof navigator !== "undefined" && navigator.serviceWorker) {
+        const reg = await navigator.serviceWorker.ready.catch(() => null);
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
+        if (sub) {
+          await fetch("/api/push-unsubscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          }).catch(() => {});
+          await sub.unsubscribe().catch(() => {});
+        }
+        await clearPushState().catch(() => {});
+      }
+      // Widget data token: on a global sign-out (revoke everywhere)
+      // also kill it server-side, so a lost/stolen device that can't
+      // run the local clearWidgets() below still stops pulling data.
+      if (safeScope === "global") {
+        await fetch("/api/widget-token", {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {});
+      }
+    } catch (err) {
+      // Best-effort — never block sign-out on teardown failure.
+      if (import.meta.env.DEV) console.warn("signOut teardown:", (err as Error)?.message || err);
+    }
+
     try { await supabase.auth.signOut({ scope: safeScope }); }
     catch (err) {
       // Network / Supabase-side error — log but proceed to wipe local

@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 import { PAYMENT_METHOD } from "../data/constants";
 import { formatShortDate, getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
-import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
+import { enqueue, registerHandler, onReplay, removeByTempId, updateByTempId } from "../lib/mutationQueue";
 import type { TablesInsert } from "../types/db";
 import type { PatientRow, PaymentRow } from "../types/rows";
 import { restoreRows, composeReverts } from "../lib/optimistic";
@@ -198,15 +198,18 @@ export function createPaymentActions(
 
     // Skip the network call when we know we can't reach it. Deleting
     // a temp-id row (one that originated offline and hasn't drained
-    // yet) is also a queue-only operation — no real row exists yet.
+    // yet) is a queue-only operation — no real row exists yet.
     const isOptimisticRow = typeof paymentId === "string" && paymentId.startsWith("temp-");
     if (isOptimisticRow || (typeof navigator !== "undefined" && navigator.onLine === false)) {
-      if (!isOptimisticRow) {
+      if (isOptimisticRow) {
+        // CANCEL the still-queued insert. Previously this was a no-op,
+        // so on reconnect drain() replayed the insert and the payment
+        // the user just deleted RESURRECTED in the DB — inflating
+        // patient.paid. (bug-hunt: offline payment resurrection)
+        await removeByTempId(paymentId);
+      } else {
         await enqueue("payments.delete", { id: paymentId, userId });
       }
-      // For an unqueued temp row we just drop the optimistic insert
-      // from the queue (Phase 3 — for now the entry replays harmlessly
-      // and the resulting row gets deleted on next user action).
       return true;
     }
 
@@ -275,6 +278,32 @@ export function createPaymentActions(
       setPatients(prev => prev.map(p => patientUpdates.has(p.id) ? { ...p, paid: patientUpdates.get(p.id)! } : p));
     }
     setMutationError("");
+
+    // Editing a row that hasn't drained yet (its INSERT is still queued
+    // — offline create then edit). Patch the queued insert in place so
+    // it lands with the new values, instead of enqueuing an UPDATE keyed
+    // by a non-UUID temp id (which 22P02s on drain and dead-letters
+    // while the insert lands the ORIGINAL amount). The optimistic row +
+    // patient.paid are already updated above. (bug-hunt: offline payment
+    // edit) If no queued insert is found (online, insert still
+    // in-flight), fall through to the normal path.
+    if (typeof paymentId === "string" && paymentId.startsWith("temp-")) {
+      const patched = await updateByTempId(paymentId, (a: { row: PaymentInsert }) => ({
+        ...a,
+        row: {
+          ...a.row,
+          patient_id: newPatient?.id || null,
+          patient: patientName,
+          initials: newPatient?.initials || getInitials(patientName),
+          amount: parsedAmount,
+          date: date ?? a.row.date,
+          method: method ?? a.row.method,
+          note: note || null,
+          color_idx: newPatient?.colorIdx || 0,
+        },
+      }));
+      if (patched) return true;
+    }
 
     const revertOptimistic = composeReverts(
       restoreRows(setPayments, [prevPayment]),
@@ -387,7 +416,12 @@ export function createPaymentActions(
         if (done) return true;
         done = true;
         const isOptimisticRow = typeof paymentId === "string" && paymentId.startsWith("temp-");
-        if (isOptimisticRow) return true;
+        if (isOptimisticRow) {
+          // Cancel the queued insert so the deleted payment can't
+          // resurrect on drain. (bug-hunt: offline payment resurrection)
+          await removeByTempId(paymentId);
+          return true;
+        }
         if (typeof navigator !== "undefined" && navigator.onLine === false) {
           await enqueue("payments.delete", { id: paymentId, userId });
           return true;

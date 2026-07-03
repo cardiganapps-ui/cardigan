@@ -152,6 +152,30 @@ describe("deletePayment offline path", () => {
     expect(queue.getEntries()).toHaveLength(0);
     expect(mock.calls).toHaveLength(0);
   });
+
+  // bug-hunt: offline create-then-delete must CANCEL the queued insert.
+  // Previously the delete was a no-op against the queue, so on reconnect
+  // drain() replayed the insert and the deleted payment resurrected in
+  // the DB (inflating patient.paid).
+  it("offline create then delete cancels the queued insert — nothing drains", async () => {
+    setOnline(false);
+    const ctx = seed();
+    await ctx.actions.createPayment({ patientName: "Ana López", amount: 300 });
+    expect(queue.getEntries()).toHaveLength(1);
+    const tempId = ctx.payments.get()[0].id as string;
+    expect(tempId.startsWith("temp-")).toBe(true);
+
+    const ok = await ctx.actions.deletePayment(tempId);
+    expect(ok).toBe(true);
+    // Insert removed from the queue → nothing to replay.
+    expect(queue.getEntries()).toHaveLength(0);
+    expect(ctx.payments.get()).toHaveLength(0);
+
+    const result = await queue.drain();
+    expect(result).toEqual({ drained: 0, remaining: 0, conflicts: 0 });
+    // No payments.insert ever hit the server.
+    expect(mock.calls.filter((c: Row) => c.table === "payments")).toHaveLength(0);
+  });
 });
 
 describe("updatePayment offline path", () => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { todayISO, isoToShortDate, shortDateToISO } from "../utils/dates";
 import { PAYMENT_METHOD } from "../data/constants";
 import { IconX } from "./Icons";
@@ -33,6 +33,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
     scrollRef.current = el;
     setPanelEl(el);
   };
+  const inFlightRef = useRef(false);
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
   const [method, setMethod] = useState<string>(PAYMENT_METHOD.TRANSFER);
@@ -88,13 +89,23 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Real in-flight guard. The button's `disabled={mutating}` is dead
+    // for creates: createPayment is fully optimistic and returns
+    // synchronously without ever setting `mutating`, so a fast second
+    // tap (or Enter-then-click) used to fire a SECOND createPayment and
+    // insert a duplicate payment row — inflating patient.paid. A ref
+    // (not state) blocks re-entry synchronously within the same tick.
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     const parsedAmount = Number(amount);
     if (!patientName.trim()) {
       setFormError(t("finances.selectPatient"));
+      inFlightRef.current = false;
       return;
     }
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setFormError(t("finances.enterAmount"));
+      inFlightRef.current = false;
       return;
     }
     const finalMethod = method === PAYMENT_METHOD.OTHER ? (customMethod.trim() || t("finances.other")) : method;
@@ -121,6 +132,11 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
       }
     } catch (ex) {
       setFormError((ex as Error)?.message || "Error al guardar");
+    } finally {
+      // Released after the awaited create/update settles. On the success
+      // path animatedClose already unmounts the modal, so this mainly
+      // re-arms the form when a validation/server error kept it open.
+      inFlightRef.current = false;
     }
   };
 

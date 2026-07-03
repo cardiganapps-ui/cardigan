@@ -252,7 +252,17 @@ export function buildWidgetSnapshot({
   // ── Money KPIs (Prime Directive path) ──
   // Raw sessions + canonical predicate; potentials/discarded excluded
   // from the outstanding lane, same as Home.tsx::totalOwed.
-  const enriched = enrichPatientsWithBalance(allPatients, allSessions, now);
+  //
+  // Pass userNow (the wall-clock-in-tz reference), NOT the raw UTC
+  // instant. sessionEndMoment builds the session's end from its local
+  // "HH:MM" as a runtime-local Date; on the client the runtime IS the
+  // user's tz so `now` lines up, but this builder also runs server-side
+  // (api/widget-data on UTC Vercel), where feeding raw `now` compares a
+  // Mexico-wall-clock session end against a UTC instant — 6h of drift
+  // that makes a session near its hour count toward "Por cobrar" hours
+  // early. userNow re-frames the reference into the same wall-clock
+  // space as sessionEndMoment. (bug-hunt: widget UTC balance)
+  const enriched = enrichPatientsWithBalance(allPatients, allSessions, userNow);
   let pendingTotal = 0;
   let owingPatients = 0;
   for (const p of enriched) {

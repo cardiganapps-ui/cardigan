@@ -442,10 +442,30 @@ export function useCardiganData(
 
         const insertedRows: Record<string, unknown>[] = [];
         const patientUpdates = new Map<string, number>();
+        // Group fan-out rows carry group_id (so uniq_sessions_user_slot,
+        // which is group_id IS NULL, doesn't apply) but they DO hit
+        // uniq_sessions_patient_date_time (patient_id, date, time). A
+        // member who also has an individual session — or a slot from
+        // another group — at the same (date,time) would 23505 and, being
+        // one atomic insert, sink the whole group's batch on every load.
+        // computeGroupAutoExtendRows only dedups within the group's own
+        // rows, so reserve slots at the (patient,date,time) grain across
+        // ALL fetched rows here. (bug-hunt #7, group half)
+        const occupiedPatientSlots = new Set(
+          sData
+            .filter(s => s.patient_id)
+            .map(s => `${s.patient_id}|${normalizeShortDate(s.date)}|${s.time}`)
+        );
         for (const group of gData) {
           const members = gmData.filter(m => m.group_id === group.id);
           const groupSessions = sData.filter(s => s.group_id === group.id);
-          const rows = computeGroupAutoExtendRows({ group, members, patientsById, groupSessions, today, threshold, extendEnd, userId });
+          const rows = computeGroupAutoExtendRows({ group, members, patientsById, groupSessions, today, threshold, extendEnd, userId })
+            .filter(r => {
+              const slot = `${r.patient_id}|${normalizeShortDate(r.date)}|${r.time}`;
+              if (occupiedPatientSlots.has(slot)) return false;
+              occupiedPatientSlots.add(slot);
+              return true;
+            });
           if (rows.length === 0) continue;
           const { data, error } = await supabase.from("sessions").insert(rows as Database["public"]["Tables"]["sessions"]["Insert"][]).select();
           if (!error && data) {

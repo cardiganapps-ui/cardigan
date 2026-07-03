@@ -199,6 +199,37 @@ describe("buildWidgetSnapshot — money KPIs (Prime Directive)", () => {
     expect(snap.kpis.owingPatients).toBe(0);
   });
 
+  // bug-hunt: the balance reference must be the tz-adjusted wall clock,
+  // not the raw UTC instant — otherwise on a UTC server a session near
+  // its hour counts toward "Por cobrar" hours early. This is a
+  // differential test: same instant + sessions, only tz differs. Because
+  // both calls share the runner's tz for building sessionEndMoment, the
+  // ONLY thing that can move pendingTotal is the reference we pass in —
+  // which pre-fix was a tz-independent raw `now` (identical → bug), and
+  // post-fix is the tz wall clock (differs). Runner-tz independent.
+  it("computes pending balance against the tz wall clock, not raw UTC", () => {
+    // A patient with one scheduled session dated today at 12:00 whose
+    // consumed-ness the two references straddle: at this instant the UTC
+    // wall clock is well past 13:00 (session end) while the UTC-12 wall
+    // clock is still in the early morning.
+    const instant = new Date("2026-07-15T18:30:00Z");
+    const sessionRow = (tz: string) => {
+      // Date string must match the builder's today-key in that tz.
+      const wall = new Date(instant.toLocaleString("en-US", { timeZone: tz }));
+      const short = `${wall.getDate()}-${["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][wall.getMonth()]}`;
+      return { id: "s1", patient_id: "p1", patient: "Ana", time: "12:00", date: short, status: "scheduled", created_at: instant.toISOString() };
+    };
+    const patients = [{ id: "p1", status: "active", rate: 700, paid: 0 }];
+
+    const east = buildWidgetSnapshot({ sessions: [sessionRow("UTC")], patients, payments: [], tz: "UTC", now: instant });
+    const west = buildWidgetSnapshot({ sessions: [sessionRow("Etc/GMT+12")], patients, payments: [], tz: "Etc/GMT+12", now: instant });
+
+    // UTC: 18:30 wall > 13:00 end → session consumed → owes 700.
+    expect(east.kpis.pendingTotal).toBe(700);
+    // UTC-12: 06:30 wall < 13:00 end → not yet consumed → owes 0.
+    expect(west.kpis.pendingTotal).toBe(0);
+  });
+
   it("collectedMonth buckets by created_at with short-date fallback for legacy rows", () => {
     const snap = build({
       payments: [
