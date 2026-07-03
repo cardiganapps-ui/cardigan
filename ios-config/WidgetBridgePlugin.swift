@@ -29,7 +29,11 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setToken", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hasToken", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "debugState", returnType: CAPPluginReturnPromise),
     ]
+
+    private static let widgetRunKey = "widget.diag.lastRun"
+    private static let widgetStateKey = "widget.diag.lastState"
 
     // Must match ios-config/App.entitlements, the widget entitlements,
     // and SharedModels.swift::AppGroupStore.suiteName.
@@ -85,5 +89,25 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         store.removeObject(forKey: Self.tokenKey)
         reloadWidgets()
         call.resolve()
+    }
+
+    /// Diagnostics for "widgets active but not rendering". Reports, from
+    /// the APP process: whether the App Group container is reachable,
+    /// how many bytes the snapshot/token occupy, and the widget
+    /// process's last heartbeat (written by the extension). Reading the
+    /// widget's heartbeat back here proves the container is genuinely
+    /// SHARED between the two processes.
+    @objc func debugState(_ call: CAPPluginCall) {
+        let store = self.store
+        let snapshot = store?.string(forKey: Self.snapshotKey)
+        let token = store?.string(forKey: Self.tokenKey)
+        call.resolve([
+            "appGroupAvailable": store != nil,
+            "suiteName": Self.suiteName,
+            "snapshotBytes": snapshot?.utf8.count ?? 0,
+            "hasToken": (token?.isEmpty == false),
+            "widgetLastRun": store?.string(forKey: Self.widgetRunKey) ?? "",
+            "widgetLastState": store?.string(forKey: Self.widgetStateKey) ?? "",
+        ])
     }
 }

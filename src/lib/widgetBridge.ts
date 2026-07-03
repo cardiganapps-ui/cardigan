@@ -15,11 +15,21 @@
 
 import { isNative, isIOS } from "./platform";
 
+export interface WidgetDebugState {
+  appGroupAvailable: boolean;
+  suiteName: string;
+  snapshotBytes: number;
+  hasToken: boolean;
+  widgetLastRun: string;
+  widgetLastState: string;
+}
+
 interface WidgetBridgePlugin {
   setSnapshot(options: { json: string }): Promise<void>;
   setToken(options: { token: string }): Promise<void>;
   hasToken(): Promise<{ value: boolean }>;
   clear(): Promise<void>;
+  debugState(): Promise<WidgetDebugState>;
 }
 
 let pluginPromise: Promise<WidgetBridgePlugin | null> | null = null;
@@ -71,6 +81,18 @@ export async function widgetHasToken(): Promise<boolean> {
     return !!value;
   } catch {
     return false;
+  }
+}
+
+/** Read the bridge + App Group diagnostic state. Returns null when the
+    bridge itself isn't callable (which is itself the diagnosis). */
+export async function widgetDebugState(): Promise<WidgetDebugState | { error: string } | null> {
+  const plugin = await getPlugin();
+  if (!plugin) return null;
+  try {
+    return await plugin.debugState();
+  } catch (err) {
+    return { error: (err as Error)?.message || String(err) };
   }
 }
 

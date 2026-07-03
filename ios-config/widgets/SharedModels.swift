@@ -75,8 +75,21 @@ enum AppGroupStore {
     static let suiteName = "group.mx.cardigan.app"
     static let snapshotKey = "widget.snapshot.v1"
     static let tokenKey = "widget.token"
+    // Diagnostics: the widget process stamps these on every timeline
+    // build; the app reads them back via WidgetBridge.debugState() to
+    // prove the App Group container is actually shared between the two
+    // processes (and to see what state the widget last rendered in).
+    static let widgetRunKey = "widget.diag.lastRun"
+    static let widgetStateKey = "widget.diag.lastState"
 
     static var defaults: UserDefaults? { UserDefaults(suiteName: suiteName) }
+
+    /// Called from every provider's getTimeline so the app can confirm
+    /// the widget process reached the shared container.
+    static func recordWidgetRun(state: String) {
+        defaults?.set(ISO8601DateFormatter().string(from: Date()), forKey: widgetRunKey)
+        defaults?.set(state, forKey: widgetStateKey)
+    }
 
     static func loadSnapshot() -> WidgetSnapshot? {
         guard let raw = defaults?.string(forKey: snapshotKey),

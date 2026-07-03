@@ -4,8 +4,9 @@ import { IconSmartphone } from "../../components/Icons";
 import { useT } from "../../i18n/index";
 import { useCardiganMain } from "../../context/CardiganContext";
 import { useWidgetToken, setWidgetTokenState, refreshWidgetToken } from "../../hooks/useWidgetToken";
-import { setWidgetToken, clearWidgetData } from "../../lib/widgetBridge";
+import { setWidgetToken, clearWidgetData, widgetDebugState, type WidgetDebugState } from "../../lib/widgetBridge";
 import { widgetsDisabled, setWidgetsDisabled } from "../../lib/widgetSync";
+import { useCardigan } from "../../context/CardiganContext";
 
 /* iOS widgets management panel (Settings → Widgets, iOS native only).
 
@@ -23,12 +24,32 @@ export function WidgetsPanel({ readOnly = false }: { readOnly?: boolean }) {
   const { t } = useT();
   const { showToast } = useCardiganMain();
   const { hasToken, lastAccessedAt, loaded } = useWidgetToken();
+  const { patients, upcomingSessions, payments, groups } = useCardigan();
   const [busy, setBusy] = useState(false);
   const [disabled, setDisabled] = useState(widgetsDisabled());
+  const [diag, setDiag] = useState<WidgetDebugState | { error: string } | null | "loading">(null);
 
   // The lazy mint can land after this panel's first GET — refetch on
   // mount so the status doesn't show "inactive" on a fresh login.
   useEffect(() => { refreshWidgetToken(); }, []);
+  useEffect(() => { widgetDebugState().then(setDiag); }, []);
+
+  // Force a snapshot write + token mint, then re-read the bridge/App
+  // Group diagnostic. Surfaces exactly which link is broken when
+  // widgets read "active" but render "Abre Cardigan para configurar".
+  const runDiagnostic = async () => {
+    if (busy) return;
+    setBusy(true);
+    setDiag("loading");
+    try {
+      const { syncWidgets } = await import("../../lib/widgetSync");
+      await syncWidgets({ patients, sessions: upcomingSessions, payments, groups });
+      await new Promise(r => setTimeout(r, 600));
+      setDiag(await widgetDebugState());
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const callWidgetToken = async (method: string) => {
     if (busy) return null;
@@ -144,6 +165,43 @@ export function WidgetsPanel({ readOnly = false }: { readOnly?: boolean }) {
           {busy ? t("loading") : t("settings.widgetsEnable")}
         </button>
       )}
+
+      {/* ── Diagnóstico ──
+         Temporary readout to debug "active but not rendering". Reports
+         whether the App Group bridge is reachable, whether the snapshot/
+         token landed in the shared container, and the widget process's
+         last heartbeat (proves cross-process sharing). */}
+      <div style={{ marginTop: 4, paddingTop: 12, borderTop: "1px solid var(--border-lt)" }}>
+        <button
+          className="btn btn-ghost"
+          type="button"
+          onClick={runDiagnostic}
+          disabled={busy}
+          style={{ width: "100%" }}
+        >
+          {diag === "loading" ? "Ejecutando…" : "Forzar sincronización y diagnóstico"}
+        </button>
+        {diag && diag !== "loading" && (
+          <pre style={{
+            marginTop: 10, padding: "10px 12px", background: "var(--cream)",
+            borderRadius: "var(--radius)", fontSize: 11, lineHeight: 1.5,
+            whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--charcoal-md)",
+            fontFamily: "ui-monospace, monospace",
+          }}>
+            {"error" in diag
+              ? `bridge NO disponible: ${diag.error}`
+              : [
+                  `bridge: OK`,
+                  `appGroup: ${diag.appGroupAvailable}`,
+                  `suite: ${diag.suiteName}`,
+                  `snapshotBytes: ${diag.snapshotBytes}`,
+                  `hasToken: ${diag.hasToken}`,
+                  `widgetLastRun: ${diag.widgetLastRun || "(nunca)"}`,
+                  `widgetLastState: ${diag.widgetLastState || "(n/a)"}`,
+                ].join("\n")}
+          </pre>
+        )}
+      </div>
     </div>
   );
 }

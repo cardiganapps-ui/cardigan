@@ -20,6 +20,11 @@ enum SnapshotFetcher {
     /// → stale cache. Never throws.
     static func load() async -> WidgetSnapshot? {
         let cached = AppGroupStore.loadSnapshot()
+        let hasToken = AppGroupStore.token() != nil
+        // Diagnostic heartbeat: proves the widget PROCESS reached the
+        // shared App Group container (the app reads this back).
+        AppGroupStore.recordWidgetRun(
+            state: "cache=\(cached != nil) token=\(hasToken)")
         if let cached, let age = cached.generatedAtDate.map({ Date().timeIntervalSince($0) }),
            age >= 0, age < freshEnough {
             return cached
