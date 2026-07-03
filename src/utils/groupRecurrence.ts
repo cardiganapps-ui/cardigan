@@ -17,7 +17,7 @@
 
 import { GROUP_STATUS, SCHEDULING_MODE, RECURRENCE_STRIDE_DAYS, DEFAULT_RECURRENCE_FREQUENCY, SESSION_STATUS } from "../data/constants";
 import { getRecurringDates } from "./recurrence";
-import { formatShortDate, parseShortDate, toISODate } from "./dates";
+import { formatShortDate, parseShortDate, parseRowDate, toISODate } from "./dates";
 
 export interface GRGroup {
   id: string;
@@ -34,7 +34,7 @@ export interface GRGroup {
 export interface GRMember { patient_id?: string | null; left_at?: string | null }
 export interface GRPatient { name?: string | null; initials?: string | null; rate?: number | null }
 type PatientMap = Map<string, GRPatient> | null | undefined;
-export interface GRSession { status?: string | null; time?: string | null; date: string; patient_id?: string | null }
+export interface GRSession { status?: string | null; time?: string | null; date: string; patient_id?: string | null; created_at?: string | null }
 
 export interface GroupSessionRow {
   user_id: string | undefined;
@@ -188,9 +188,14 @@ export function computeGroupAutoExtendRows({ group, members, patientsById, group
   for (const s of (groupSessions || [])) {
     if (s.status !== SESSION_STATUS.SCHEDULED) continue;
     if (s.time !== group.time) continue;
-    const iso = (() => { try { return toISODate(parseShortDate(s.date)); } catch { return null; } })();
+    // Anchor the yearless-date parse on the row's created_at — a past
+    // scheduled occurrence >6 months old would otherwise infer to a
+    // FUTURE year, pass the `iso >= today` gate as a phantom future
+    // slot, become `latest`, and (being > threshold) short-circuit
+    // auto-extend so the group silently stops generating sessions.
+    const iso = (() => { try { return toISODate(parseRowDate(s)); } catch { return null; } })();
     if (!iso || iso < todayISOStr) continue;
-    const d = parseShortDate(s.date);
+    const d = parseRowDate(s);
     if (!latest || d > latest) latest = d;
   }
   const DAY_MS = 86400000;

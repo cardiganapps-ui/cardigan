@@ -143,6 +143,31 @@ describe("computeGroupAutoExtendRows", () => {
     expect(rows).toEqual([]);
   });
 
+  // Bug-hunt #3: a group whose only scheduled rows are >6 months old
+  // (with matching created_at) must NOT be treated as having a future
+  // occurrence. Under today-anchored parsing the old "15-Oct" row infers
+  // to THIS coming October (future, past the threshold), so auto-extend
+  // short-circuited to [] and the group silently stopped generating
+  // sessions forever. Anchoring on created_at keeps it in the past →
+  // bootstrap from today.
+  it("does not let a >6-month-old scheduled row masquerade as a future anchor", () => {
+    const today = new Date("2026-06-15"); const c = ctx(today);
+    const past = new Date("2025-10-15");
+    const oldRow = {
+      id: "gs-old", group_id: "g1", patient_id: "pa",
+      date: formatShortDate(past), time: "17:00",
+      status: SESSION_STATUS.SCHEDULED, rate: 500,
+      created_at: past.toISOString(),
+    };
+    const rows = computeGroupAutoExtendRows({
+      group: group({ day: formatDay(c.today) }), members: members(["pa"]),
+      patientsById, groupSessions: [oldRow], ...c,
+    });
+    // Fixed: the group bootstraps a fresh window. (Pre-fix: [].)
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every(r => toISODate(parseShortDate(r.date)) >= toISODate(c.today))).toBe(true);
+  });
+
   it("bootstraps future occurrences when none exist, never past (phantom prevention)", () => {
     const today = new Date("2026-06-15"); const c = ctx(today);
     // Only past scheduled rows exist → no future anchor → bootstrap from today.

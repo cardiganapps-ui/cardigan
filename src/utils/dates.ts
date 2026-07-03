@@ -91,6 +91,33 @@ export function parseShortDate(str: string, referenceDate?: Date): Date {
   return new Date(y, m, d);
 }
 
+/**
+ * Parse a session/payment row's yearless "D-MMM" date, anchoring the
+ * year inference on the row's own `created_at` rather than today.
+ *
+ * ⚠️ Why this exists: `parseShortDate(row.date)` with no reference
+ * anchors on today, and a yearless date more than ~6 months old then
+ * infers to the WRONG year (the nearest-year heuristic flips it a year
+ * forward). That silently reclassifies a past row as a future one,
+ * which corrupts "delete future sessions" filters (deleting billed
+ * history), schedule maps, and balances. `created_at` is always within
+ * the recurrence window of the true session date, so it's the stable
+ * anchor — the same invariant `utils/accounting.ts::sessionEndMoment`
+ * relies on. Use this ANYWHERE a stored row's yearless date is compared
+ * against an absolute date.
+ *
+ * `fallback` (default: today) is used only when `created_at` is absent
+ * or unparseable, preserving the previous behavior for such rows.
+ */
+export function parseRowDate(
+  row: { date: string; created_at?: string | null },
+  fallback?: Date,
+): Date {
+  const created = row.created_at ? new Date(row.created_at) : null;
+  const anchor = created && !isNaN(created.getTime()) ? created : fallback;
+  return parseShortDate(row.date, anchor);
+}
+
 export function parseLocalDate(str: string): Date {
   const [y, m, d] = str.split("-");
   return new Date(+y, +m - 1, +d);

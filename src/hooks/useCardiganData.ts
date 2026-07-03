@@ -8,7 +8,7 @@ import type {
   ExpenseRow, RecurringExpenseRow, RescheduleRequestRow, TagRow, TagLinkRow,
   NoteAttachmentRow, GroupRow, GroupMemberRow, NotificationRow,
 } from "../types/rows";
-import { formatShortDate, normalizeShortDate, parseShortDate, toISODate } from "../utils/dates";
+import { formatShortDate, normalizeShortDate, toISODate } from "../utils/dates";
 import {
   ADMIN_EMAIL,
   RECURRENCE_EXTEND_THRESHOLD_DAYS,
@@ -29,7 +29,7 @@ import { createInboxActions } from "./useInbox";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
 import { computeGroupAutoExtendRows } from "../utils/groupRecurrence";
-import { computeConsumedByPatient, applyConsumedToPatients } from "../utils/accounting";
+import { computeConsumedByPatient, applyConsumedToPatients, sessionEndMoment } from "../utils/accounting";
 import { fetchAllPaged } from "../utils/paginate";
 import { useFocusRefresh } from "./useFocusRefresh";
 
@@ -357,6 +357,22 @@ export function useCardiganData(
         const insertedRows: Record<string, unknown>[] = [];
         const patientUpdates = new Map<string, { sessions: number }>();
 
+        // User-level occupied-slot set, scoped to match the DB index
+        // `uniq_sessions_user_slot (user_id, date, time) WHERE
+        // status='scheduled' AND group_id IS NULL`. computeAutoExtendRows
+        // only dedups against the patient's OWN rows, so a generated row
+        // for patient B landing on a (date,time) already held by patient A
+        // would pass that check and then trip 23505 — which, because the
+        // insert is one atomic statement, killed patient B's ENTIRE batch
+        // and re-failed on every load. We reserve slots here (across
+        // patients within this pass too) so we never attempt a colliding
+        // insert. (bug-hunt #7)
+        const occupiedUserSlots = new Set(
+          sData
+            .filter(s => s.status === SESSION_STATUS.SCHEDULED && !s.group_id)
+            .map(s => `${s.date}|${s.time}`)
+        );
+
         for (const patient of pData) {
           // Episodic patients have no perpetual slot — the practitioner
           // schedules the next visit at the end of each consult. Skip
@@ -367,7 +383,13 @@ export function useCardiganData(
           // anyone.)
           if (patient.scheduling_mode === "episodic") continue;
           const allPSess = sData.filter(s => s.patient_id === patient.id);
-          const rows = computeAutoExtendRows({ patient, allPSess, today, threshold, extendEnd, userId });
+          const rows = computeAutoExtendRows({ patient, allPSess, today, threshold, extendEnd, userId })
+            .filter(r => {
+              const slot = `${r.date}|${r.time}`;
+              if (occupiedUserSlots.has(slot)) return false; // slot taken → would 23505
+              occupiedUserSlots.add(slot);                   // reserve for later patients
+              return true;
+            });
           if (rows.length === 0) continue;
 
           const { data, error } = await supabase.from("sessions").insert(rows as Database["public"]["Tables"]["sessions"]["Insert"][]).select();
@@ -649,13 +671,13 @@ export function useCardiganData(
     const now = new Date();
     return upcomingSessions.map(s => {
       if (s.status !== SESSION_STATUS.SCHEDULED) return s;
-      const d = parseShortDate(s.date);
-      if (s.time) {
-        const [h, m] = s.time.split(":");
-        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
-      }
-      d.setTime(d.getTime() + 60 * 60 * 1000);
-      if (now >= d) {
+      // Use the SAME moment function the accounting predicate uses
+      // (anchors the yearless date's year on created_at, not today), so
+      // a session that renders "Completada" here is exactly the one that
+      // counts toward amountDue. The prior inline parse used today-
+      // anchoring and drifted from accounting for rows >6 months old —
+      // the UI would show a status the balance disagreed with.
+      if (now >= sessionEndMoment(s, now)) {
         const display = { ...s, status: SESSION_STATUS.COMPLETED, _autoCompleted: true };
         // Non-enumerable dev marker so utils/accounting.js can assert it
         // never receives a display-enriched row. Non-enumerable = invisible

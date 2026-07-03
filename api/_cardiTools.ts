@@ -60,6 +60,17 @@ function parseShortDate(str: Row, ref = new Date()): Date {
   return new Date(best, m, d);
 }
 
+// created_at-anchored reference for a stored row's yearless "D-MMM" date.
+// Mirror of utils/dates.ts::parseRowDate: anchoring year inference on the
+// row's own created_at (not "now") keeps a session/payment/expense >6
+// months old in its TRUE period. Without this, Cardi's finance/summary
+// tools bucket old rows into the wrong month/year near boundaries and
+// report totals that disagree with the app. (bug-hunt #6)
+function rowRef(row: Row): Date {
+  const c = row && row.created_at ? new Date(row.created_at) : null;
+  return c && !isNaN(c.getTime()) ? c : new Date();
+}
+
 // Mirror of utils/accounting.js::sessionCountsTowardBalance. Keep in
 // sync — if the predicate drifts the balances Cardi reports won't
 // match the in-app numbers and users will lose trust.
@@ -234,7 +245,7 @@ async function listPatients(svc: Row, userId: Row, input: Row): Promise<Row> {
       .eq("user_id", userId)
       .in("patient_id", ids),
     svc.from("payments")
-      .select("patient_id,amount,date")
+      .select("patient_id,amount,date,created_at")
       .eq("user_id", userId)
       .in("patient_id", ids),
   ]);
@@ -269,13 +280,13 @@ async function listPatients(svc: Row, userId: Row, input: Row): Promise<Row> {
     const sessions_cancelled = sess.filter((s: Row) => s.status === "cancelled").length;
     const sessions_charged = sess.filter((s: Row) => s.status === "charged").length;
     const sessions_last_30d = sess.filter((s: Row) => {
-      const d = parseShortDate(s.date);
+      const d = parseShortDate(s.date, rowRef(s));
       const delta = now.getTime() - d.getTime();
       return delta >= 0 && delta <= ms30d && sessionCountsTowardBalance(s, now);
     }).length;
 
     const sortedPays = pays
-      .map((py: Row) => ({ ...py, parsed: parseShortDate(py.date) }))
+      .map((py: Row) => ({ ...py, parsed: parseShortDate(py.date, rowRef(py)) }))
       .sort((a: Row, b: Row) => b.parsed - a.parsed);
     const last_payment = sortedPays[0];
 
@@ -341,7 +352,7 @@ async function getPatientDetail(svc: Row, userId: Row, input: Row): Promise<Row>
       .order("date", { ascending: false })
       .limit(200),
     svc.from("payments")
-      .select("date,amount,method")
+      .select("date,amount,method,created_at")
       .eq("user_id", userId)
       .eq("patient_id", target.id)
       .order("date", { ascending: false })
@@ -406,7 +417,7 @@ async function getFinanceSummary(svc: Row, userId: Row, input: Row): Promise<Row
   const [{ data: patients, error: pe }, { data: sessions, error: se }, { data: payments, error: paye }] = await Promise.all([
     svc.from("patients").select("id,rate,paid,opening_balance,status").eq("user_id", userId).in("status", ["active", "ended"]),
     svc.from("sessions").select("patient_id,date,time,status,rate,modality,session_type,created_at").eq("user_id", userId),
-    svc.from("payments").select("date,amount,method").eq("user_id", userId),
+    svc.from("payments").select("date,amount,method,created_at").eq("user_id", userId),
   ]);
   if (pe) throw new Error(pe.message);
   if (se) throw new Error(se.message);
@@ -420,7 +431,7 @@ async function getFinanceSummary(svc: Row, userId: Row, input: Row): Promise<Row
   };
 
   // Sessions in range
-  const sessRows = (sessions || []).map((s: Row) => ({ ...s, _d: parseShortDate(s.date) }));
+  const sessRows = (sessions || []).map((s: Row) => ({ ...s, _d: parseShortDate(s.date, rowRef(s)) }));
   const sessionsInRange = sessRows.filter((s: Row) => inRange(s._d));
 
   const sessions_scheduled_total = sessionsInRange.length;
@@ -435,7 +446,7 @@ async function getFinanceSummary(svc: Row, userId: Row, input: Row): Promise<Row
   }
 
   // Payments in range
-  const payRows = (payments || []).map((p: Row) => ({ ...p, _d: parseShortDate(p.date) }));
+  const payRows = (payments || []).map((p: Row) => ({ ...p, _d: parseShortDate(p.date, rowRef(p)) }));
   const paymentsInRange = payRows.filter((p: Row) => inRange(p._d));
   const total_received_mxn = paymentsInRange.reduce((sum: Row, p: Row) => sum + (p.amount || 0), 0);
   const by_method: Row = {};
@@ -489,9 +500,9 @@ async function getExpenseSummary(svc: Row, userId: Row, input: Row): Promise<Row
   // rule the in-app Resumen tab uses).
   const [{ data: expenses, error: ee }, { data: payments, error: pe }] = await Promise.all([
     svc.from("expenses")
-      .select("amount,date,category,description,tax_treatment,recurring_id,receipt_document_id,cfdi_uuid")
+      .select("amount,date,category,description,tax_treatment,recurring_id,receipt_document_id,cfdi_uuid,created_at")
       .eq("user_id", userId),
-    svc.from("payments").select("date,amount").eq("user_id", userId),
+    svc.from("payments").select("date,amount,created_at").eq("user_id", userId),
   ]);
   if (ee) throw new Error(ee.message);
   if (pe) throw new Error(pe.message);
@@ -502,7 +513,7 @@ async function getExpenseSummary(svc: Row, userId: Row, input: Row): Promise<Row
     return true;
   };
 
-  const expRows = (expenses || []).map((e: Row) => ({ ...e, _d: parseShortDate(e.date) }));
+  const expRows = (expenses || []).map((e: Row) => ({ ...e, _d: parseShortDate(e.date, rowRef(e)) }));
   let scoped = expRows.filter((e: Row) => inRange(e._d));
   if (categoryFilter) scoped = scoped.filter((e: Row) => e.category === categoryFilter);
 
@@ -547,7 +558,7 @@ async function getExpenseSummary(svc: Row, userId: Row, input: Row): Promise<Row
 
   // Income (revenue) in the same range, so we can surface net profit
   // without forcing Cardi to call get_finance_summary too.
-  const payRows = (payments || []).map((p: Row) => ({ ...p, _d: parseShortDate(p.date) }));
+  const payRows = (payments || []).map((p: Row) => ({ ...p, _d: parseShortDate(p.date, rowRef(p)) }));
   const total_income_mxn = payRows
     .filter((p: Row) => inRange(p._d))
     .reduce((s: Row, p: Row) => s + (p.amount || 0), 0);

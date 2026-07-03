@@ -9,7 +9,7 @@ import {
   PATIENT_STATUS,
   SESSION_STATUS,
 } from "../data/constants";
-import { getInitials, formatShortDate, parseShortDate, parseLocalDate } from "../utils/dates";
+import { getInitials, formatShortDate, parseShortDate, parseRowDate, parseLocalDate } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import { sessionCountsTowardBalance } from "../utils/accounting";
 import { getRecurringDates } from "../utils/recurrence";
@@ -805,7 +805,13 @@ export function createSessionActions(
 
     const toDelete = upcomingSessions.filter(s => {
       if (s.patient_id !== patientId || s.status !== SESSION_STATUS.SCHEDULED) return false;
-      return parseShortDate(s.date) >= effDate;
+      // Anchor the yearless-date parse on the row's created_at — a past
+      // consumed session (auto-complete is display-only, so it stays
+      // status=scheduled in the DB) whose "D-MMM" date is >6 months old
+      // would otherwise infer to a FUTURE year under today-anchoring and
+      // be swept into this "delete future sessions" set, destroying
+      // billed history. See utils/dates.ts::parseRowDate.
+      return parseRowDate(s) >= effDate;
     });
     // Strip temp ids — those rows haven't been persisted yet (their
     // insert is still in the queue). Local removal still happens.
@@ -928,10 +934,13 @@ export function createSessionActions(
     setMutationError("");
     const cutoff = parseLocalDate(finishDate);
 
-    // Find scheduled sessions after the finish date.
+    // Find scheduled sessions after the finish date. Anchor on the row's
+    // created_at (parseRowDate) so a >6-month-old past consumed session
+    // isn't mis-inferred to a future year and deleted — that would drop
+    // its billed history AND subtract it from patient.billed below.
     const toDelete = upcomingSessions.filter(s => {
       if (s.patient_id !== patientId || s.status !== SESSION_STATUS.SCHEDULED) return false;
-      return parseShortDate(s.date) > cutoff;
+      return parseRowDate(s) > cutoff;
     });
     // Strip temp ids — those rows haven't been inserted server-side
     // yet (their underlying queue entry is still pending), so there's

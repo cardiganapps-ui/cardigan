@@ -16,6 +16,25 @@ function pastDate() {
   d.setDate(d.getDate() - 30);
   return `${d.getDate()}-${SHORT_MONTHS[d.getMonth()]}`;
 }
+// A yearless short date N months in the past/future, with the matching
+// created_at. Day pinned to the 15th so setMonth never rolls into an
+// adjacent month. Used to exercise the cross-year inference bug: a date
+// ~8 months back is, under today-anchoring, inferred to be ~4 months in
+// the FUTURE (the nearest-year heuristic flips it), so a "delete future
+// sessions" filter would sweep it up unless it anchors on created_at.
+function monthsAway(n: number) {
+  const d = new Date();
+  d.setDate(15);
+  d.setMonth(d.getMonth() + n);
+  return { short: `${d.getDate()}-${SHORT_MONTHS[d.getMonth()]}`, iso: d.toISOString() };
+}
+const todayISO = () => new Date().toISOString().slice(0, 10);
+function sessionsDeleteIds(calls: Row[]): Row[] {
+  const del = calls.find((c: Row) =>
+    c.table === "sessions" && c.ops?.some((o: Row) => o.op === "delete"));
+  const inOp = del?.ops?.find((o: Row) => o.op === "in" && o.col === "id");
+  return inOp?.vals ?? [];
+}
 
 const mock = makeSupabaseMock();
 const recalcPatientCounters = vi.fn(async (..._args: Row[]) => null);
@@ -277,6 +296,62 @@ describe("updateSessionStatus", () => {
     await flush();
 
     expect(ctx.upcomingSessions.get()[0].version).toBe(6);
+  });
+});
+
+// ── Cross-year date anchoring (bug-hunt #1 / #2) ──
+// A past *consumed* session stays status=SCHEDULED in the DB (auto-
+// complete is display-only). Its yearless "D-MMM" date, if parsed with
+// today as the anchor, infers to a future year once it's >~6 months old
+// — so the "delete future sessions" filters in applyScheduleChange and
+// finalizePatient used to sweep it up and destroy billed history. The
+// fix anchors the parse on the row's created_at (parseRowDate).
+describe("applyScheduleChange — does not delete past consumed sessions", () => {
+  it("keeps an 8-month-old scheduled row; still deletes a genuinely future one", async () => {
+    const past = monthsAway(-8);   // real past — must be preserved
+    const future = monthsAway(2);  // real future — must be deleted
+    const pastSess = { id: "s-past", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: past.short, time: "10:00", created_at: past.iso };
+    const futureSess = { id: "s-future", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: future.short, time: "10:00", created_at: future.iso };
+    const ctx = seed({ sessions: [pastSess, futureSess] });
+    mock.setFallback("sessions", { data: [], error: null });
+    mock.setFallback("patients", { error: null });
+
+    const ok = await ctx.actions.applyScheduleChange("pat-1", {
+      schedules: [{ day: "Lun", time: "10:00", duration: 60, frequency: "weekly" }],
+      effectiveDate: todayISO(),
+      endDate: todayISO(),
+    });
+    expect(ok).toBe(true);
+    await flush();
+
+    const deleted = sessionsDeleteIds(mock.calls);
+    expect(deleted).toContain("s-future");
+    expect(deleted).not.toContain("s-past");
+    // The past consumed row survives in local state too.
+    expect(ctx.upcomingSessions.get().some((s: Row) => s.id === "s-past")).toBe(true);
+  });
+});
+
+describe("finalizePatient — does not delete past consumed sessions", () => {
+  it("only deletes rows genuinely after the finish date", async () => {
+    const past = monthsAway(-8);
+    const future = monthsAway(2);
+    const pastSess = { id: "s-past", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: past.short, time: "10:00", created_at: past.iso };
+    const futureSess = { id: "s-future", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: future.short, time: "10:00", created_at: future.iso };
+    const ctx = seed({ sessions: [pastSess, futureSess] });
+    mock.setFallback("sessions", { data: [], error: null });
+    mock.setFallback("patients", { error: null });
+
+    const ok = await ctx.actions.finalizePatient("pat-1", todayISO());
+    expect(ok).toBe(true);
+    await flush();
+
+    const deleted = sessionsDeleteIds(mock.calls);
+    expect(deleted).toContain("s-future");
+    expect(deleted).not.toContain("s-past");
+    // patient.billed must NOT be reduced by the preserved past session's
+    // rate (it wasn't in toDelete, and the future row doesn't count).
+    expect(ctx.patients.get()[0].billed).toBe(4000);
   });
 });
 

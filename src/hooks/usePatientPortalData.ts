@@ -73,7 +73,13 @@ export function usePatientPortalData(user: { id?: string } | null | undefined) {
             .eq("patient_user_id", user.id!),
           supabase
             .from("sessions")
-            .select("id, patient_id, date, time, duration, modality, status, rate, session_type, is_recurring, cancel_reason")
+            // created_at is REQUIRED for correct balance math: the
+            // accounting predicate anchors the yearless "D-MMM" date's
+            // year inference on it. Omitting it made the portal fall
+            // back to today-anchoring, which mis-dates sessions >6
+            // months old and understates what the patient owes vs. the
+            // therapist app. (bug-hunt #4)
+            .select("id, patient_id, date, time, duration, modality, status, rate, session_type, is_recurring, cancel_reason, created_at")
             .order("date", { ascending: false })
             .limit(500),
           supabase.rpc("get_therapists_for_patient"),

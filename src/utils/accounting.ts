@@ -96,7 +96,7 @@ const DISPLAY_ONLY_GUARD = !!(import.meta.env && import.meta.env.DEV);
 // fixture flip red every time the calendar crossed the 6-month nearest-
 // year boundary. MUST stay in sync with the SQL session_counts_at and
 // the api/_cardiTools + audit-accounting mirrors.
-function sessionEndMoment(session: BalanceSession, now?: Date): Date {
+export function sessionEndMoment(session: BalanceSession, now?: Date): Date {
   const created = session.created_at ? new Date(session.created_at) : null;
   const anchor = created && !isNaN(created.getTime()) ? created : now;
   const d = parseShortDate(session.date, anchor);
