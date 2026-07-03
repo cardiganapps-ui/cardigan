@@ -83,7 +83,18 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func setSnapshot(_ call: CAPPluginCall) {
+    // ⚠️ All bridge methods MUST be `@objc public dynamic` — NOT plain
+    // `@objc func`. This plugin is compiled into the App target (not a
+    // framework), so it's subject to the app's whole-module optimization.
+    // In the RELEASE archive the optimizer dead-strips internal @objc
+    // methods that are only ever invoked dynamically (via selector), so
+    // Capacitor's `plugin.responds(to: "setSnapshot:")` returns false and
+    // handleJSCall silently returns WITHOUT resolving — every bridge call
+    // then hangs forever (verified on-device: the method body never ran).
+    // Debug/simulator builds don't strip, which is why the dry-run passed
+    // but TestFlight didn't. `public dynamic` forces the method to be
+    // emitted with full dynamic dispatch and preserved. Do not "simplify".
+    @objc public dynamic func setSnapshot(_ call: CAPPluginCall) {
         mark("setSnapshot")
         guard let json = call.getString("json"), !json.isEmpty else {
             call.reject("json is required")
@@ -98,7 +109,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         reloadWidgets()
     }
 
-    @objc func setToken(_ call: CAPPluginCall) {
+    @objc public dynamic func setToken(_ call: CAPPluginCall) {
         guard let token = call.getString("token"), !token.isEmpty else {
             call.reject("token is required")
             return
@@ -112,12 +123,12 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         reloadWidgets()
     }
 
-    @objc func hasToken(_ call: CAPPluginCall) {
+    @objc public dynamic func hasToken(_ call: CAPPluginCall) {
         let value = (store?.string(forKey: Self.tokenKey)?.isEmpty == false)
         call.resolve(["value": value])
     }
 
-    @objc func clear(_ call: CAPPluginCall) {
+    @objc public dynamic func clear(_ call: CAPPluginCall) {
         guard let store = store else {
             call.reject("app group unavailable")
             return
@@ -134,7 +145,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     /// process's last heartbeat (written by the extension). Reading the
     /// widget's heartbeat back here proves the container is genuinely
     /// SHARED between the two processes.
-    @objc func debugState(_ call: CAPPluginCall) {
+    @objc public dynamic func debugState(_ call: CAPPluginCall) {
         mark("debugState")
         let store = self.store
         let snapshot = store?.string(forKey: Self.snapshotKey)
