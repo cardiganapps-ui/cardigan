@@ -182,11 +182,17 @@
      env(safe-area-inset-*) — or Android devices silently get 0.
      Previously these fell back to 44/34 and were then blanket-
      overridden to 0 at 768+, which stole iPad's actual home-indicator
-     inset and put the FAB underneath the indicator in landscape. */
-  --sat: var(--safe-area-inset-top, var(--sat));
-  --sab: var(--safe-area-inset-bottom, var(--sab));
-  --sal: var(--safe-area-inset-left, var(--sal));
-  --sar: var(--safe-area-inset-right, var(--sar));
+     inset and put the FAB underneath the indicator in landscape.
+     ⚠️ The env() MUST live in the var() fallback slot. An earlier
+     version wrote `var(--safe-area-inset-top, var(--sat))` — a
+     self-reference, which the CSS cycle rules turn into
+     guaranteed-invalid, silently dropping EVERY declaration that
+     consumes the token (the floating tab bar lost left/right/bottom
+     and rendered shrunk at the top-left of the viewport). */
+  --sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --sal: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --sar: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
   --week-row-h: 48px;
   /* ── Z-index scale ──
      10   banners (demo, read-only)
