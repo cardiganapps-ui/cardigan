@@ -54,6 +54,18 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var store: UserDefaults? { UserDefaults(suiteName: Self.suiteName) }
 
+    // DIAGNOSTIC (temporary): push a marker into a JS global the instant a
+    // native method body is entered — BEFORE any resolve/reject. Uses the
+    // same bridge.eval → evaluateJavaScript path resolve() uses. Lets the
+    // Settings diagnostic distinguish, with zero dependence on the call
+    // resolving: (a) marker present + call still timed out ⇒ the method RAN
+    // and native→JS works, so the hang is in callback matching; (b) marker
+    // ABSENT ⇒ the method never executed, so dispatch/registration is the
+    // culprit despite PluginHeaders showing the plugin. Remove once fixed.
+    private func mark(_ label: String) {
+        bridge?.eval(js: "window.__wbMarks=(window.__wbMarks||[]);window.__wbMarks.push('\(label) '+Date.now())")
+    }
+
     // WidgetKit's XPC to `chronod` can BLOCK the caller for seconds (or
     // indefinitely on a freshly-installed / mis-provisioned extension).
     // Capacitor runs every plugin method on ONE shared serial queue
@@ -72,6 +84,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func setSnapshot(_ call: CAPPluginCall) {
+        mark("setSnapshot")
         guard let json = call.getString("json"), !json.isEmpty else {
             call.reject("json is required")
             return
@@ -122,6 +135,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     /// widget's heartbeat back here proves the container is genuinely
     /// SHARED between the two processes.
     @objc func debugState(_ call: CAPPluginCall) {
+        mark("debugState")
         let store = self.store
         let snapshot = store?.string(forKey: Self.snapshotKey)
         let token = store?.string(forKey: Self.tokenKey)

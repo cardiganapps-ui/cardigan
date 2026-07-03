@@ -134,6 +134,16 @@ export function WidgetsPanel({ readOnly = false }: { readOnly?: boolean }) {
         paint(`   snapshotBytes=${after.snapshotBytes} hasToken=${after.hasToken}`);
       }
 
+      // (6) DECISIVE: native pushes a marker into window.__wbMarks the moment
+      // a method body is entered (before resolve). If markers are present the
+      // native code RAN (hang is in callback matching); if absent it never
+      // executed (dispatch/registration), despite PluginHeaders.
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const marks = (window as any).__wbMarks;
+        paint(`__wbMarks(native ejecutó): ${Array.isArray(marks) ? (marks.length ? marks.join(" | ") : "[] vacío") : "undefined"}`);
+      } catch (e) { paint(`✗ marks: ${(e as Error)?.message}`); }
+
       paint("fin ✓");
     } catch (err) {
       paint(`✗ excepción: ${(err as Error)?.message || String(err)}`);
