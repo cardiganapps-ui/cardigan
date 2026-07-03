@@ -19,15 +19,14 @@
 #
 #   BUILD_CERTIFICATE_P12_BASE64      — Apple Distribution cert (.p12, base64)
 #   BUILD_CERTIFICATE_P12_PASSWORD    — its password
-#   BUILD_PROVISIONING_PROFILE_BASE64 — "Cardigan App Store" profile (base64).
-#                                       Must include the App Groups capability
-#                                       (group.mx.cardigan.app) — regenerate it
-#                                       after enabling the capability on the
-#                                       App ID or signing fails.
-#   BUILD_WIDGET_PROVISIONING_PROFILE_BASE64 — "Cardigan Widgets App Store"
-#                                       profile for mx.cardigan.app.widgets
-#                                       (same distribution cert, App Groups
-#                                       capability), base64.
+#
+# Provisioning profiles are NOT secrets: the build fetches the CURRENT
+# "Cardigan App Store" + "Cardigan Widgets App Store" profiles from the
+# App Store Connect API at build time (scripts/fetch-asc-profiles.mjs,
+# authenticated with the same ASC key used for the TestFlight upload).
+# Regenerating a profile in the portal/API is enough — no secret to
+# re-encode. (The old BUILD_PROVISIONING_PROFILE_BASE64 secret is
+# unused as of the widgets rollout and can be deleted.)
 #
 #   VITE_SUPABASE_URL                 — same value as production web
 #   VITE_SUPABASE_ANON_KEY            — same
@@ -67,6 +66,8 @@ on:
       # Same story for the widget-extension target script — it shapes
       # the generated Xcode project, so it's on the iOS critical path.
       - '!scripts/add-widget-target.rb'
+      # ...and the build-time provisioning-profile fetcher.
+      - '!scripts/fetch-asc-profiles.mjs'
       - '.github/**'
       - '!.github/workflows/ios-build.yml'
   workflow_dispatch:
@@ -104,7 +105,6 @@ jobs:
           ASC_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          WIDGET_PROFILE: ${{ secrets.BUILD_WIDGET_PROVISIONING_PROFILE_BASE64 }}
         run: |
           missing=()
           [ -z "$APPLE_TEAM_ID" ] && missing+=("APPLE_TEAM_ID")
@@ -113,12 +113,6 @@ jobs:
           [ -z "$ASC_KEY" ]       && missing+=("APP_STORE_CONNECT_API_KEY_BASE64")
           [ -z "$SUPABASE_URL" ]  && missing+=("VITE_SUPABASE_URL")
           [ -z "$SUPABASE_KEY" ]  && missing+=("VITE_SUPABASE_ANON_KEY")
-          # The CardiganWidgets extension signs with its own App Store
-          # profile ("Cardigan Widgets App Store", App ID
-          # mx.cardigan.app.widgets, App Groups capability). Checked up
-          # front because its absence otherwise surfaces 20 minutes in,
-          # at export time.
-          [ -z "$WIDGET_PROFILE" ] && missing+=("BUILD_WIDGET_PROVISIONING_PROFILE_BASE64")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Missing required secrets: ${missing[*]}"
             echo "Add them at Settings → Secrets and variables → Actions."
@@ -206,24 +200,19 @@ jobs:
       # Manual signing setup — the App Store Connect API key we have is
       # App-Manager-scoped, so xcodebuild's -allowProvisioningUpdates with
       # Automatic signing only created Development certs (and Development
-      # profiles need registered devices we don't have). We pre-created a
-      # Distribution cert + App Store provisioning profile via the API
-      # and stashed them as repo secrets — this step installs them into a
-      # temporary keychain so xcodebuild can sign with them directly.
-      - name: Install distribution certificate + provisioning profile
+      # profiles need registered devices we don't have). The Distribution
+      # cert lives in a repo secret; the provisioning profiles are fetched
+      # FRESH from the ASC API below (always current — capability changes
+      # invalidate profiles, and a stale copy in a secret is exactly how a
+      # build breaks a month later).
+      - name: Install distribution certificate
         env:
           P12_BASE64: ${{ secrets.BUILD_CERTIFICATE_P12_BASE64 }}
           P12_PASSWORD: ${{ secrets.BUILD_CERTIFICATE_P12_PASSWORD }}
-          PROFILE_BASE64: ${{ secrets.BUILD_PROVISIONING_PROFILE_BASE64 }}
-          WIDGET_PROFILE_BASE64: ${{ secrets.BUILD_WIDGET_PROVISIONING_PROFILE_BASE64 }}
         run: |
           # Decode artifacts
           CERT_PATH="$RUNNER_TEMP/build_certificate.p12"
-          PROFILE_PATH="$RUNNER_TEMP/build.mobileprovision"
-          WIDGET_PROFILE_PATH="$RUNNER_TEMP/widget.mobileprovision"
           echo "$P12_BASE64" | base64 --decode > "$CERT_PATH"
-          echo "$PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
-          echo "$WIDGET_PROFILE_BASE64" | base64 --decode > "$WIDGET_PROFILE_PATH"
 
           # Create + unlock a temporary keychain. Default-keychain switch
           # so codesign reaches into it without needing extra flags.
@@ -243,22 +232,22 @@ jobs:
           # finds the cert without scanning the login keychain.
           security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychain -d user | tr -d '"')
 
-          # Install the provisioning profile under the UUID Xcode expects.
-          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-          mkdir -p "$PROFILES_DIR"
-          UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID raw -)
-          cp "$PROFILE_PATH" "$PROFILES_DIR/$UUID.mobileprovision"
-          echo "✓ installed profile UUID=$UUID"
-
-          # Same dance for the widget extension's profile — both must be
-          # on disk for the archive (per-target signing) AND mapped in
-          # ExportOptions (per-bundle-id) below.
-          WIDGET_UUID=$(security cms -D -i "$WIDGET_PROFILE_PATH" | plutil -extract UUID raw -)
-          cp "$WIDGET_PROFILE_PATH" "$PROFILES_DIR/$WIDGET_UUID.mobileprovision"
-          echo "✓ installed widget profile UUID=$WIDGET_UUID"
-
           # Confirm the identity is visible to codesign.
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      # Both profiles must be on disk for the archive (per-target
+      # signing) AND mapped in ExportOptions (per-bundle-id) below.
+      # Fetched live so a portal-side regeneration (e.g. after a
+      # capability change) is picked up with zero secret churn.
+      - name: Fetch provisioning profiles from App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
+          PROFILE_NAMES: 'Cardigan App Store,Cardigan Widgets App Store'
+        run: |
+          ASC_KEY_PATH="$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles" \
+          node scripts/fetch-asc-profiles.mjs
 
       - name: Archive
         run: |
