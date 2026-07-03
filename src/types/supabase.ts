@@ -1911,6 +1911,30 @@ export type Database = {
           },
         ]
       }
+      user_widget_tokens: {
+        Row: {
+          created_at: string
+          last_accessed_at: string | null
+          token_hash: string
+          token_prefix: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_accessed_at?: string | null
+          token_hash: string
+          token_prefix?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          last_accessed_at?: string | null
+          token_hash?: string
+          token_prefix?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_audit: {
         Row: {
           created_at: string | null
