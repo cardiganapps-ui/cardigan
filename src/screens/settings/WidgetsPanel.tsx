@@ -72,10 +72,23 @@ export function WidgetsPanel({ readOnly = false }: { readOnly?: boolean }) {
       paint(`widgetsDisabled(local): ${widgetsDisabled()}`);
       paint(`datos: p=${patients?.length ?? "?"} s=${upcomingSessions?.length ?? "?"} pay=${payments?.length ?? "?"}`);
 
-      // (0) Registration — synchronous, cannot hang.
+      // (0) Registration — synchronous, cannot hang. PluginHeaders is the
+      // DECISIVE native-truth: native's JSExport injects an entry here when
+      // it registers a plugin, so its presence/absence proves whether the
+      // native side ever registered WidgetBridge (isPluginAvailable only
+      // reflects the JS proxy and can be true even when native didn't).
       try {
         const { Capacitor } = await import("@capacitor/core");
         paint(`isPluginAvailable(WidgetBridge): ${Capacitor.isPluginAvailable("WidgetBridge")}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cap = (window as any).Capacitor;
+        const headers: string = Array.isArray(cap?.PluginHeaders)
+          ? cap.PluginHeaders.map((h: { name: string }) => h.name).join(",")
+          : "(none)";
+        paint(`PluginHeaders(native): ${headers.slice(0, 220)}`);
+        paint(`WidgetBridge en PluginHeaders: ${/(^|,)WidgetBridge($|,)/.test(headers)}`);
+        const keys = cap?.Plugins ? Object.keys(cap.Plugins).join(",") : "(none)";
+        paint(`Capacitor.Plugins: ${keys.slice(0, 160)}`);
       } catch (e) { paint(`✗ core import: ${(e as Error)?.message}`); }
 
       // (1) debugState FIRST — reads the App Group directly. The one fact

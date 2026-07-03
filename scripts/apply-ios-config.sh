@@ -431,6 +431,10 @@ if [ ! -f "$CAP_CONFIG" ]; then
   echo "✗ $CAP_CONFIG not found — did 'npx cap sync ios' run?"
   exit 1
 fi
+# The class is exposed to the ObjC runtime as "WidgetBridge" (see the
+# @objc(WidgetBridge) note in WidgetBridgePlugin.swift) — packageClassList
+# entries are resolved via NSClassFromString, so this MUST be the ObjC name,
+# not the Swift class name.
 python3 - "$CAP_CONFIG" <<'PY'
 import json, sys
 
@@ -438,14 +442,29 @@ p = sys.argv[1]
 with open(p) as f:
     cfg = json.load(f)
 plugins = cfg.setdefault("packageClassList", [])
-if "WidgetBridgePlugin" not in plugins:
-    plugins.append("WidgetBridgePlugin")
-    with open(p, "w") as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
-    print("✓ WidgetBridgePlugin appended to packageClassList")
+# Drop the legacy Swift-class-name entry if a prior run left it behind.
+if "WidgetBridgePlugin" in plugins:
+    plugins.remove("WidgetBridgePlugin")
+if "WidgetBridge" not in plugins:
+    plugins.append("WidgetBridge")
+    print("✓ WidgetBridge appended to packageClassList")
 else:
-    print("✓ WidgetBridgePlugin already in packageClassList")
+    print("✓ WidgetBridge already in packageClassList")
+with open(p, "w") as f:
+    json.dump(cfg, f, indent=2, ensure_ascii=False)
 PY
+
+# Fail LOUDLY if either registration patch silently regressed (e.g. a
+# template/attribute-order change in a future Capacitor bump). Shipping a
+# build where these didn't land = every widget bridge call hangs forever,
+# which is invisible until on-device — assert here instead.
+if ! grep -q '"WidgetBridge"' "$CAP_CONFIG"; then
+  echo "✗ packageClassList verification failed — WidgetBridge missing from $CAP_CONFIG"; exit 1
+fi
+if ! grep -q 'customClass="CardiganBridgeViewController"' "$STORYBOARD"; then
+  echo "✗ storyboard verification failed — root VC is not CardiganBridgeViewController"; exit 1
+fi
+echo "✓ registration patches verified (packageClassList + storyboard VC)"
 
 if ! ruby -e 'require "xcodeproj"' >/dev/null 2>&1; then
   echo "✗ ruby gem 'xcodeproj' not available — run: gem install xcodeproj"
