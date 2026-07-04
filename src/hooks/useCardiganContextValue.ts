@@ -39,6 +39,7 @@ export interface CardiganContextValueDeps {
   noteCrypto: Row;
   profession: Row;
   accentTheme: Row;
+  fontScale: Row;
   userProfile: Row;
   groupsEnabled: boolean;
   setGroupsEnabled: Row;
@@ -83,7 +84,7 @@ export interface CardiganContextValueDeps {
 export function useCardiganContextValue(deps: CardiganContextValueDeps) {
   const {
     data, readOnly, subscription, requirePro, withUndoableDelete,
-    noteCrypto, profession, accentTheme, userProfile, groupsEnabled, setGroupsEnabled,
+    noteCrypto, profession, accentTheme, fontScale, userProfile, groupsEnabled, setGroupsEnabled,
     user, userName, userInitial,
     openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet,
     setHideFab, setHideBottomTabs, setScreen, admin,
@@ -141,6 +142,7 @@ export function useCardiganContextValue(deps: CardiganContextValueDeps) {
     noteCrypto,
     profession,
     accentTheme,
+    fontScale,
     setProfessionLocal: userProfile.setProfessionLocal,
     groupsEnabled, setGroupsEnabled,
     user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet,
@@ -246,7 +248,7 @@ export function useCardiganContextValue(deps: CardiganContextValueDeps) {
       pendingExpedienteRef.current = null;
       return v;
     },
-  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, showSuccess, showToast, online, withUndoableDelete, groupsEnabled, setGroupsEnabled, navigate, setScreen, setDrawerOpen, pushLayer, popLayer, removeLayer, setHideFab, setHideBottomTabs, setPendingFabAction, setActivationShareOpen, pendingAgendaViewRef, pendingExpedienteRef, pendingNoteOpenRef]);
+  }), [admin, data, noteCrypto, profession, accentTheme, fontScale, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, showSuccess, showToast, online, withUndoableDelete, groupsEnabled, setGroupsEnabled, navigate, setScreen, setDrawerOpen, pushLayer, popLayer, removeLayer, setHideFab, setHideBottomTabs, setPendingFabAction, setActivationShareOpen, pendingAgendaViewRef, pendingExpedienteRef, pendingNoteOpenRef]);
 
   // ── UI slice ──
   // ONLY the fast-changing navigation / UI STATE — the nav ACTIONS moved to

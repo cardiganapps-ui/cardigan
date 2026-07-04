@@ -61,7 +61,7 @@ type SettingsProps = {
 
 export function Settings({ user, signOut, refreshUser }: SettingsProps) {
   const { t } = useT();
-  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession, setHideFab, subscription, requirePro, groups, groupsEnabled, setGroupsEnabled } = useCardigan();
+  const { tutorial, navigate, theme, accentTheme, fontScale, notifications, showToast, readOnly, noteCrypto, profession, setHideFab, subscription, requirePro, groups, groupsEnabled, setGroupsEnabled } = useCardigan();
   // Groups feature can only be turned OFF when there are no groups (turning
   // it back ON is always allowed). Disabling hides the whole Groups surface.
   const groupCount = (groups || []).length;
@@ -475,6 +475,7 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
       <AppearancePanel
         theme={theme}
         accentTheme={accentTheme}
+        fontScale={fontScale}
         onOpenSheet={openSheet}
       />
 
@@ -632,12 +633,13 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         />
       )}
 
-      {/* ── APARIENCIA (tema) + COLOR DE ACENTO sheets ──
-         One mode-driven component covers both option-list sheets. */}
+      {/* ── APARIENCIA (tema) + COLOR DE ACENTO + TAMAÑO DE TEXTO sheets ──
+         One mode-driven component covers the three option-list sheets. */}
       <AppearanceSheets
-        mode={activeSheet === "theme" ? "theme" : activeSheet === "accent" ? "accent" : null}
+        mode={activeSheet === "theme" ? "theme" : activeSheet === "accent" ? "accent" : activeSheet === "fontScale" ? "fontScale" : null}
         theme={theme}
         accentTheme={accentTheme}
+        fontScale={fontScale}
         onClose={() => setActiveSheet(null)}
         setSheetPanel={setSheetPanel}
         sheetPanelHandlers={sheetPanelHandlers}

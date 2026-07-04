@@ -999,7 +999,10 @@ button.kpi-card:active {
 .input {
   width: 100%; padding: 11px 13px;
   border: 1.5px solid var(--border); border-radius: var(--radius);
-  font-size: 16px; font-family: var(--font); color: var(--charcoal);
+  /* 16px is the iOS zoom-on-focus floor — the user font-scale grows
+     inputs but never shrinks them below it. */
+  font-size: max(16px, calc(16px * var(--text-scale-user, 1)));
+  font-family: var(--font); color: var(--charcoal);
   background: var(--white); outline: none; -webkit-appearance: none;
   /* iOS Safari adds a 300ms double-tap-to-zoom delay on form
      elements without this hint, which reads as "my tap didn't

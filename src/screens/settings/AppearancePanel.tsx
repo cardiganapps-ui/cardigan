@@ -7,10 +7,11 @@ import { useT } from "../../i18n/index";
 type Row = any;
 
 export const AppearancePanel = React.memo(function AppearancePanel({
-  theme, accentTheme, onOpenSheet,
+  theme, accentTheme, fontScale, onOpenSheet,
 }: {
   theme?: Row;
   accentTheme?: Row;
+  fontScale?: Row;
   onOpenSheet: (sheet: string) => void;
 }) {
   const { t } = useT();
@@ -34,6 +35,16 @@ export const AppearancePanel = React.memo(function AppearancePanel({
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.accentColor")}</div>
             <div className="settings-row-sub">{t(`settings.accent.${accentTheme?.accent || "default"}`)}</div>
+          </div>
+          <IconChevron />
+        </div>
+        <div className="settings-row" {...clickableProps(() => onOpenSheet("fontScale"))}>
+          <div className="settings-row-icon" aria-hidden="true" style={{ color:"var(--teal-dark)", fontFamily:"var(--font-d)", fontWeight:800, fontSize:15 }}>
+            Aa
+          </div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.fontSize")}</div>
+            <div className="settings-row-sub">{t(`settings.fontScale.${fontScale?.fontScale || "default"}`)}</div>
           </div>
           <IconChevron />
         </div>

@@ -59,6 +59,7 @@ export default {
   // ── Home ──
   home: {
     welcome: "Te damos la bienvenida",
+    exploreExample: "Ver un ejemplo con datos de muestra",
     sessionsToday: "{session.P} hoy",
     patientCount: "{client}",
     seeWeek: "Ver semana",
@@ -977,6 +978,13 @@ export default {
       burgundy: "Vino",
       steel:    "Lluvia",
     },
+    fontSize: "Tamaño de texto",
+    fontScale: {
+      sm:      "Chico",
+      default: "Normal",
+      lg:      "Grande",
+      xl:      "Extra grande",
+    },
     notificationsSection: "Notificaciones",
     onlinePaymentsLabel: "Pagos en línea",
     onlinePaymentsSub: "Cobra a tus {client.p} desde la aplicación",
@@ -1401,6 +1409,7 @@ export default {
   demo: {
     banner: "Modo demo \u2014 datos ficticios",
     createAccount: "Crear cuenta",
+    exitExample: "Salir",
   },
   subscription: {
     statusActive: "Activa",
