@@ -376,8 +376,9 @@ PY
 
 # ── iOS home/lock-screen widgets (CardiganWidgets extension) ─────────
 # Three pieces, all regenerated per-build like everything above:
-#   1. WidgetBridgePlugin.swift → App target (the Capacitor plugin that
-#      writes the snapshot + data token into the App Group).
+#   1. CardiganBridgeViewController.swift → App target (mirrors the widget
+#      snapshot + data token from the web app's localStorage into the App
+#      Group; see the file header for why we don't use a Capacitor plugin).
 #   2. ios-config/widgets/ → ios/App/CardiganWidgets/ (extension
 #      sources; Info.plist/entitlements/privacy manifest included).
 #   3. scripts/add-widget-target.rb (xcodeproj gem) creates the
@@ -385,17 +386,11 @@ PY
 #      python pbxproj patch above — the gem re-serializes the whole
 #      project file, and the Ruby script asserts post-save that the
 #      python-applied App-target signing survived.
-# The plugin class is registered by appending it to packageClassList
-# in the GENERATED capacitor.config.json (cap sync recreates that file
-# from installed npm plugins each run, so a local Swift plugin has to
-# be spliced in here).
-
-cp ios-config/WidgetBridgePlugin.swift ios/App/App/WidgetBridgePlugin.swift
-# Explicit-registration bridge VC — Capacitor's packageClassList auto-
-# registration doesn't reliably pick up this app-target local plugin, so
-# we register the instance in capacitorDidLoad() instead (see the file's
-# header). Requires pointing the storyboard at this subclass (below) and
-# compiling it into the App target (add-widget-target.rb).
+# Custom root view controller. It mirrors the widget snapshot/token from
+# the web app's localStorage into the App Group on app foreground/background
+# (see the file's header for why we don't use a Capacitor plugin for this).
+# Requires pointing the storyboard at this subclass (below) and compiling it
+# into the App target (add-widget-target.rb).
 cp ios-config/CardiganBridgeViewController.swift ios/App/App/CardiganBridgeViewController.swift
 rm -rf ios/App/CardiganWidgets
 cp -R ios-config/widgets ios/App/CardiganWidgets
@@ -426,45 +421,14 @@ else
   echo "✗ $STORYBOARD not found"; exit 1
 fi
 
-CAP_CONFIG="ios/App/App/capacitor.config.json"
-if [ ! -f "$CAP_CONFIG" ]; then
-  echo "✗ $CAP_CONFIG not found — did 'npx cap sync ios' run?"
-  exit 1
-fi
-# The class is exposed to the ObjC runtime as "WidgetBridge" (see the
-# @objc(WidgetBridge) note in WidgetBridgePlugin.swift) — packageClassList
-# entries are resolved via NSClassFromString, so this MUST be the ObjC name,
-# not the Swift class name.
-python3 - "$CAP_CONFIG" <<'PY'
-import json, sys
-
-p = sys.argv[1]
-with open(p) as f:
-    cfg = json.load(f)
-plugins = cfg.setdefault("packageClassList", [])
-# Drop the legacy Swift-class-name entry if a prior run left it behind.
-if "WidgetBridgePlugin" in plugins:
-    plugins.remove("WidgetBridgePlugin")
-if "WidgetBridge" not in plugins:
-    plugins.append("WidgetBridge")
-    print("✓ WidgetBridge appended to packageClassList")
-else:
-    print("✓ WidgetBridge already in packageClassList")
-with open(p, "w") as f:
-    json.dump(cfg, f, indent=2, ensure_ascii=False)
-PY
-
-# Fail LOUDLY if either registration patch silently regressed (e.g. a
-# template/attribute-order change in a future Capacitor bump). Shipping a
-# build where these didn't land = every widget bridge call hangs forever,
-# which is invisible until on-device — assert here instead.
-if ! grep -q '"WidgetBridge"' "$CAP_CONFIG"; then
-  echo "✗ packageClassList verification failed — WidgetBridge missing from $CAP_CONFIG"; exit 1
-fi
+# Fail LOUDLY if the storyboard repoint silently regressed (e.g. a
+# template/attribute-order change in a future Capacitor bump). Without our
+# root VC the App Group is never populated and widgets stay empty — assert
+# here instead of discovering it on-device.
 if ! grep -q 'customClass="CardiganBridgeViewController"' "$STORYBOARD"; then
   echo "✗ storyboard verification failed — root VC is not CardiganBridgeViewController"; exit 1
 fi
-echo "✓ registration patches verified (packageClassList + storyboard VC)"
+echo "✓ storyboard root VC verified (CardiganBridgeViewController)"
 
 if ! ruby -e 'require "xcodeproj"' >/dev/null 2>&1; then
   echo "✗ ruby gem 'xcodeproj' not available — run: gem install xcodeproj"

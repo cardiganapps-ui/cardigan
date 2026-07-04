@@ -27,8 +27,8 @@
 #      targets by the CI xcodebuild CLI argument.
 #   4. App target: dependency on the extension + an "Embed App
 #      Extensions" copy-files phase (PlugIns dst) so the .appex ships
-#      inside the app, and WidgetBridgePlugin.swift added to its
-#      sources (the app-side half of the Capacitor bridge).
+#      inside the app, and CardiganBridgeViewController.swift added to
+#      its sources (mirrors widget data into the App Group).
 #
 # Env: APPLE_TEAM_ID (required unless WIDGET_SIGNING=none),
 #      MARKETING_VERSION (default matches apply-ios-config.sh),
@@ -43,12 +43,10 @@ WIDGET_TARGET_NAME = "CardiganWidgets"
 WIDGET_BUNDLE_ID = "mx.cardigan.app.widgets"
 WIDGET_PROFILE = "Cardigan Widgets App Store"
 WIDGET_DIR = "ios/App/CardiganWidgets"
-PLUGIN_SWIFT = "ios/App/App/WidgetBridgePlugin.swift"
-# App-target Swift files (beyond Capacitor's own) that must be compiled
-# in: the WidgetBridge plugin + the bridge VC that explicitly registers
-# it. apply-ios-config.sh copies both into ios/App/App/ before this runs.
+# App-target Swift files (beyond Capacitor's own) that must be compiled in:
+# the bridge VC that mirrors widget data into the App Group.
+# apply-ios-config.sh copies it into ios/App/App/ before this runs.
 APP_TARGET_SWIFT = [
-  "WidgetBridgePlugin.swift",
   "CardiganBridgeViewController.swift",
 ].freeze
 DEPLOYMENT_TARGET = "17.0"
@@ -68,7 +66,6 @@ if project.targets.any? { |t| t.name == WIDGET_TARGET_NAME }
 end
 
 abort "add-widget-target: #{WIDGET_DIR} not found — apply-ios-config.sh must copy ios-config/widgets/ first" unless File.directory?(WIDGET_DIR)
-abort "add-widget-target: #{PLUGIN_SWIFT} not found — apply-ios-config.sh must copy WidgetBridgePlugin.swift first" unless File.file?(PLUGIN_SWIFT)
 if signing == "manual" && (ENV["APPLE_TEAM_ID"] || "").empty?
   abort "add-widget-target: APPLE_TEAM_ID is required (or set WIDGET_SIGNING=none for unsigned dry-runs)"
 end
