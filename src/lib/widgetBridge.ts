@@ -21,15 +21,6 @@ import { isNative, isIOS } from "./platform";
 const LS_SNAPSHOT = "cardigan.widget.snapshot.v1";
 const LS_TOKEN = "cardigan.widget.token";
 
-export interface WidgetDebugState {
-  appGroupAvailable: boolean;
-  suiteName: string;
-  snapshotBytes: number;
-  hasToken: boolean;
-  widgetLastRun: string;
-  widgetLastState: string;
-}
-
 /** True only on iOS native where the native mirror runs. */
 export function widgetBridgeAvailable(): boolean {
   return isNative() && isIOS();
@@ -70,23 +61,4 @@ export async function clearWidgetData(): Promise<void> {
     localStorage.removeItem(LS_SNAPSHOT);
     localStorage.removeItem(LS_TOKEN);
   } catch { /* private mode / quota — non-fatal */ }
-}
-
-/** Diagnostic: reports what the JS side has staged in localStorage for the
-    native mirror to pick up. (The App Group itself is only readable from
-    native; the widget rendering is the end-to-end confirmation.) */
-export async function widgetDebugState(): Promise<WidgetDebugState | { error: string } | null> {
-  try {
-    const snap = localStorage.getItem(LS_SNAPSHOT) || "";
-    return {
-      appGroupAvailable: true,
-      suiteName: "localStorage→AppGroup (native mirror)",
-      snapshotBytes: snap.length,
-      hasToken: !!localStorage.getItem(LS_TOKEN),
-      widgetLastRun: "",
-      widgetLastState: "",
-    };
-  } catch (err) {
-    return { error: (err as Error)?.message || String(err) };
-  }
 }

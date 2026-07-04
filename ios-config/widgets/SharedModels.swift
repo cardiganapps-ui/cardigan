@@ -1,7 +1,7 @@
 //  SharedModels.swift
 //  CardiganWidgets — Codable mirror of the snapshot contract produced
 //  by src/utils/widgetSnapshot.ts (v1) plus the App Group store both
-//  the app (via WidgetBridgePlugin) and this extension read/write.
+//  the app (via CardiganBridgeViewController) and this extension read.
 //
 //  The decoder is strict about the version field: an unknown `v` is
 //  treated as no-snapshot so a future breaking change renders the
@@ -71,7 +71,7 @@ enum SessionStatus {
 // MARK: - App Group store
 
 enum AppGroupStore {
-    // Must match WidgetBridgePlugin.swift and both entitlements files.
+    // Must match CardiganBridgeViewController.swift and both entitlements files.
     static let suiteName = "group.mx.cardigan.app"
     static let snapshotKey = "widget.snapshot.v1"
     static let tokenKey = "widget.token"
