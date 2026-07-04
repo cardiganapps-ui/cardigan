@@ -19,9 +19,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Marketing version to release (must match a built version, e.g. 20.3)'
+        description: 'Marketing version to release (must match a built version, e.g. 20.6)'
         required: true
-        default: '20.3'
+        default: '20.6'
       submit:
         description: 'Submit for review? Uncheck to stage everything but stop before the final submit.'
         type: boolean
@@ -75,13 +75,14 @@ jobs:
           SUBMIT: ${{ github.event.inputs.submit }}
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
           # Spanish App Store "Novedades". Honest, reviewer-friendly, no
-          # claims that need extra metadata. Edit here for future releases.
+          # claims that need extra metadata. Edit here for each release.
           WHATS_NEW: |
             Novedades de esta versión:
 
-            • Recordatorios de sesión más confiables: las notificaciones push llegan a tu iPhone de forma consistente, incluso con la app abierta.
+            • Nuevos widgets para la pantalla de inicio y de bloqueo: tu próxima sesión, la agenda del día, tus finanzas del mes y tu semana, de un vistazo y sin abrir la app.
+            • Nuevo widget «Próxima sesión» para tener siempre presente tu siguiente cita.
+            • Diseño renovado de los widgets, con modo oscuro y compatibilidad con los estilos con color de iOS.
             • Mejoras de rendimiento y estabilidad.
-            • Ajustes de diseño para una experiencia más clara y cómoda.
 
             Gracias por usar Cardigan. Si tienes comentarios, escríbenos desde Ajustes.
         run: node scripts/submit-app-store.mjs
