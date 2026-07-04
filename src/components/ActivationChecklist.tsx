@@ -19,9 +19,13 @@ import { IconCheck } from "./Icons";
    state forever, but gets it once and is then left alone). The
    component self-hides once trial expires or the user dismisses. */
 
-export function ActivationChecklist({ userId, accessState, onNavigate }: {
+const RECENT_ACCOUNT_DAYS = 30;
+const MODULE_LOADED_AT = Date.now();
+
+export function ActivationChecklist({ userId, accessState, accountCreatedAt, onNavigate }: {
   userId?: string;
   accessState?: string;
+  accountCreatedAt?: string | null;
   onNavigate?: (nav: string) => void;
 }) {
   const { t } = useT();
@@ -46,6 +50,12 @@ export function ActivationChecklist({ userId, accessState, onNavigate }: {
   }), [patients, upcomingSessions, payments, notes]);
 
   const allDone = stepStates.patient && stepStates.session && stepStates.payment && stepStates.note;
+
+  // 30-day account-age check against the module-load timestamp —
+  // Date.now() during render trips react-hooks/purity, and at this
+  // granularity "when the app booted" is precise enough.
+  const isRecentAccount = !!accountCreatedAt
+    && (MODULE_LOADED_AT - new Date(accountCreatedAt).getTime()) < RECENT_ACCOUNT_DAYS * 86400000;
 
   // Persist the "all done, hide me from now on" bit. Runs in render
   // intentionally — the localStorage write is idempotent and avoids a
@@ -118,10 +128,19 @@ export function ActivationChecklist({ userId, accessState, onNavigate }: {
     }
   }, [userId, accessState, stepStates]);
 
-  // Hide for non-trial users (paid + comp + admin already pass), users
-  // who already finished + had it dismissed, and users with no id.
+  // Visibility: every trial user (existing behavior — the completed
+  // card renders once so the +5-day bonus celebration has a stage),
+  // PLUS recently-created "active" accounts still mid-setup. That
+  // second lane covers comp-granted users (early-access friends, pilot
+  // users) and day-one subscribers, who previously never saw setup
+  // guidance at all. Gated to accounts ≤30 days old so a long-time
+  // subscriber who simply never wrote a note isn't suddenly nagged,
+  // and to !allDone so actives never get the retroactive "Listo" card
+  // (the trial-only bonus/analytics effects above stay trial-gated).
+  // Expired users are read-only — Home already skips rendering this.
   if (!userId) return null;
-  if (accessState !== "trial") return null;
+  const showForActive = accessState === "active" && isRecentAccount && !allDone;
+  if (accessState !== "trial" && !showForActive) return null;
   if (allDone && dismissed) return null;
 
   const steps = [

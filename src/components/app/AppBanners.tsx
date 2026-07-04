@@ -17,6 +17,9 @@ type Row = any;
 
 export interface AppBannersProps {
   demo?: boolean;
+  /* Signed-in user exploring via "Ver ejemplo" — exit CTA instead of
+     the signup CTA. */
+  demoHasAccount?: boolean;
   viewAsUserId?: string | null;
   subscription: Row;
   demoProfession: string;
@@ -30,7 +33,7 @@ export interface AppBannersProps {
 }
 
 export function AppBanners({
-  demo, viewAsUserId, subscription,
+  demo, demoHasAccount, viewAsUserId, subscription,
   demoProfession, setDemoProfession, signOut,
   setViewAsUserId, viewAsOriginHashRef, setScreen, navigate, t,
 }: AppBannersProps) {
@@ -72,7 +75,7 @@ export function AppBanners({
             </select>
           </label>
           <button onClick={signOut} className="app-banner-action">
-            {t("demo.createAccount")}
+            {demoHasAccount ? t("demo.exitExample") : t("demo.createAccount")}
           </button>
         </div>
       )}
