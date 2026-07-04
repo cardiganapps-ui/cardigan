@@ -39,7 +39,7 @@ export function BulkActionsSheet({ count, busy, onClose, onComplete, onCancelNoC
 
   return (
     <SheetOverlay exiting={exiting} onClose={busy ? undefined : animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" aria-label={t("agenda.bulkActionsTitle", { n: count })} {...panelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("agenda.bulkActionsTitle", { n: count })}</span>

@@ -53,7 +53,7 @@ export function ReferralSheet({
   if (!open) return null;
   return (
         <SheetOverlay onClose={() => setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.referralRowTitle")} {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.referralRowTitle")}</span>

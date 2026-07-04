@@ -109,7 +109,7 @@ export function NewGroupSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <SheetOverlay exiting={exiting} onClose={mutating ? undefined : animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" aria-label={step === 1 ? t("groups.new") : t("groups.addPatientsTitle")} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span style={{ display:"inline-flex", alignItems:"center", gap:8, minWidth:0 }}>

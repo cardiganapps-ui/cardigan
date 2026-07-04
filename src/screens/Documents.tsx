@@ -186,7 +186,7 @@ export function Documents() {
       {/* Patient picker after file selection */}
       {pendingFiles && (
         <SheetOverlay onClose={() => setPendingFiles(null)}>
-          <div ref={setPendingPanel} className="sheet-panel" role="dialog" aria-modal="true" {...pendingPanelHandlers} style={{ maxHeight:"60vh" }}>
+          <div ref={setPendingPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("docs.linkToPatient")} {...pendingPanelHandlers} style={{ maxHeight:"60vh" }}>
             <div className="sheet-handle" />
             <div style={{ padding:"16px 20px 8px" }}>
               <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>

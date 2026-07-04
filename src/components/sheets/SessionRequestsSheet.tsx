@@ -94,7 +94,7 @@ export function SessionRequestsSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <SheetOverlay exiting={exiting} onClose={safeAnimatedClose || undefined}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" aria-label={t("sessionRequests.title")}
         {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />

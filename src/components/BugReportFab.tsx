@@ -78,7 +78,7 @@ export function BugReportSheet({ open, onClose, user, screen }: { open?: boolean
 
   return (
     <SheetOverlay exiting={exiting} onClose={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" aria-label={t("bugReport.title")} {...panelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("bugReport.title")}</span>

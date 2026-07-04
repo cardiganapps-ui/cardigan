@@ -97,7 +97,7 @@ export function ExportDataSheet({ open, onClose, showToast, setSheetPanel, sheet
 
   return (
     <SheetOverlay onClose={() => !exporting && onClose()}>
-      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.privacyExport")} {...sheetPanelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("settings.privacyExport")}</span>

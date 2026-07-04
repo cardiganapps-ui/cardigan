@@ -43,7 +43,7 @@ export function AppearanceSheets({ mode, theme, accentTheme, onClose, setSheetPa
 
   return (
         <SheetOverlay onClose={onClose}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={mode === "theme" ? t("settings.appearance") : t("settings.accentColor")} {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{mode === "theme" ? t("settings.appearance") : t("settings.accentColor")}</span>

@@ -100,7 +100,7 @@ export function EncryptionSheets({ mode, onClose, onNavigate, noteCrypto, showTo
   if (mode === "main") {
     return (
       <SheetOverlay onClose={() => !encBusy && onClose()}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.encryptionTitle")} {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.encryptionTitle")}</span>
@@ -172,7 +172,7 @@ export function EncryptionSheets({ mode, onClose, onNavigate, noteCrypto, showTo
   if (mode === "change") {
     return (
       <SheetOverlay onClose={() => !encBusy && onClose()}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.encChange")} {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.encChange")}</span>
@@ -205,7 +205,7 @@ export function EncryptionSheets({ mode, onClose, onNavigate, noteCrypto, showTo
   if (mode === "disable") {
     return (
       <SheetOverlay onClose={() => !encBusy && onClose()}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.encDisable")} {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.encDisable")}</span>

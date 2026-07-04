@@ -332,7 +332,7 @@ export function Patients() {
 
       {selected && (
         <SheetOverlay onClose={closeSheet}>
-          <div ref={setEditPanel} className="sheet-panel" role="dialog" aria-modal="true" {...editPanelHandlers}>
+          <div ref={setEditPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={confirmDelete ? t("patients.deleteButton") : editing ? t("patients.editPatient") : selected.name} {...editPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">

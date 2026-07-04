@@ -36,6 +36,7 @@ export function CalendarLinkSheet({ onClose, readOnly = false }: { onClose: () =
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
+        aria-label={t("settings.calendarTitle")}
         {...panelHandlers}
         style={{ display: "flex", flexDirection: "column" }}>
         <div className="sheet-handle" />

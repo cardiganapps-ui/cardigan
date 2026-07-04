@@ -763,7 +763,7 @@ export function Home({ setScreen, userName }: HomeProps) {
 
       {selected && (
         <SheetOverlay onClose={() => setSelected(null)}>
-          <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" {...selectedPanelHandlers}>
+          <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("home.balanceDetail")} {...selectedPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("home.balanceDetail")}</span>

@@ -35,7 +35,7 @@ export function PasskeysSheet({ open, onClose, passkeys, showToast, setSheetPane
     <>
       {open && (
         <SheetOverlay onClose={() => !passkeys.busy && onClose()}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.passkeySheetTitle")} {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.passkeySheetTitle")}</span>
