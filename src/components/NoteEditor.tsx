@@ -5,6 +5,7 @@ const IconSearchMenu = () => <IconSearch size={15} />;
 import { useT } from "../i18n/index";
 import { useCardiganMain } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { MarkdownEditor } from "./notes/MarkdownEditor";
 import type { MarkdownEditorHandle } from "./notes/MarkdownEditor";
@@ -119,6 +120,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const [findOpen, setFindOpen] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Focus traps for the editor's own overlay dialogs — plain panels
+  // without the sheet-drag plumbing, so they wire the trap directly.
+  const deleteTrapRef = useFocusTrap(confirmDelete);
+  const outlineTrapRef = useFocusTrap(outlineOpen);
   // Reading mode strips the editor chrome (toolbar, header buttons,
   // syntax dimming) and widens the body to a centered max-width
   // column with bigger type. Useful for sharing a screen with a
@@ -687,7 +692,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         <button className="mde-back" onClick={handleClose}>‹ {t("back")}</button>
         <div className="mde-header-actions">
           {!readOnly && (
-            <span className={"mde-save-indicator " + (saveState === "saved" ? "is-saved" : "is-saving")}>
+            <span className={"mde-save-indicator " + (saveState === "saved" ? "is-saved" : "is-saving")}
+              role="status">
               <span className="mde-save-dot" aria-hidden="true" />
               <span className="mde-save-label">
                 {saveState === "saved" ? t("notes.saved") : t("notes.saving")}
@@ -891,7 +897,9 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       {/* ── Delete confirmation modal ─────────────────────────── */}
       {confirmDelete && (
         <SheetOverlay onClose={() => setConfirmDelete(false)} style={{ alignItems: "center" }}>
-          <div className="sheet-panel" role="dialog" aria-modal="true"
+          <div ref={(el) => { deleteTrapRef.current = el; }}
+            className="sheet-panel" role="dialog" aria-modal="true"
+            aria-label={t("notes.deleteConfirm")}
             style={{ maxWidth: 340, borderRadius: "var(--radius-lg)", margin: "0 20px", animation: "sheetScaleIn 0.45s var(--ease-spring)" }}>
             <div style={{ padding: "28px 24px 22px", textAlign: "center" }}>
               <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--red-bg)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
@@ -1017,6 +1025,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           onSelectionChange={handleSelectionChange}
           onRequestFind={() => setFindOpen(true)}
           placeholder={t("notes.bodyPlaceholder")}
+          ariaLabel={t("notes.editorLabel")}
           attachmentTiles={attachmentSrc.tiles}
         />
 
@@ -1071,6 +1080,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       {outlineOpen && (
         <SheetOverlay onClose={() => setOutlineOpen(false)}>
           <div
+            ref={(el) => { outlineTrapRef.current = el; }}
             className="sheet-panel mde-outline-sheet"
             role="dialog"
             aria-modal="true"

@@ -705,6 +705,7 @@ export default {
     noteAttached: "Nota adjunta",
     titlePlaceholder: "T\u00edtulo",
     bodyPlaceholder: "Escribe aqu\u00ed o pulsa / para comandos\u2026",
+    editorLabel: "Editor de nota",
     templates: "Plantillas",
     tplSession: "Sesi\u00f3n regular",
     tplIntake: "Evaluaci\u00f3n inicial",

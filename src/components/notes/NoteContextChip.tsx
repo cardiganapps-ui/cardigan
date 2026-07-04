@@ -5,6 +5,7 @@ import { useT } from "../../i18n/index";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useEscape } from "../../hooks/useEscape";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 /* ── Cardigan notes — patient/session chip ──────────────────────────
    Replaces the expandable accordion context bar with a single
@@ -33,7 +34,8 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
   const { exiting, animatedClose } = useSheetExit(open, close);
   useEscape(open ? animatedClose : null);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(close, { isOpen: open });
-  const setPanel = (el: HTMLElement | null) => { scrollRef.current = el; setPanelEl(el); };
+  const trapRef = useFocusTrap(open && !readOnly);
+  const setPanel = (el: HTMLElement | null) => { trapRef.current = el; scrollRef.current = el; setPanelEl(el); };
 
   const patient = patientId ? (patients || []).find((p: Row) => p.id === patientId) : null;
   const session = sessionId ? (sessions || []).find((s: Row) => s.id === sessionId) : null;
