@@ -38,6 +38,7 @@ function makeBuilder(table: string, state: State): Row {
     single() { ops.push({ op: "single" }); return builder; },
     maybeSingle() { ops.push({ op: "maybeSingle" }); return builder; },
     eq(col: Row, val: Row) { ops.push({ op: "eq", col, val }); return builder; },
+    ilike(col: Row, val: Row) { ops.push({ op: "ilike", col, val }); return builder; },
     neq(col: Row, val: Row) { ops.push({ op: "neq", col, val }); return builder; },
     in(col: Row, vals: Row) { ops.push({ op: "in", col, vals }); return builder; },
     gte(col: Row, val: Row) { ops.push({ op: "gte", col, val }); return builder; },

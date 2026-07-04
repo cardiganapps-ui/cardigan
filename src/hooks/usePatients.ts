@@ -4,9 +4,11 @@ import { DAY_ORDER } from "../data/seedData";
 import { getInitials, shortDateToISO, todayISO } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import type { TablesInsert, TablesUpdate } from "../types/db";
+import type { Json } from "../types/supabase";
 import type { PatientRow, SessionRow, PaymentRow, DocumentRow, GroupMemberRow } from "../types/rows";
 import { track } from "../lib/analytics";
 import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants";
+import { enqueue, registerHandler, onReplay, removeByTempId, updateByTempId } from "../lib/mutationQueue";
 
 // ── Domain row types ────────────────────────────────────────────────
 // The patient actions read/write the shared boundary row types
@@ -49,6 +51,85 @@ type Num = number | string | null | undefined;
 
 type SetPatients = Dispatch<SetStateAction<Patient[]>>;
 type SetSessions = Dispatch<SetStateAction<Session[]>>;
+
+/* ── Offline queue support (patient creation + simple field edits) ──
+   Adding a patient is the FIRST activation action a new user takes, so
+   it must degrade gracefully offline like sessions/payments/expenses
+   already do. Scope is deliberately narrow:
+     • patients.create — replays the same transactional RPC
+       (create_patient_with_sessions), so the patient AND their seeded
+       schedule land atomically on drain.
+     • patients.update — simple single-row field patches.
+   deletePatient / createPotential / discardPotential /
+   convertPotentialToActive stay ONLINE-ONLY: they are multi-step flows
+   (R2 cleanup, cascades, recalcPatientCounters round-trips) where a
+   half-replayed queue entry could leave counters wrong — per the prime
+   directive we fail loudly there instead of queueing.
+
+   Known limitation (documented tradeoff): rows created offline that
+   REFERENCE a not-yet-drained patient (a manual extra session, a
+   payment) carry the temp patient_id and will dead-letter on drain —
+   preserved, never lost, but they don't auto-remap. The dominant
+   offline flow (create patient + their recurring schedule) is a single
+   queued op and unaffected. */
+
+registerHandler("patients.create", async ({ userId, p_patient, p_sessions }: {
+  userId: string;
+  p_patient: Record<string, unknown>;
+  p_sessions: Record<string, unknown>[];
+}) => {
+  // Idempotency guard for replay-after-partial-success: if the first
+  // attempt committed server-side but the response was lost in transit,
+  // the entry stays queued and would insert a DUPLICATE patient on the
+  // next drain (the sessions inside the RPC are protected by
+  // uniq_sessions_patient_date_time, the patient row is not — dupe
+  // names are only rejected client-side). Names are unique per user by
+  // app invariant, so an existing same-name row means "already landed":
+  // return it as the result so the replay listener reconciles normally.
+  const name = String(p_patient?.name || "");
+  const pattern = name.replace(/[%_]/g, "\\$&");
+  const { data: existing } = await supabase.from("patients")
+    .select("*").eq("user_id", userId).ilike("name", pattern).limit(1);
+  if (existing && existing.length > 0) {
+    const { data: sess } = await supabase.from("sessions")
+      .select("*").eq("user_id", userId).eq("patient_id", existing[0].id);
+    return { data: { patient: existing[0], sessions: sess || [] } };
+  }
+  return await supabase.rpc("create_patient_with_sessions", {
+    p_patient: p_patient as Json,
+    p_sessions: p_sessions as Json,
+  });
+});
+registerHandler("patients.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
+  return await supabase.from("patients").update(patch as TablesUpdate<"patients">).eq("id", id).eq("user_id", userId);
+});
+
+// Module-level state-setter refs so the once-registered onReplay
+// listener writes into the live holders (same pattern as usePayments /
+// useSessions / useExpenses).
+let _setPatientsRef: SetPatients | null = null;
+let _setSessionsRef: SetSessions | null = null;
+onReplay((entry, result: { error?: unknown; data?: { patient?: Patient; sessions?: Session[] } } | null) => {
+  if (entry.op !== "patients.create") return;
+  if (!result || result.error || !result.data?.patient) return;
+  const tempId = (entry.optimisticMeta as { tempId?: string } | null)?.tempId;
+  if (!tempId || !_setPatientsRef) return;
+  const real = { ...result.data.patient, colorIdx: result.data.patient.color_idx } as Patient;
+  _setPatientsRef(prev => prev.map(p => p.id === tempId ? real : p));
+  if (_setSessionsRef) {
+    const realSessions = (result.data.sessions || []).map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" } as Session));
+    // Replace ALL temp sessions seeded under this temp patient with the
+    // server truth in one pass — ids and patient_id both swap.
+    _setSessionsRef(prev => [...prev.filter(s => s.patient_id !== tempId), ...realSessions]);
+  }
+});
+
+function isOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+const OFFLINE_ONLY_MSG = "Esta acción requiere conexión a internet. Intenta de nuevo al reconectar.";
+
 type SetPayments = Dispatch<SetStateAction<Payment[]>>;
 type SetDocuments = Dispatch<SetStateAction<DocumentRow[]>>;
 type SetGroupMembers = Dispatch<SetStateAction<GroupMember[]>>;
@@ -75,6 +156,10 @@ export function createPatientActions(
   setMutationError: SetError,
   { formatShortDate, getRecurringDates, setGroupMembers }: PatientHelpers,
 ) {
+  // Refresh the module-level refs so the once-registered onReplay
+  // listener writes into the live state holders.
+  _setPatientsRef = setPatients;
+  _setSessionsRef = setUpcomingSessions;
 
   async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, externalFolderUrl, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult, openingBalance }: {
     name?: string;
@@ -201,10 +286,52 @@ export function createPatientActions(
       visit_type: s.visit_type || null,
     }));
 
-    const { data: rpcData, error } = await supabase.rpc("create_patient_with_sessions", {
-      p_patient: pPatient,
-      p_sessions: pSessions,
-    });
+    // Offline (or transport failure below): land an optimistic temp
+    // patient + temp seed sessions in state and queue the SAME RPC args
+    // for drain. One queued op carries the patient and their whole
+    // schedule, so the transactional guarantee survives the queue hop.
+    // Temp session ids share the patient's temp- prefix so the existing
+    // temp-id guards in useSessions treat them as not-yet-drained rows.
+    const seedOptimistic = () => {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const patient = {
+        ...pPatient, id: tempId, user_id: userId,
+        status: PATIENT_STATUS.ACTIVE, paid: 0,
+        colorIdx, _optimistic: true,
+      } as unknown as Patient;
+      const sessions = pSessions.map((s, i) => ({
+        ...s, id: `${tempId}-s${i}`, user_id: userId, patient_id: tempId,
+        status: SESSION_STATUS.SCHEDULED, session_type: SESSION_TYPE.REGULAR,
+        colorIdx, _optimistic: true,
+      } as unknown as Session));
+      setPatients(prev => [...prev, patient].sort((a, b) => a.name.localeCompare(b.name)));
+      if (sessions.length > 0) setUpcomingSessions(prev => [...prev, ...sessions]);
+      return tempId;
+    };
+
+    if (isOffline()) {
+      const tempId = seedOptimistic();
+      await enqueue("patients.create", { userId, p_patient: pPatient, p_sessions: pSessions }, { tempId });
+      setMutating(false);
+      if (patients.length === 0) track("first_patient_created");
+      return true;
+    }
+
+    let rpcData: unknown, error: { message?: string } | null;
+    try {
+      ({ data: rpcData, error } = await supabase.rpc("create_patient_with_sessions", {
+        p_patient: pPatient,
+        p_sessions: pSessions,
+      }));
+    } catch {
+      // Transport failure mid-flight — queue with the temp rows for the
+      // replay listener to reconcile on drain.
+      const tempId = seedOptimistic();
+      await enqueue("patients.create", { userId, p_patient: pPatient, p_sessions: pSessions }, { tempId });
+      setMutating(false);
+      if (patients.length === 0) track("first_patient_created");
+      return true;
+    }
     const result = rpcData as unknown as { patient?: Patient; sessions?: Session[] } | null;
     if (error || !result?.patient) {
       setMutating(false);
@@ -238,15 +365,63 @@ export function createPatientActions(
     setMutationError("");
     const patch: Record<string, unknown> = { ...updates };
     if (patch.name) patch.initials = getInitials(String(patch.name));
-    const { data, error } = await supabase.from("patients")
-      .update(patch as TablesUpdate<"patients">).eq("id", id).eq("user_id", userId).select().single();
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
-    setPatients(prev => prev.map(p => p.id === id ? ({ ...data, colorIdx: data.color_idx } as Patient) : p));
-    return true;
+
+    const applyLocal = () => setPatients(prev => prev.map(p => p.id === id
+      ? ({ ...p, ...patch, ...(patch.color_idx !== undefined ? { colorIdx: patch.color_idx } : {}) } as Patient)
+      : p));
+
+    // Offline-created patient whose insert hasn't drained: patch the
+    // queued RPC args in place so the insert lands with the edited
+    // values instead of enqueuing a doomed UPDATE on a temp id. A name
+    // change also propagates to the queued seed sessions' denormalized
+    // patient/initials columns.
+    if (typeof id === "string" && id.startsWith("temp-")) {
+      applyLocal();
+      await updateByTempId(id, (args: { p_patient: Record<string, unknown>; p_sessions?: Record<string, unknown>[] }) => {
+        const p_patient = { ...args.p_patient, ...patch };
+        const p_sessions = patch.name
+          ? (args.p_sessions || []).map(s => ({ ...s, patient: String(patch.name).trim(), initials: getInitials(String(patch.name)) }))
+          : args.p_sessions;
+        return { ...args, p_patient, p_sessions };
+      });
+      setMutating(false);
+      return true;
+    }
+    if (isOffline()) {
+      applyLocal();
+      await enqueue("patients.update", { id, userId, patch });
+      setMutating(false);
+      return true;
+    }
+    try {
+      const { data, error } = await supabase.from("patients")
+        .update(patch as TablesUpdate<"patients">).eq("id", id).eq("user_id", userId).select().single();
+      setMutating(false);
+      if (error) { setMutationError(error.message); return false; }
+      setPatients(prev => prev.map(p => p.id === id ? ({ ...data, colorIdx: data.color_idx } as Patient) : p));
+      return true;
+    } catch {
+      // Transport failure — keep the optimistic patch and queue.
+      applyLocal();
+      await enqueue("patients.update", { id, userId, patch });
+      setMutating(false);
+      return true;
+    }
   }
 
   async function deletePatient(id: string) {
+    // Offline-created patient whose insert hasn't drained: cancel the
+    // queued insert so it never resurrects on reconnect, purge the temp
+    // rows locally, done — nothing exists server-side yet.
+    if (typeof id === "string" && id.startsWith("temp-")) {
+      await removeByTempId(id);
+      setPatients(prev => prev.filter(p => p.id !== id));
+      setUpcomingSessions(prev => prev.filter(s => s.patient_id !== id));
+      return true;
+    }
+    // Online-only (documented above): R2 cleanup + payment/patient
+    // cascades can't replay safely from a queue. Fail loudly.
+    if (isOffline()) { setMutationError(OFFLINE_ONLY_MSG); return false; }
     setMutating(true);
     setMutationError("");
 
@@ -353,6 +528,8 @@ export function createPatientActions(
       return false;
     }
     if (!interview?.date || !interview?.time) return false;
+    // Online-only (see offline-queue note above the handlers).
+    if (isOffline()) { setMutationError(OFFLINE_ONLY_MSG); return false; }
 
     const patientRate = Math.max(0, Number(rate) || 0);
     const colorIdx = patients.length % 7;
@@ -440,6 +617,8 @@ export function createPatientActions(
   // ='interview'), matching the user's mental model: "they came in,
   // we decided not to engage, file them away."
   async function discardPotential(id: string) {
+    // Online-only (see offline-queue note above the handlers).
+    if (isOffline()) { setMutationError(OFFLINE_ONLY_MSG); return false; }
     setMutating(true);
     setMutationError("");
     const { error } = await supabase.from("patients")
@@ -525,6 +704,8 @@ export function createPatientActions(
   }) {
     const patient = patients.find(p => p.id === id);
     if (!patient || patient.status !== PATIENT_STATUS.POTENTIAL) return false;
+    // Online-only (see offline-queue note above the handlers).
+    if (isOffline()) { setMutationError(OFFLINE_ONLY_MSG); return false; }
 
     const mode = schedulingMode === "episodic" ? "episodic" : "recurring";
     const sched = schedules?.length ? schedules : [{ day: "Lunes", time: "16:00" }];
