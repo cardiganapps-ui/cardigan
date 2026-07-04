@@ -133,15 +133,17 @@ describe("buildWidgetSnapshot — next session", () => {
     });
     expect(snap.nextSession?.id).toBe("soon");
     expect(snap.nextSession?.dayLabel).toBe("Hoy");
+    expect(snap.nextSession?.isToday).toBe(true);
     expect(snap.nextSession?.status).toBe("scheduled");
   });
 
-  it("falls through to tomorrow with dayLabel Mañana", () => {
+  it("falls through to tomorrow with dayLabel Mañana (isToday false)", () => {
     const snap = build({
       sessions: [{ id: "t", patient_id: "p", patient: "X", time: "10:00", date: "16-Abr", status: "scheduled" }],
     });
     expect(snap.nextSession?.id).toBe("t");
     expect(snap.nextSession?.dayLabel).toBe("Mañana");
+    expect(snap.nextSession?.isToday).toBe(false);
   });
 
   it("uses the weekday name beyond tomorrow and skips non-scheduled rows", () => {
@@ -160,6 +162,23 @@ describe("buildWidgetSnapshot — next session", () => {
       sessions: [{ id: "far", patient_id: "p", patient: "X", time: "10:00", date: "30-Abr", status: "scheduled" }],
     });
     expect(snap.nextSession).toBeNull();
+  });
+});
+
+describe("buildWidgetSnapshot — tutor sessions", () => {
+  it("flags a 'T·'-prefixed session as tutor and strips the prefix from initials", () => {
+    const snap = build({
+      sessions: [
+        { id: "tut", patient_id: "p", patient: "Diego Ramírez", initials: "T·DR", time: "13:00", date: "15-Abr", status: "scheduled" },
+        { id: "reg", patient_id: "p2", patient: "Ana López", initials: "AL", time: "14:00", date: "15-Abr", status: "scheduled" },
+      ],
+    });
+    const tut = snap.sessionsToday.find((s) => s.id === "tut");
+    const reg = snap.sessionsToday.find((s) => s.id === "reg");
+    expect(tut?.isTutor).toBe(true);
+    expect(tut?.initials).toBe("DR");
+    expect(reg?.isTutor).toBeUndefined();
+    expect(reg?.initials).toBe("AL");
   });
 });
 

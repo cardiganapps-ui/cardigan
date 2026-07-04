@@ -12,6 +12,7 @@ import WidgetKit
 struct CardiganWidgetBundle: WidgetBundle {
     var body: some Widget {
         AgendaWidget()
+        ProximaWidget()
         FinanzasWidget()
         SemanaWidget()
         AccionesWidget()

@@ -92,6 +92,15 @@ widget_target.resources_build_phase.add_file_reference(privacy_ref)
 # adding Info.plist to the resources phase would trigger a duplicate-
 # Info.plist build error.
 
+# Bundled Nunito / Nunito Sans faces (fonts/, registered via Info.plist
+# UIAppFonts) → the extension's resources phase so they ship in the .appex.
+font_files = Dir.glob(File.join(WIDGET_DIR, "fonts", "*.ttf")).sort
+abort "add-widget-target: no fonts found in #{WIDGET_DIR}/fonts — apply-ios-config.sh must copy them first" if font_files.empty?
+font_files.each do |path|
+  ref = group.new_file("fonts/#{File.basename(path)}")
+  widget_target.resources_build_phase.add_file_reference(ref)
+end
+
 # ── 3. Build settings ──
 widget_target.build_configurations.each do |config|
   bs = config.build_settings

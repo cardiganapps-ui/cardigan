@@ -32,6 +32,7 @@ struct SessionEntry: Codable, Identifiable {
     let modality: String
     let status: String
     let isGroup: Bool?
+    let isTutor: Bool?   // tutor session → purple accent (may be absent in old snapshots)
 }
 
 struct NextSessionEntry: Codable {
@@ -42,7 +43,13 @@ struct NextSessionEntry: Codable {
     let modality: String
     let status: String
     let isGroup: Bool?
+    let isTutor: Bool?
     let dayLabel: String
+    let isToday: Bool?   // preferred over matching dayLabel == "Hoy"
+
+    /// Robust "is this today?" — the boolean when present, else the legacy
+    /// Spanish-label match for snapshots written before the field existed.
+    var todayFlag: Bool { isToday ?? (dayLabel == "Hoy") }
 }
 
 struct KPIs: Codable {
@@ -165,17 +172,17 @@ extension WidgetSnapshot {
     /// The "next session" to feature: the earliest still-upcoming slot
     /// today, else the snapshot's cross-day nextSession (when it points
     /// beyond today).
-    func featuredNext(at date: Date) -> (entry: SessionEntry, dayLabel: String)? {
+    func featuredNext(at date: Date) -> (entry: SessionEntry, dayLabel: String, isToday: Bool)? {
         if let today = upcomingToday(at: date).first {
-            return (today, "Hoy")
+            return (today, "Hoy", true)
         }
-        if let next = nextSession, next.dayLabel != "Hoy" {
+        if let next = nextSession, !next.todayFlag {
             let entry = SessionEntry(
                 id: next.id, time: next.time, patientName: next.patientName,
                 initials: next.initials, modality: next.modality,
-                status: next.status, isGroup: next.isGroup
+                status: next.status, isGroup: next.isGroup, isTutor: next.isTutor
             )
-            return (entry, next.dayLabel)
+            return (entry, next.dayLabel, false)
         }
         return nil
     }
@@ -221,12 +228,12 @@ extension WidgetSnapshot {
         tz: "America/Mexico_City",
         todayLabel: "Miércoles 2-Jul",
         sessionsToday: [
-            SessionEntry(id: "d1", time: "10:00", patientName: "Ana López", initials: "AL", modality: "presencial", status: SessionStatus.completed, isGroup: nil),
-            SessionEntry(id: "d2", time: "13:00", patientName: "Luis Mendoza", initials: "LM", modality: "virtual", status: SessionStatus.scheduled, isGroup: nil),
-            SessionEntry(id: "d3", time: "16:00", patientName: "Sofía Rivas", initials: "SR", modality: "presencial", status: SessionStatus.scheduled, isGroup: nil),
-            SessionEntry(id: "d4", time: "18:00", patientName: "Carlos Peña", initials: "CP", modality: "virtual", status: SessionStatus.scheduled, isGroup: nil),
+            SessionEntry(id: "d1", time: "10:00", patientName: "Ana López", initials: "AL", modality: "presencial", status: SessionStatus.completed, isGroup: nil, isTutor: nil),
+            SessionEntry(id: "d2", time: "13:00", patientName: "Luis Mendoza", initials: "LM", modality: "virtual", status: SessionStatus.scheduled, isGroup: nil, isTutor: nil),
+            SessionEntry(id: "d3", time: "16:00", patientName: "Diego Ramírez", initials: "DR", modality: "presencial", status: SessionStatus.scheduled, isGroup: nil, isTutor: true),
+            SessionEntry(id: "d4", time: "18:00", patientName: "Carlos Peña", initials: "CP", modality: "virtual", status: SessionStatus.scheduled, isGroup: nil, isTutor: nil),
         ],
-        nextSession: NextSessionEntry(id: "d2", time: "13:00", patientName: "Luis Mendoza", initials: "LM", modality: "virtual", status: SessionStatus.scheduled, isGroup: nil, dayLabel: "Hoy"),
+        nextSession: NextSessionEntry(id: "d2", time: "13:00", patientName: "Luis Mendoza", initials: "LM", modality: "virtual", status: SessionStatus.scheduled, isGroup: nil, isTutor: nil, dayLabel: "Hoy", isToday: true),
         kpis: KPIs(sessionsToday: 4, activePatients: 18, collectedMonth: 12400, pendingTotal: 2100, owingPatients: 3, monthLabel: "Julio", currency: "MXN"),
         week: [
             WeekDay(d: "Lun", count: 3, isToday: false),
