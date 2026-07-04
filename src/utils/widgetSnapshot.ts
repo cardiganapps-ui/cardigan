@@ -97,6 +97,7 @@ export interface SnapshotSessionEntry {
   modality: string;
   status: string;
   isGroup?: boolean;
+  isTutor?: boolean;
 }
 
 export interface WidgetSnapshot {
@@ -105,7 +106,7 @@ export interface WidgetSnapshot {
   tz: string;
   todayLabel: string;
   sessionsToday: SnapshotSessionEntry[];
-  nextSession: (SnapshotSessionEntry & { dayLabel: string }) | null;
+  nextSession: (SnapshotSessionEntry & { dayLabel: string; isToday: boolean }) | null;
   kpis: {
     sessionsToday: number;
     activePatients: number;
@@ -174,11 +175,17 @@ function toEntry(s: SnapshotSessionRow, displayCompleted: boolean): SnapshotSess
   const g = Array.isArray(s.groups) ? s.groups[0] : s.groups;
   const groupName = g?.name || "Grupo";
   const name = isGroup ? groupName : (s.patient || "");
+  // Tutor sessions are marked by a "T·" prefix on sessions.initials (the
+  // app's convention). Surface it as a flag for the widget's purple accent
+  // and strip the prefix from the displayed initials (like tutorDisplayInitials).
+  const rawInitials = s.initials || "";
+  const isTutor = /^T[·.]/.test(rawInitials);
+  const cleanInitials = isTutor ? rawInitials.replace(/^T[·.]\s*/, "") : rawInitials;
   const entry: SnapshotSessionEntry = {
     id: s.id || "",
     time: s.time || "",
     patientName: name,
-    initials: isGroup ? getInitials(groupName) : (s.initials || getInitials(name)),
+    initials: isGroup ? getInitials(groupName) : (cleanInitials || getInitials(name)),
     modality: s.modality || "presencial",
     // Display parity with enrichedSessions: a past scheduled slot reads
     // as completed. Pixels only — balances never come from this field.
@@ -187,6 +194,7 @@ function toEntry(s: SnapshotSessionRow, displayCompleted: boolean): SnapshotSess
       : (s.status || SESSION_STATUS.SCHEDULED),
   };
   if (isGroup) entry.isGroup = true;
+  if (isTutor) entry.isTutor = true;
   return entry;
 }
 
@@ -239,7 +247,7 @@ export function buildWidgetSnapshot({
     s.status === SESSION_STATUS.SCHEDULED && sessionMinutes(s.time) + 60 > nowMin
   );
   if (upcomingToday) {
-    nextSession = { ...toEntry(upcomingToday, false), dayLabel: "Hoy" };
+    nextSession = { ...toEntry(upcomingToday, false), dayLabel: "Hoy", isToday: true };
   } else {
     for (let offset = 1; offset <= 7 && !nextSession; offset++) {
       const day = new Date(userNow);
@@ -253,7 +261,7 @@ export function buildWidgetSnapshot({
       );
       if (dayRows.length) {
         const dayLabel = offset === 1 ? "Mañana" : DAYS_FULL[(day.getDay() + 6) % 7];
-        nextSession = { ...toEntry(dayRows[0], false), dayLabel };
+        nextSession = { ...toEntry(dayRows[0], false), dayLabel, isToday: false };
       }
     }
   }

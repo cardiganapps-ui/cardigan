@@ -33,5 +33,16 @@
     <key>NSExtensionPointIdentifier</key>
     <string>com.apple.widgetkit-extension</string>
   </dict>
+  <!-- Bundled Nunito / Nunito Sans (fonts/, OFL) so the widgets render in
+       the app's display type. Registered by filename; loaded via
+       Font.custom(<PostScript name>) in Theme.swift (CFont). -->
+  <key>UIAppFonts</key>
+  <array>
+    <string>Nunito-Bold.ttf</string>
+    <string>Nunito-ExtraBold.ttf</string>
+    <string>NunitoSans-Regular.ttf</string>
+    <string>NunitoSans-SemiBold.ttf</string>
+    <string>NunitoSans-Bold.ttf</string>
+  </array>
 </dict>
 </plist>

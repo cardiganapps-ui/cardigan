@@ -12,20 +12,21 @@ private struct ActionTile: View {
     let symbol: String
     let label: String
     let tint: Color
+    var diameter: CGFloat = 44
+    var glyphSize: CGFloat = 18
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 7) {
             ZStack {
-                Circle()
-                    .fill(tint.opacity(0.14))
-                    .frame(width: 44, height: 44)
+                Circle().fill(tint.opacity(CardiganMetrics.tintFill))
                 Image(systemName: symbol)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: glyphSize, weight: .regular))
                     .foregroundStyle(tint)
             }
+            .frame(width: diameter, height: diameter)
             Text(label)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(CardiganTheme.text)
+                .font(CFont.bodyBold(11))
+                .foregroundStyle(CardiganTheme.charcoal)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -45,25 +46,16 @@ struct AccionesWidgetView: View {
                 AccionesSmallView()
             }
         }
-        .containerBackground(for: .widget) { CardiganTheme.background }
+        .cardiganContainer(family)
     }
 }
 
 struct AccionesSmallView: View {
     var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(CardiganTheme.teal.opacity(0.14))
-                    .frame(width: 52, height: 52)
-                Image(systemName: "calendar.badge.plus")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(CardiganTheme.tealDark)
-            }
-            Text("Nueva sesión")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(CardiganTheme.text)
-        }
+        ActionTile(
+            symbol: "calendar.badge.plus", label: "Nueva sesión",
+            tint: CardiganTheme.tealDark, diameter: 54, glyphSize: 24
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .widgetURL(CardiganTheme.newSessionURL)
     }
@@ -71,10 +63,10 @@ struct AccionesSmallView: View {
 
 struct AccionesMediumView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Acciones rápidas")
-                .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(CardiganTheme.text)
+                .font(CFont.num(15))
+                .foregroundStyle(CardiganTheme.charcoal)
             HStack(spacing: 8) {
                 Link(destination: CardiganTheme.newSessionURL) {
                     ActionTile(symbol: "calendar.badge.plus", label: "Nueva sesión", tint: CardiganTheme.tealDark)
@@ -103,4 +95,10 @@ struct AccionesWidget: Widget {
         .description("Crea una sesión o registra un pago con un toque.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
+}
+
+#Preview("Acciones", as: .systemMedium) {
+    AccionesWidget()
+} timeline: {
+    AccionesEntry(date: Date())
 }

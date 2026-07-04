@@ -1,8 +1,8 @@
 //  FinanzasWidget.swift
 //  CardiganWidgets — the Home-screen KPI grid as a widget: cobrado del
-//  mes, por cobrar, sesiones de hoy. Amounts follow the "mostrar
-//  montos" AppIntent toggle ("•••" when hidden — shoulder-surfing
-//  guard) and are privacySensitive either way.
+//  mes, por cobrar, sesiones de hoy, plus a Lock-screen "por cobrar"
+//  glance. Amounts follow the "mostrar montos" AppIntent toggle ("•••"
+//  when hidden) and are privacySensitive so a locked device redacts them.
 
 import SwiftUI
 import WidgetKit
@@ -18,19 +18,22 @@ struct FinanzasWidgetView: View {
     var body: some View {
         Group {
             if let snapshot = entry.snapshot {
-                if family == .systemMedium {
-                    FinanzasMediumView(snapshot: snapshot, entry: entry)
-                } else {
-                    FinanzasSmallView(snapshot: snapshot, entry: entry)
+                switch family {
+                case .accessoryInline: FinanzasInlineView(snapshot: snapshot, entry: entry)
+                case .accessoryRectangular: FinanzasRectangularView(snapshot: snapshot, entry: entry)
+                case .systemMedium: FinanzasMediumView(snapshot: snapshot, entry: entry)
+                default: FinanzasSmallView(snapshot: snapshot, entry: entry)
                 }
             } else {
                 NotConfiguredView()
             }
         }
-        .containerBackground(for: .widget) { CardiganTheme.background }
+        .cardiganContainer(family)
         .widgetURL(CardiganTheme.financesURL)
     }
 }
+
+// ── Home: small (cobrado hero) ──
 
 struct FinanzasSmallView: View {
     let snapshot: WidgetSnapshot
@@ -38,124 +41,114 @@ struct FinanzasSmallView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("COBRADO · \(snapshot.kpis.monthLabel.uppercased())")
-                .font(.system(size: 10, weight: .bold))
-                .tracking(0.6)
-                .foregroundStyle(CardiganTheme.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            Text("COBRADO · \(snapshot.kpis.monthLabel.uppercased())").eyebrow().minimumScaleFactor(0.8)
             Text(amountText(snapshot.kpis.collectedMonth, visible: entry.showAmounts))
-                .font(.system(size: 26, weight: .heavy, design: .rounded))
-                .monospacedDigit()
+                .font(CFont.num(27))
+                .tabular()
                 .foregroundStyle(CardiganTheme.green)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
                 .privacySensitive()
+                .widgetAccentable()
             Spacer(minLength: 2)
-            HStack(spacing: 4) {
+            HStack(spacing: 5) {
                 Text("Por cobrar")
-                    .font(.system(size: 11))
-                    .foregroundStyle(CardiganTheme.textSecondary)
+                    .font(CFont.body(11))
+                    .foregroundStyle(CardiganTheme.charcoalMd)
                 Text(amountText(snapshot.kpis.pendingTotal, visible: entry.showAmounts))
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(snapshot.kpis.pendingTotal > 0 ? CardiganTheme.red : CardiganTheme.textSecondary)
+                    .font(CFont.num(13))
+                    .tabular()
+                    .foregroundStyle(snapshot.kpis.pendingTotal > 0 ? CardiganTheme.red : CardiganTheme.charcoalMd)
                     .privacySensitive()
             }
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            let count = snapshot.kpis.sessionsToday
-            Text(count == 1 ? "1 sesión hoy" : "\(count) sesiones hoy")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(CardiganTheme.tealDark)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Capsule().fill(CardiganTheme.teal.opacity(0.14)))
+            CountPill(text: sessionsPill)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
-}
 
-private struct KPIColumn: View {
-    let label: String
-    let value: String
-    let tint: Color
-    let sub: String?
-    var sensitive = true
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label.uppercased())
-                .font(.system(size: 9, weight: .bold))
-                .tracking(0.5)
-                .foregroundStyle(CardiganTheme.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Group {
-                if sensitive {
-                    Text(value).privacySensitive()
-                } else {
-                    Text(value)
-                }
-            }
-            .font(.system(size: 19, weight: .heavy, design: .rounded))
-            .monospacedDigit()
-            .foregroundStyle(tint)
-            .lineLimit(1)
-            .minimumScaleFactor(0.55)
-            if let sub {
-                Text(sub)
-                    .font(.system(size: 10))
-                    .foregroundStyle(CardiganTheme.textSecondary)
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    private var sessionsPill: String {
+        let c = snapshot.kpis.sessionsToday
+        return c == 1 ? "1 sesión hoy" : "\(c) sesiones hoy"
     }
 }
+
+// ── Home: medium (KPI grid) ──
 
 struct FinanzasMediumView: View {
     let snapshot: WidgetSnapshot
     let entry: FinanzasEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                Text("Finanzas")
-                    .font(.system(size: 14, weight: .heavy, design: .rounded))
-                    .foregroundStyle(CardiganTheme.text)
-                Text("· \(snapshot.kpis.monthLabel)")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(CardiganTheme.textSecondary)
-                Spacer()
-                StaleCaption(snapshot: snapshot)
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "Finanzas", context: snapshot.kpis.monthLabel)
             HStack(alignment: .top, spacing: 12) {
-                KPIColumn(
+                KPITile(
                     label: "Cobrado (mes)",
                     value: amountText(snapshot.kpis.collectedMonth, visible: entry.showAmounts),
-                    tint: CardiganTheme.green,
-                    sub: nil
+                    valueTint: CardiganTheme.green,
+                    accentable: true
                 )
-                KPIColumn(
+                KPITile(
                     label: "Por cobrar",
                     value: amountText(snapshot.kpis.pendingTotal, visible: entry.showAmounts),
-                    tint: snapshot.kpis.pendingTotal > 0 ? CardiganTheme.red : CardiganTheme.textSecondary,
-                    sub: snapshot.kpis.owingPatients > 0
-                        ? (snapshot.kpis.owingPatients == 1 ? "1 pendiente" : "\(snapshot.kpis.owingPatients) pendientes")
-                        : "Al corriente"
+                    valueTint: snapshot.kpis.pendingTotal > 0 ? CardiganTheme.red : CardiganTheme.charcoalMd,
+                    sub: pendientesSub
                 )
-                KPIColumn(
+                KPITile(
                     label: "Hoy",
                     value: "\(snapshot.kpis.sessionsToday)",
-                    tint: CardiganTheme.tealDark,
+                    valueTint: CardiganTheme.tealDark,
                     sub: snapshot.kpis.sessionsToday == 1 ? "sesión" : "sesiones",
                     sensitive: false
                 )
             }
             Spacer(minLength: 0)
+            StaleCaption(snapshot: snapshot)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var pendientesSub: String {
+        let n = snapshot.kpis.owingPatients
+        if n == 0 { return "Al corriente" }
+        return n == 1 ? "1 pendiente" : "\(n) pendientes"
+    }
+}
+
+// ── Lock screen ──
+
+struct FinanzasRectangularView: View {
+    let snapshot: WidgetSnapshot
+    let entry: FinanzasEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("POR COBRAR").font(.system(size: 11, weight: .semibold)).widgetAccentable()
+            Text(amountText(snapshot.kpis.pendingTotal, visible: entry.showAmounts))
+                .font(.system(.headline, design: .rounded))
+                .monospacedDigit()
+                .privacySensitive()
+            Text(pendientesSub).font(.caption2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var pendientesSub: String {
+        let n = snapshot.kpis.owingPatients
+        if n == 0 { return "Al corriente · Cobrado \(amountText(snapshot.kpis.collectedMonth, visible: entry.showAmounts))" }
+        return n == 1 ? "1 paciente pendiente" : "\(n) pacientes pendientes"
+    }
+}
+
+struct FinanzasInlineView: View {
+    let snapshot: WidgetSnapshot
+    let entry: FinanzasEntry
+
+    var body: some View {
+        Text("Por cobrar \(amountText(snapshot.kpis.pendingTotal, visible: entry.showAmounts))")
+            .privacySensitive()
     }
 }
 
@@ -168,6 +161,20 @@ struct FinanzasWidget: Widget {
         }
         .configurationDisplayName("Finanzas")
         .description("Cobrado del mes, por cobrar y sesiones de hoy.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline])
     }
+}
+
+// MARK: - Previews
+
+#Preview("Finanzas medium", as: .systemMedium) {
+    FinanzasWidget()
+} timeline: {
+    FinanzasEntry(date: Date(), snapshot: .demo, showAmounts: true)
+}
+
+#Preview("Finanzas small", as: .systemSmall) {
+    FinanzasWidget()
+} timeline: {
+    FinanzasEntry(date: Date(), snapshot: .demo, showAmounts: true)
 }
