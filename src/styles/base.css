@@ -104,6 +104,8 @@
      rgba(91,155,175,…) call sites it replaces were a fixed light-teal
      that read wrong against dark inputs. dark.css overrides the color. */
   --focus-ring: 0 0 0 3px rgba(91,155,175,0.25);
+  /* Danger variant for .input-error focus — matches --red (#D96B6B). */
+  --focus-ring-danger: 0 0 0 3px rgba(217,107,107,0.15);
   /* ── Spacing scale ──
      The vertical/horizontal rhythm documented in CLAUDE.md, finally
      tokenized so new surfaces stop hand-coding padding/gap px. Use the
