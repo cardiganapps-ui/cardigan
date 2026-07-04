@@ -254,8 +254,12 @@ Play's fields differ from Apple's. Reuse the Spanish copy from
 
 **App name (≤30):**
 ```
-Cardigan
+Cardigan: Agenda y pacientes
 ```
+*(Mirrors the iOS rename — see the ASO rationale in
+`docs/app-store-submission.md` §0: the bare name "Cardigan" loses its own
+brand search to car games via fuzzy matching, and Play weighs the title
+heaviest for search too.)*
 
 **Short description (≤80):**
 ```

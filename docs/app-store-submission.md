@@ -16,20 +16,38 @@ those change.
 
 **App name (≤30):**
 ```
-Cardigan
+Cardigan: Agenda y pacientes
 ```
 **Subtitle (≤30):**
 ```
-Agenda, pagos y expedientes
+Para psicólogos y terapeutas
 ```
+
+> **ASO rationale (Jul 2026).** Searching "Cardigan" surfaces ~30 car games
+> before us (Apple's fuzzy matching maps *cardigan* → *car*, and those games
+> have millions of installs vs. our 2 ratings — verified via the iTunes
+> Search API: we ranked #31 in MX). The app name is the heaviest-weighted
+> search field, so it must carry category tokens, not just the brand.
+> Subtitle carries the audience tokens. Rules that shaped these strings:
+> - Never repeat a word across name / subtitle / keywords — each word is
+>   indexed once; duplication wastes characters.
+> - Include Spanish plurals explicitly ("terapeutas" in the subtitle,
+>   "terapeuta" in keywords): the query *"app para terapeutas"* did NOT
+>   match us while only singular "terapeuta" sat in the keyword field —
+>   Apple's Spanish stemming can't be trusted.
+> - Name changes go through App Review, so they only land with a version
+>   submission — batch this with the next release.
 **Promotional text (≤170, editable without review):**
 ```
 Lleva tu consulta en una sola app: agenda, expedientes, pagos y notas, con recordatorios automáticos y cifrado opcional. 30 días gratis, sin tarjeta.
 ```
 **Keywords (≤100, comma-separated):**
 ```
-psicologo,terapeuta,nutriologo,agenda,citas,pacientes,expediente,consultorio,honorarios,notas,consulta
+psicologo,psicologa,terapeuta,terapia,nutriologo,citas,consultorio,expediente,honorarios,clinica
 ```
+*(96 chars. "agenda"/"pacientes" moved to the app name, "psicólogos"/
+"terapeutas" to the subtitle — don't re-add them here. "psicologa" is
+deliberate: most MX therapists are women and search the female form.)*
 **Description (≤4000):**
 ```
 Cardigan es la app de gestión para profesionales independientes que atienden personas: psicólogos, nutriólogos, profesores particulares, maestros de música y entrenadores. Reúne tu agenda, tus pacientes, tus pagos y tus notas en un solo lugar, diseñado para ser rápido y bonito.
