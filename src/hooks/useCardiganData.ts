@@ -267,11 +267,9 @@ export function useCardiganData(
       async (from, to) => {
         // Windowed: recent rows + still-future scheduled rows of any age
         // (the RPC is `returns setof sessions`, so ordering/paging apply
-        // the same as the table read). The rpc name/args casts bridge
-        // until the generated types include migration 086.
+        // the same as the table read).
         const base = sessionCutoffIso
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated types until 086 lands in supabase gen
-          ? (supabase.rpc as any)("fetch_sessions_windowed", { p_cutoff: sessionCutoffIso })
+          ? supabase.rpc("fetch_sessions_windowed", { p_cutoff: sessionCutoffIso })
           : supabase.from("sessions").select("*").eq("user_id", userId);
         const res = await base
           .order("created_at", { ascending: true })
@@ -342,8 +340,7 @@ export function useCardiganData(
         // Resolved stub when windowing is off so the positional unwrap
         // below stays uniform.
         sessionCutoffIso
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated types until 086 lands in supabase gen
-          ? (supabase.rpc as any)("session_consumed_before", { p_cutoff: sessionCutoffIso })
+          ? supabase.rpc("session_consumed_before", { p_cutoff: sessionCutoffIso })
           : Promise.resolve({ data: null, error: null }),
       ]);
       // allSettled (not all): a single REJECTED query — a connection
