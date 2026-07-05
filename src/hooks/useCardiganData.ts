@@ -102,6 +102,21 @@ interface CachedData {
    from a partial history. */
 const SESSION_WINDOW_MONTHS = Number(import.meta.env.VITE_SESSION_WINDOW_MONTHS || 0) || 0;
 
+/** Exposed for the expediente's "older history" backfill affordance —
+    it only renders when windowing actually trims what's hydrated. */
+export const SESSION_WINDOWING_ACTIVE = SESSION_WINDOW_MONTHS > 0;
+
+/** The same cutoff instant the windowed fetch/aggregate use, recomputed
+    at call time. Backfill readers query `created_at < cutoff`; a row
+    created between load and click lands in both sets, so display
+    merges must dedupe by id. */
+export function sessionWindowCutoffIso(): string | null {
+  if (SESSION_WINDOW_MONTHS <= 0) return null;
+  const c = new Date();
+  c.setMonth(c.getMonth() - SESSION_WINDOW_MONTHS);
+  return c.toISOString();
+}
+
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
 // Sibling lock for group session auto-extend (same rationale as _extending).

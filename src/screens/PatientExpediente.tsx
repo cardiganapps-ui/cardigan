@@ -791,6 +791,7 @@ export function PatientExpediente({
             upcomingPSessions={upcomingPSessions} pastPSessions={pastPSessions}
             onSelectSession={setSelectedSession}
             onOpenNote={openSessionNote}
+            patientId={patient.id}
             {...({ onMarkCompleted, readOnly, mutating } as Record<string, unknown>)}
           />
         )}
