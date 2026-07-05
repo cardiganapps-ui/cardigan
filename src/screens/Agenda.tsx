@@ -40,10 +40,12 @@ export function Agenda() {
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState<Row | null>(null);
   const [selectedGroupOcc, setSelectedGroupOcc] = useState<Row | null>(null);
-  // Bulk selection mode — only the day view participates today (the
-  // place a therapist actually goes to "cancel everything next week").
-  // Week + Month would require richer hit-testing on the event chips
-  // and are an obvious follow-up.
+  // Bulk selection mode — day + month views participate (both render
+  // the SessionRow list, which carries the selection affordance). Week
+  // view stays out: its grid chips are custom mini-blocks that already
+  // juggle tap + drag + context-menu on desktop, and a selection state
+  // without visible checkmarks would be a silent trap. Switching views
+  // exits selection so a set can never go invisible under week view.
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSet, setSelectedSet] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -94,10 +96,11 @@ export function Agenda() {
       setBulkBusy(false);
     }
   }, [bulkBusy, selectedSet, upcomingSessions, deleteSession, onCancelSession, onMarkCompleted, t, showSuccess, showToast, exitSelection]);
-  // When the user leaves the day view OR enters readOnly, abort
-  // selection so the bar doesn't outlive its context.
+  // When the user leaves the selection-capable views (day/month) OR
+  // enters readOnly, abort selection so the bar doesn't outlive its
+  // context (week view has no selection visuals).
   useEffect(() => {
-    if (selectionMode && (view !== "day" || readOnly)) exitSelection();
+    if (selectionMode && ((view !== "day" && view !== "month") || readOnly)) exitSelection();
   }, [view, readOnly, selectionMode, exitSelection]);
   // Selection mode owns the bottom of the screen with the action pill, so
   // hide the FAB + bottom-tab pill (they'd overlap the bar and bury its exit
@@ -323,7 +326,7 @@ export function Agenda() {
               {selectedSet.size > 0 ? t("agenda.bulkBarCount", { n: selectedSet.size }) : t("agenda.bulkBarHint")}
             </span>
           </div>
-        ) : (patients.length > 0 || (view === "day" && !readOnly)) && (
+        ) : (patients.length > 0 || ((view === "day" || view === "month") && !readOnly)) && (
           <div style={{ padding:"0 16px 10px", display:"flex", gap:8, alignItems:"center" }}>
             {patients.length > 0 && (
               <>
@@ -343,7 +346,7 @@ export function Agenda() {
                 </datalist>
               </>
             )}
-            {view === "day" && !readOnly && (
+            {(view === "day" || view === "month") && !readOnly && (
               <button type="button" className="btn btn-ghost"
                 onClick={() => { haptic.tap(); setSelectionMode(true); }}
                 style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:6, width:"auto", height:"auto", padding:"6px 12px", fontSize:12, whiteSpace:"nowrap" }}>
@@ -355,7 +358,7 @@ export function Agenda() {
       </div>
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={selectItem} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} />}
       {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={selectItem} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isTabletSplit} onEventContextMenu={isTabletSplit ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} groupsById={groupsById} />}
-      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={selectItem} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} />}
+      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={selectItem} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly && !selectionMode} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} />}
       {upcomingSessions.length === 0 && (() => {
         // Two flavours of "no sessions": brand-new user with zero
         // patients, or an existing user whose calendar is genuinely
