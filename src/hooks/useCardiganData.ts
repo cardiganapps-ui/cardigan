@@ -29,7 +29,7 @@ import { createInboxActions } from "./useInbox";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
 import { computeGroupAutoExtendRows } from "../utils/groupRecurrence";
-import { computeConsumedByPatient, applyConsumedToPatients, sessionEndMoment } from "../utils/accounting";
+import { computeConsumedByPatient, applyConsumedToPatients, mergeBaseConsumed, sessionEndMoment } from "../utils/accounting";
 import { fetchAllPaged } from "../utils/paginate";
 import { useFocusRefresh } from "./useFocusRefresh";
 
@@ -79,7 +79,28 @@ interface CachedData {
   groups?: GroupRow[];
   groupMembers?: GroupMemberRow[];
   notifications?: NotificationRow[];
+  /** Windowing consumed base (patient_id → Σ rate of pre-cutoff counting
+      sessions). Cached alongside the windowed rows so cold-start
+      balances from cache are complete, never understated. */
+  sessionsOldConsumed?: Record<string, number> | null;
 }
+
+/* ── Session-history windowing (migration 086) ──
+   When VITE_SESSION_WINDOW_MONTHS is a positive number, the client stops
+   hydrating the patient's ENTIRE session history and instead fetches
+   (a) rows created within the window plus (b) still-future scheduled
+   rows of any age (Agenda / auto-extend / slot-conflict inputs), via
+   public.fetch_sessions_windowed. The excluded history's contribution
+   to `consumed` arrives as a per-patient aggregate from
+   public.session_consumed_before — same canonical predicate
+   (session_counts_at), CI-parity-locked against the JS one. The two
+   sets partition the history on ONE cutoff per load, so
+   consumed = aggregate + JS-walk(fetched) equals the old full walk.
+   Unset / 0 → windowing OFF, byte-for-byte the previous behavior.
+   Prime-directive coupling: if the aggregate call fails, the sessions
+   fetch is treated as failed too — we NEVER show balances computed
+   from a partial history. */
+const SESSION_WINDOW_MONTHS = Number(import.meta.env.VITE_SESSION_WINDOW_MONTHS || 0) || 0;
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
@@ -153,6 +174,10 @@ export function useCardiganData(
   const initialCache = useMemo(() => loadCachedData(userId) as CachedData | null, [userId]);
   const [patients, setPatients] = useState(initialCache?.patients || []);
   const [upcomingSessions, setUpcomingSessions] = useState(initialCache?.upcomingSessions || []);
+  // Windowed-history consumed base (see SESSION_WINDOW_MONTHS above).
+  // null when windowing is off. Committed ATOMICALLY with
+  // upcomingSessions — the pair must always describe the same cutoff.
+  const [oldConsumed, setOldConsumed] = useState<Record<string, number> | null>(initialCache?.sessionsOldConsumed || null);
   const [payments, setPayments] = useState(initialCache?.payments || []);
   const [notes, setNotes] = useState(initialCache?.notes || []);
   const [documents, setDocuments] = useState(initialCache?.documents || []);
@@ -217,12 +242,23 @@ export function useCardiganData(
     // tiebreaker keeps paging stable when a batch of rows shares one
     // created_at (the auto-extend insert writes many at the same instant).
     // Returns the same { data, error } shape as `q(...)`.
+    // Windowing cutoff — ONE value per load, shared verbatim by the
+    // windowed fetch and the consumed aggregate so the two sets
+    // partition the history exactly (no double count, no gap).
+    const sessionCutoffIso = SESSION_WINDOW_MONTHS > 0
+      ? (() => { const c = new Date(); c.setMonth(c.getMonth() - SESSION_WINDOW_MONTHS); return c.toISOString(); })()
+      : null;
     const fetchAllSessions = () => fetchAllPaged(
       async (from, to) => {
-        const res = await supabase
-          .from("sessions")
-          .select("*")
-          .eq("user_id", userId)
+        // Windowed: recent rows + still-future scheduled rows of any age
+        // (the RPC is `returns setof sessions`, so ordering/paging apply
+        // the same as the table read). The rpc name/args casts bridge
+        // until the generated types include migration 086.
+        const base = sessionCutoffIso
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated types until 086 lands in supabase gen
+          ? (supabase.rpc as any)("fetch_sessions_windowed", { p_cutoff: sessionCutoffIso })
+          : supabase.from("sessions").select("*").eq("user_id", userId);
+        const res = await base
           .order("created_at", { ascending: true })
           .order("id", { ascending: true })
           .range(from, to);
@@ -237,18 +273,18 @@ export function useCardiganData(
     // model and shape stay compatible.
     const now = new Date();
     const paymentsSince = new Date(now); paymentsSince.setMonth(now.getMonth() - 12);
-    // Fetch the full session history for accounting. The amountDue
-    // calculation iterates every non-cancelled session, so a `created_at`
-    // window would silently drop sessions that pre-date it — past
-    // completed sessions would vanish from the "consumed" side and old
-    // future-scheduled sessions would vanish from the "to-subtract" side,
-    // both of which have been reported in the wild as inflated balances.
+    // Sessions: full history when windowing is off. When windowing is ON
+    // (SESSION_WINDOW_MONTHS), a bare created_at window would silently
+    // drop pre-cutoff counting sessions from `consumed` (the historical
+    // inflated/understated-balance bug class) — which is exactly why the
+    // windowed path pairs the fetch with session_consumed_before and
+    // treats the pair as one atomic read (see coupling below).
     // Expenses share the payments window — a 12-month rolling view is
     // plenty for the Gastos / Resumen tabs. Older years are still
     // queryable via the CSV export endpoint when the contador needs them.
     const expensesSince = paymentsSince;
     let pRes: FetchResult, sRes: FetchResult, pmRes: FetchResult, nRes: FetchResult, dRes: FetchResult, mRes: FetchResult, eRes: FetchResult, reRes: FetchResult, rrRes: FetchResult;
-    let tRes: FetchResult, tlRes: FetchResult, naRes: FetchResult, gRes: FetchResult, gmRes: FetchResult, nfRes: FetchResult;
+    let tRes: FetchResult, tlRes: FetchResult, naRes: FetchResult, gRes: FetchResult, gmRes: FetchResult, nfRes: FetchResult, aggRes: FetchResult;
     try {
       const settled = await Promise.allSettled([
         q("patients").order("name"),
@@ -287,6 +323,13 @@ export function useCardiganData(
         // generous window since rows are small and the inbox shows recent
         // activity. Read/cleared via the inbox actions below.
         q("notifications", 200).order("created_at", { ascending: false }),
+        // Windowing consumed aggregate — pre-cutoff Σ(rate) per patient.
+        // Resolved stub when windowing is off so the positional unwrap
+        // below stays uniform.
+        sessionCutoffIso
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated types until 086 lands in supabase gen
+          ? (supabase.rpc as any)("session_consumed_before", { p_cutoff: sessionCutoffIso })
+          : Promise.resolve({ data: null, error: null }),
       ]);
       // allSettled (not all): a single REJECTED query — a connection
       // dropped mid-flight, say — must not blank the entire hydration.
@@ -300,10 +343,18 @@ export function useCardiganData(
       // the .from(table) table check above and the .insert/.update shape
       // checks in the domain hooks, plus the per-table casts at each commit
       // site below. Per-table read typing would fight the allSettled union.
-      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes] =
+      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes, aggRes] =
         settled.map((r): FetchResult => r.status === "fulfilled"
           ? (r.value as FetchResult)
           : { data: null, error: { message: (r.reason as Error)?.message || "Error de red" } });
+      // PRIME-DIRECTIVE COUPLING: windowed sessions + the consumed
+      // aggregate are one logical read. If the aggregate failed, treat
+      // the sessions read as failed too — last-known-good state holds,
+      // auto-extend skips (its !sRes.error gate), cache isn't persisted.
+      // Balances computed from a partial history must never render.
+      if (sessionCutoffIso && aggRes?.error && !sRes.error) {
+        sRes = { data: null, error: aggRes.error };
+      }
     } catch (err) {
       // Defensive — allSettled itself never rejects; this only catches a
       // synchronous throw while building the queries.
@@ -534,7 +585,21 @@ export function useCardiganData(
     // (the failure still surfaces via the fetch-error toast above); only a
     // clean read replaces the data.
     if (!pRes.error) setPatients(pData);
-    if (!sRes.error) setUpcomingSessions(sData);
+    // Build the windowing consumed base from the aggregate rows. Committed
+    // in the SAME branch as upcomingSessions so the pair always describes
+    // one cutoff. Windowing off → explicit null (clears a stale cached
+    // base if the flag was just turned off).
+    let oldConsumedNext: Record<string, number> | null = null;
+    if (sessionCutoffIso && !sRes.error) {
+      oldConsumedNext = {};
+      for (const r of (aggRes?.data as { patient_id: string; consumed: number }[] | null) || []) {
+        if (r?.patient_id) oldConsumedNext[r.patient_id] = Number(r.consumed) || 0;
+      }
+    }
+    if (!sRes.error) {
+      setUpcomingSessions(sData);
+      setOldConsumed(sessionCutoffIso ? oldConsumedNext : null);
+    }
     if (!pmRes.error) setPayments(mapRows(pmRes.data as PaymentRow[]));
     // Decrypt any encrypted notes inline if the user is unlocked.
     // Locked rows keep their ciphertext + encrypted=true flag and are
@@ -593,7 +658,7 @@ export function useCardiganData(
     // poison the next cold start — the cache would show empty patients /
     // sessions / payments until a full success overwrote it. On any
     // per-table error, keep the last full snapshot instead.
-    const anyFetchError = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes]
+    const anyFetchError = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes, aggRes]
       .some(r => r?.error);
     if (!anyFetchError) {
       saveCachedData(userId, {
@@ -610,6 +675,7 @@ export function useCardiganData(
         groups: gData,
         groupMembers: gmData,
         notifications: (nfRes?.data as NotificationRow[]) || [],
+        sessionsOldConsumed: sessionCutoffIso ? oldConsumedNext : null,
       });
       // iOS widgets ride the same coherence point as the cold-start
       // cache: full-success data only, raw (un-enriched) rows. Skipped
@@ -622,6 +688,9 @@ export function useCardiganData(
           sessions: sData,
           payments: mapRows(pmRes.data as PaymentRow[]),
           groups: gData,
+          // Windowing: widget balances need the pre-cutoff consumed base
+          // too, or the home-screen amountDue would understate.
+          baseConsumed: sessionCutoffIso ? oldConsumedNext : null,
         });
       }
     }
@@ -741,14 +810,20 @@ export function useCardiganData(
   const consumedByPatient = useMemo(
     () => {
       const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
-      return computeConsumedByPatient(upcomingSessions, rateById);
+      // Windowing (086): fold the server-side pre-cutoff consumed base
+      // onto the JS walk over the fetched rows. oldConsumed is null when
+      // windowing is off → mergeBaseConsumed returns the walk unchanged.
+      return mergeBaseConsumed(
+        computeConsumedByPatient(upcomingSessions, rateById),
+        oldConsumed,
+      );
     },
     // `patients` is read above only through its id+rate slice, captured by
     // value in rateSig. Depending on the patients reference would defeat the
     // whole split — every paid/opening optimistic update would re-walk the
     // full session history. rateSig is value-equal when rates are unchanged.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [upcomingSessions, rateSig]
+    [upcomingSessions, rateSig, oldConsumed]
   );
   //  • enrichedPatients — the cheap O(patients) delta map. Reuses the SAME
   //    pure formula helper as enrichPatientsWithBalance (no inline copy).
