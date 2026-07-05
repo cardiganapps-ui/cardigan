@@ -118,7 +118,11 @@ export function Agenda() {
     setSelectedSession(item); setSelectedSessionMode(mode || null);
   }, []);
   const [editingNote, setEditingNote] = useState<Row | null>(null);
-  const [filterPatientId, setFilterPatientId] = useState("");
+  // Free-text patient filter (was a single-patient <select>): substring-
+  // matches the sessions' denormalized patient name, so a partial query
+  // covers several patients at once and typing beats scrolling a long
+  // dropdown. A <datalist> keeps the pick-from-list convenience.
+  const [filterQuery, setFilterQuery] = useState("");
   const [newSessionPrefill, setNewSessionPrefill] = useState<Row | null>(null);
   const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
   // Hide the CTA pill once the user has linked their calendar. Until
@@ -140,11 +144,12 @@ export function Agenda() {
   }, []);
 
   const filteredSessions = useMemo(() => {
-    if (!filterPatientId) return upcomingSessions;
-    return upcomingSessions.filter((s: Row) => s.patient_id === filterPatientId);
-  }, [upcomingSessions, filterPatientId]);
+    const q = filterQuery.trim().toLowerCase();
+    if (!q) return upcomingSessions;
+    return upcomingSessions.filter((s: Row) => (s.patient || "").toLowerCase().includes(q));
+  }, [upcomingSessions, filterQuery]);
 
-  const filterPatientName = filterPatientId ? patients.find((p: Row) => p.id === filterPatientId)?.name || "" : "";
+  const filterPatientName = filterQuery.trim();
 
   const handleCellTap = useCallback((date: Date, hour: string) => {
     setNewSessionPrefill({ date: toISODate(date), time: hour });
@@ -321,16 +326,22 @@ export function Agenda() {
         ) : (patients.length > 0 || (view === "day" && !readOnly)) && (
           <div style={{ padding:"0 16px 10px", display:"flex", gap:8, alignItems:"center" }}>
             {patients.length > 0 && (
-              <select
-                value={filterPatientId}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterPatientId(e.target.value)}
-                style={{ flex:1, minWidth:0, fontSize:"var(--text-sm)", fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", appearance:"auto" }}
-              >
-                <option value="">{t("agenda.allPatients")}</option>
-                {patients.filter((p: Row) => p.status === "active").sort((a: Row, b: Row) => a.name.localeCompare(b.name)).map((p: Row) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+              <>
+                <input
+                  type="search"
+                  list="agenda-patient-names"
+                  value={filterQuery}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterQuery(e.target.value)}
+                  placeholder={t("agenda.filterPlaceholder")}
+                  aria-label={t("agenda.filterPlaceholder")}
+                  style={{ flex:1, minWidth:0, fontSize:16, fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)" }}
+                />
+                <datalist id="agenda-patient-names">
+                  {patients.filter((p: Row) => p.status === "active").sort((a: Row, b: Row) => a.name.localeCompare(b.name)).map((p: Row) => (
+                    <option key={p.id} value={p.name} />
+                  ))}
+                </datalist>
+              </>
             )}
             {view === "day" && !readOnly && (
               <button type="button" className="btn btn-ghost"
