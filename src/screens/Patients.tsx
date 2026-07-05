@@ -75,6 +75,19 @@ export function Patients() {
   // 'potential' rows (default), archived = 'discarded'. Only renders
   // when filter === 'potential'.
   const [potentialSubFilter, setPotentialSubFilter] = useState("active");
+  // Roster order: 'name' (default) or 'debt' — persisted per device so
+  // the "who owes me" ordering survives reloads for users who live in it.
+  const [sortKey, setSortKey] = useState(() => {
+    try { return localStorage.getItem("cardigan.patients.sort") || "name"; }
+    catch { return "name"; }
+  });
+  const toggleSort = () => {
+    setSortKey(prev => {
+      const next = prev === "debt" ? "name" : "debt";
+      try { localStorage.setItem("cardigan.patients.sort", next); } catch { /* private mode */ }
+      return next;
+    });
+  };
   const [selected, setSelected] = useState<Row | null>(null);
   // Slim profile sheet for a single potential. Distinct from
   // `expediente` (the full PatientExpediente) — potentials never
@@ -240,8 +253,8 @@ export function Patients() {
   // utils/patientFilter (unit-tested); memoized so a parent state tick
   // doesn't re-run filter+sort over the whole roster on every render.
   const filtered = useMemo(
-    () => filterPatients(patients, { search, filter, potentialSubFilter }),
-    [patients, search, filter, potentialSubFilter],
+    () => filterPatients(patients, { search, filter, potentialSubFilter, sort: sortKey }),
+    [patients, search, filter, potentialSubFilter, sortKey],
   );
   const isPotentialView = filter === "potential";
 
@@ -280,6 +293,7 @@ export function Patients() {
       filters={filters}
       isPotentialView={isPotentialView}
       potentialSubFilter={potentialSubFilter} setPotentialSubFilter={setPotentialSubFilter}
+      sortKey={sortKey} onToggleSort={toggleSort}
       filtered={filtered}
       splitMode={splitMode} expediente={expediente} readOnly={readOnly}
       requestFabAction={requestFabAction}

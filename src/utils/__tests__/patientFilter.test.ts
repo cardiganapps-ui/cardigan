@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { patientMatchesLane, comparePatients, filterPatients } from "../patientFilter";
+import { patientMatchesLane, comparePatients, comparePatientsByDebt, filterPatients } from "../patientFilter";
 import { PATIENT_STATUS } from "../../data/constants";
 
 const p = (name: string, status: string, amountDue = 0) => ({ name, status, amountDue });
@@ -70,5 +70,29 @@ describe("filterPatients", () => {
     const before = roster.map(x => x.name);
     filterPatients(roster, { search: "", filter: "all", potentialSubFilter: "active" });
     expect(roster.map(x => x.name)).toEqual(before);
+  });
+});
+
+describe("comparePatientsByDebt", () => {
+  it("orders by amountDue desc regardless of status, name as tiebreak", () => {
+    const roster = [
+      p("Ana López", "active", 0),
+      p("Bruno Díaz", "ended", 900),   // ended but owing outranks active at zero
+      p("Carla Ruiz", "active", 500),
+      p("Zoe Vega", "active", 500),    // same debt as Carla → alphabetical
+    ];
+    expect([...roster].sort(comparePatientsByDebt).map(x => x.name))
+      .toEqual(["Bruno Díaz", "Carla Ruiz", "Zoe Vega", "Ana López"]);
+  });
+
+  it("filterPatients honours sort: 'debt' and defaults to name sort otherwise", () => {
+    const roster = [
+      p("Ana López", "active", 0),
+      p("Bruno Díaz", "active", 900),
+    ];
+    expect(filterPatients(roster, { search: "", filter: "all", potentialSubFilter: "active", sort: "debt" }).map(x => x.name))
+      .toEqual(["Bruno Díaz", "Ana López"]);
+    expect(filterPatients(roster, { search: "", filter: "all", potentialSubFilter: "active" }).map(x => x.name))
+      .toEqual(["Ana López", "Bruno Díaz"]);
   });
 });

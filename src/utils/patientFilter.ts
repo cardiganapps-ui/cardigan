@@ -21,6 +21,9 @@ export interface PatientFilterCriteria {
   filter: string;
   /** Sub-filter when filter === 'potential': 'active' | 'archived'. */
   potentialSubFilter: string;
+  /** Roster order: 'name' (default — active first, then alphabetical)
+      or 'debt' (largest amountDue first; the "who owes me" view). */
+  sort?: string;
 }
 
 /**
@@ -45,7 +48,7 @@ export function patientMatchesLane(
   return true;
 }
 
-/** Sort: active patients first, then alphabetical by name. */
+/** Default sort: active patients first, then alphabetical by name. */
 export function comparePatients(a: FilterablePatient, b: FilterablePatient): number {
   if (a.status !== b.status) {
     if (a.status === "active") return -1;
@@ -54,13 +57,22 @@ export function comparePatients(a: FilterablePatient, b: FilterablePatient): num
   return a.name.localeCompare(b.name);
 }
 
-/** Apply search + lane filter + status/name sort to a patient roster. */
+/** Debt sort: largest amountDue first regardless of status (an ended
+    patient who still owes matters more than an active one at zero),
+    name as the tiebreak so the order is stable. */
+export function comparePatientsByDebt(a: FilterablePatient, b: FilterablePatient): number {
+  const diff = (b.amountDue ?? 0) - (a.amountDue ?? 0);
+  if (diff !== 0) return diff;
+  return a.name.localeCompare(b.name);
+}
+
+/** Apply search + lane filter + the selected sort to a patient roster. */
 export function filterPatients<T extends FilterablePatient>(
   patients: T[],
-  { search, filter, potentialSubFilter }: PatientFilterCriteria,
+  { search, filter, potentialSubFilter, sort }: PatientFilterCriteria,
 ): T[] {
   const q = search.toLowerCase();
   return patients
     .filter(p => p.name.toLowerCase().includes(q) && patientMatchesLane(p, filter, potentialSubFilter))
-    .sort(comparePatients);
+    .sort(sort === "debt" ? comparePatientsByDebt : comparePatients);
 }
