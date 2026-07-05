@@ -14,6 +14,7 @@ import {
 } from "../../data/constants";
 import { MoneyInput } from "../MoneyInput";
 import { SheetOverlay } from "../SheetOverlay";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 /* Manager for recurring expense templates. Listed in this single sheet
    so a therapist juggling 3-4 templates (rent, software, supervisión,
@@ -62,6 +63,7 @@ export function RecurringExpenseSheet({ onClose }: { onClose: () => void }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editError, setEditError] = useState("");
+  const [deletingTpl, setDeletingTpl] = useState<Row | null>(null);
 
   // Sort: active first, then paused, then alpha by description.
   const sorted = [...(recurringExpenses || [])].sort((a: Row, b: Row) => {
@@ -124,14 +126,20 @@ export function RecurringExpenseSheet({ onClose }: { onClose: () => void }) {
     await updateRecurringTemplate(tpl.id, { active: !tpl.active });
   };
 
-  const handleDelete = async (tpl: Row) => {
-    if (!window.confirm(t("gastos.recurringDelete") + "\n\n" + t("gastos.recurringDeleteWarning"))) return;
-    await deleteRecurringTemplate(tpl.id);
+  const handleDelete = (tpl: Row) => {
+    setDeletingTpl(tpl);
+  };
+
+  const doDelete = async () => {
+    if (!deletingTpl) return;
+    await deleteRecurringTemplate(deletingTpl.id);
+    setDeletingTpl(null);
   };
 
   return (
     <SheetOverlay exiting={exiting} onClose={safeAnimatedClose || undefined}>
       <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
+        aria-label={t("gastos.recurringTitle")}
         {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
@@ -329,6 +337,16 @@ export function RecurringExpenseSheet({ onClose }: { onClose: () => void }) {
           })}
         </div>
       </div>
+      <ConfirmDialog
+        open={!!deletingTpl}
+        destructive
+        busy={mutating}
+        title={t("gastos.recurringDelete")}
+        body={t("gastos.recurringDeleteWarning")}
+        confirmLabel={t("delete")}
+        onConfirm={doDelete}
+        onCancel={() => setDeletingTpl(null)}
+      />
     </SheetOverlay>
   );
 }

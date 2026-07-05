@@ -53,7 +53,7 @@ export function MembersPickerSheet({ groupId, existingPatientIds, onClose }: {
 
   return (
     <SheetOverlay exiting={exiting} onClose={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(88lvh, calc(100lvh - var(--sat) - 16px))" }}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" aria-label={t("groups.addMembers")} {...panelHandlers} style={{ maxHeight:"min(88lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("groups.addMembers")}</span>

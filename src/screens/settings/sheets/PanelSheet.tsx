@@ -29,7 +29,7 @@ export function PanelSheet({ open, title, onClose, setSheetPanel, sheetPanelHand
   if (!open) return null;
   return (
         <SheetOverlay onClose={onClose}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={title} {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{title}</span>

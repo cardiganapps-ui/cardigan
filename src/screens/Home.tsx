@@ -383,20 +383,37 @@ export function Home({ setScreen, userName }: HomeProps) {
             style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
             <IconPlus size={16} /> {t("patients.addFirstCta")}
           </button>
+          {/* "Ver ejemplo" — lets a brand-new user peek at the fully
+              populated demo dataset before entering anything. Bridges
+              the stark empty-account cold start without writing sample
+              rows into their real data (accounting + activation-funnel
+              integrity). CardiganApp listens for the event and swaps in
+              the demo shell; their session persists underneath. */}
+          <div style={{ marginTop: 10 }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-tap"
+              onClick={() => window.dispatchEvent(new CustomEvent("cardigan-enter-demo"))}
+              style={{ width:"auto", padding:"8px 18px", height:"auto", minHeight:0, fontSize:"var(--text-sm)" }}>
+              {t("home.exploreExample")}
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Activation checklist — only visible during the trial; auto-
-          hides once all four steps complete. Promoted above the rest
-          of Home (notifications prompt, today's sessions, balances)
-          so it's the first persistent affordance new users see. The
-          component self-derives state from context arrays and is a
-          no-op for users who've left trial. */}
+      {/* Activation checklist — visible during the trial, and for
+          recently-created active accounts (comp / early subscribers)
+          that haven't finished setup. Auto-hides once all four steps
+          complete. Promoted above the rest of Home (notifications
+          prompt, today's sessions, balances) so it's the first
+          persistent affordance new users see. The component
+          self-derives state from context arrays. */}
       {!readOnly && user?.id && (
         <div style={{ padding: "8px 16px 0" }}>
           <ActivationChecklist
             userId={user.id}
             accessState={subscription?.accessState}
+            accountCreatedAt={user.created_at}
             onNavigate={setScreen}
           />
         </div>
@@ -763,7 +780,7 @@ export function Home({ setScreen, userName }: HomeProps) {
 
       {selected && (
         <SheetOverlay onClose={() => setSelected(null)}>
-          <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" {...selectedPanelHandlers}>
+          <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("home.balanceDetail")} {...selectedPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("home.balanceDetail")}</span>

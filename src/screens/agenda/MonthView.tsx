@@ -15,7 +15,7 @@ import { sortByTime } from "./agendaShared";
 type Row = any;
 
 /* ── MONTH VIEW ── */
-export function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions, jumpToToday, filterPatientName, onMoveDay, canMoveDay, onSwipeComplete, groupsById }: {
+export function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions, jumpToToday, filterPatientName, onMoveDay, canMoveDay, onSwipeComplete, groupsById, selectionMode, selectedSet, onToggleSelect }: {
   onSelectSession: (s: Row) => void;
   selectedDate: Date;
   setSelectedDate: (d: Date | ((prev: Date) => Date)) => void;
@@ -26,6 +26,9 @@ export function MonthView({ onSelectSession, selectedDate, setSelectedDate, upco
   canMoveDay?: boolean;
   onSwipeComplete?: (s: Row) => void;
   groupsById?: Map<string, Row>;
+  selectionMode?: boolean;
+  selectedSet?: Set<string>;
+  onToggleSelect?: (s: Row) => void;
 }) {
   const { t, strings } = useT();
   const MONTH_NAMES = strings.months;
@@ -58,10 +61,11 @@ export function MonthView({ onSelectSession, selectedDate, setSelectedDate, upco
   const shared = { selectedDate, setSelectedDate, sessionsByDate, onMoveDay, canDrag: canMoveDay };
 
   const selectedDateStr = formatShortDate(selectedDate);
-  const daySessions = collapseGroupOccurrences(
-    sortByTime(upcomingSessions.filter((s: Row) => s.date === selectedDateStr)),
-    groupsById
-  );
+  // In selection mode keep the RAW per-member rows (mirrors DayPanel) —
+  // bulk actions operate on individual session ids, so a collapsed
+  // group pill would hide selectable rows.
+  const daySessionsRaw = sortByTime(upcomingSessions.filter((s: Row) => s.date === selectedDateStr));
+  const daySessions = selectionMode ? daySessionsRaw : collapseGroupOccurrences(daySessionsRaw, groupsById);
 
   return (
     <>
@@ -99,7 +103,11 @@ export function MonthView({ onSelectSession, selectedDate, setSelectedDate, upco
           : <div className="card">
               {daySessions.map((s: Row) => s._groupOccurrence
                 ? <GroupSessionRow key={s.id} occ={s} onClick={() => onSelectSession(s)} />
-                : <SessionRow key={s.id} s={s} onClick={onSelectSession} compact onSwipeComplete={onSwipeComplete} />)}
+                : <SessionRow key={s.id} s={s} onClick={onSelectSession} compact
+                    selectionMode={selectionMode}
+                    selected={selectedSet?.has(s.id)}
+                    onToggleSelect={onToggleSelect}
+                    onSwipeComplete={onSwipeComplete} />)}
             </div>
         }
       </div>

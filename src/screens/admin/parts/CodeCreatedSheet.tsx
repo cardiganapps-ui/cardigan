@@ -33,6 +33,7 @@ export function CodeCreatedSheet({ code, onClose }: { code: Row; onClose?: () =>
         className="sheet-panel"
         role="dialog"
         aria-modal="true"
+        aria-label={t("admin.codesCreated")}
         style={{ maxHeight: "92vh", overflowY: "auto" }}
       >
         <div className="sheet-handle" />

@@ -95,6 +95,35 @@ export function sessionDisplayLabel(s: SessionLike): string {
   return `${s.date} · ${s.time} — ${statusLabel(s.status)}`;
 }
 
+/* ── Time-range overlap ──
+   Whether two same-day sessions' time ranges intersect. Used by the
+   scheduling sheets to WARN about overlapping bookings (16:00×60min vs
+   16:30) without blocking them — overlaps are sometimes intentional
+   (couples back-to-back, a tutor slot inside a family block). The
+   EXACT same start time stays hard-blocked separately: the DB's
+   uniq_sessions_user_slot index rejects it, so that check is a
+   constraint mirror, not a preference. */
+export function timeToMinutes(time: string | null | undefined): number {
+  const [h, m] = String(time || "").split(":");
+  // Number("") is 0, so blank input needs an explicit reject.
+  if (!h?.trim()) return NaN;
+  const hh = Number(h), mm = Number(m);
+  if (!Number.isFinite(hh)) return NaN;
+  return hh * 60 + (Number.isFinite(mm) ? mm : 0);
+}
+
+export function timesOverlap(
+  timeA: string | null | undefined, durationA: number | string | null | undefined,
+  timeB: string | null | undefined, durationB: number | string | null | undefined,
+): boolean {
+  const startA = timeToMinutes(timeA);
+  const startB = timeToMinutes(timeB);
+  if (Number.isNaN(startA) || Number.isNaN(startB)) return false;
+  const endA = startA + (Number(durationA) > 0 ? Number(durationA) : 60);
+  const endB = startB + (Number(durationB) > 0 ? Number(durationB) : 60);
+  return startA < endB && startB < endA;
+}
+
 /* ── Tutor session reminder helpers ── */
 
 /** Find the most recent completed/charged tutor session for a patient. */

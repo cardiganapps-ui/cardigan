@@ -65,6 +65,9 @@ html[data-theme="dark"] {
   /* Brighter teal + higher alpha so the focus ring stays visible on
      dark inputs (the light-mode value washed out against #1A1A1A). */
   --focus-ring: 0 0 0 3px rgba(74,155,176,0.45);
+  /* Danger ring follows dark --red (#E57777); alpha bumped like the
+     teal ring so it stays visible against dark inputs. */
+  --focus-ring-danger: 0 0 0 3px rgba(229,119,119,0.4);
 }
 
 /* ── Buttons: invert primary in dark mode ── */

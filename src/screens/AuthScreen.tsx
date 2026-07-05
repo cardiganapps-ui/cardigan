@@ -792,7 +792,7 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onPass
           className="sheet-overlay--no-blur"
           onClose={() => setShowAuth(false)}
         >
-          <div ref={setAuthPanel} className="sheet-panel" role="dialog" aria-modal="true" {...authPanelHandlers}>
+          <div ref={setAuthPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={authMode === "reset" ? t("auth.resetPassword") : authMode === "login" ? t("auth.signIn") : t("auth.signUp")} {...authPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               {/* Brand lockup replaces the redundant mode-name title — the

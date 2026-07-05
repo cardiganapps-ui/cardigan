@@ -386,7 +386,7 @@ export function Notes() {
       {/* Long-press properties sheet */}
       {propsNote && (
         <SheetOverlay onClose={() => setPropsNote(null)}>
-          <div ref={setPropsPanel} className="sheet-panel" role="dialog" aria-modal="true" {...propsPanelHandlers}>
+          <div ref={setPropsPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={propsNote.title || t("notes.noTitle")} {...propsPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{propsNote.title || t("notes.noTitle")}</span>
@@ -462,7 +462,7 @@ export function Notes() {
       {/* Delete confirmation modal (long-press sheet) */}
       {confirmDeleteProps && propsNote && (
         <SheetOverlay onClose={() => setConfirmDeleteProps(false)} style={{ alignItems:"center" }}>
-          <div ref={(el) => { confirmDeletePropsRef.current = el; }} className="sheet-panel" role="dialog" aria-modal="true"
+          <div ref={(el) => { confirmDeletePropsRef.current = el; }} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("notes.deleteConfirm")}
             style={{ maxWidth:340, borderRadius:"var(--radius-lg)", margin:"0 20px", animation:"slideUp 0.5s ease" }}>
             <div style={{ padding:"28px 24px 22px", textAlign:"center" }}>
               <div style={{ width:56, height:56, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>

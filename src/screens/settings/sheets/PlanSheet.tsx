@@ -51,7 +51,7 @@ export function PlanSheet({
   if (!open) return null;
   return (
         <SheetOverlay onClose={() => !subBusy && setActiveSheet(null)}>
-          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.subscriptionTitle")} {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.subscriptionTitle")}</span>

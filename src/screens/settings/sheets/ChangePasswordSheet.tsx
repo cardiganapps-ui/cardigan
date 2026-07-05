@@ -84,7 +84,7 @@ export function ChangePasswordSheet({ open, onClose, userEmail, setMessage, setS
 
   return (
     <SheetOverlay onClose={() => !saving && onClose()}>
-      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.changePassword")} {...sheetPanelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("settings.changePassword")}</span>

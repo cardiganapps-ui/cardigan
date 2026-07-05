@@ -66,6 +66,7 @@ export function NewCodeSheet({ onClose, onCreated }: {
         className="sheet-panel"
         role="dialog"
         aria-modal="true"
+        aria-label={t("admin.codesNewTitle")}
         style={{ maxHeight: "92vh", overflowY: "auto" }}
       >
         <div className="sheet-handle" />

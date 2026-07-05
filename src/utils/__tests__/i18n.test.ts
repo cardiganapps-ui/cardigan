@@ -280,3 +280,48 @@ describe("lookupKey", () => {
     expect(lookupKey(strings, "nope.deeper")).toBe("nope.deeper");
   });
 });
+
+/* ── Vocabulary-migration lock-ins (phase: hardcoded-noun sweep) ──
+   The es.ts strings migrated off hardcoded "paciente/sesión" must
+   resolve with correct Spanish gender agreement for the professions
+   whose nouns change gender — trainer (entrenamiento, masc.) and
+   tutor (clase, fem.) are the two poles. */
+import es from "../../i18n/es";
+
+describe("migrated es.ts strings resolve with correct gender per profession", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose vocab/vars test bags
+  const resolveKey = (key: string, vocab: any, vars?: any) =>
+    resolveTemplate(lookupKey(es, key), vars, vocab);
+
+  it("patients.finalizeWarning agrees adjectives with the session noun", () => {
+    expect(resolveKey("patients.finalizeWarning", PSYCH))
+      .toBe("Se eliminarán las sesiones agendadas después de esta fecha; las pasadas y completadas se conservan.");
+    expect(resolveKey("patients.finalizeWarning", TRAINER))
+      .toBe("Se eliminarán los entrenamientos agendados después de esta fecha; los pasados y completados se conservan.");
+  });
+
+  it("patientAgenda.title flips próximas/próximos", () => {
+    expect(resolveKey("patientAgenda.title", TUTOR)).toBe("Próximas clases");
+    expect(resolveKey("patientAgenda.title", TRAINER)).toBe("Próximos entrenamientos");
+  });
+
+  it("intake.cardTitle apocopates primer for masculine session nouns", () => {
+    expect(resolveKey("intake.cardTitle", PSYCH)).toBe("Prepárate para tu primera sesión");
+    expect(resolveKey("intake.cardTitle", TRAINER)).toBe("Prepárate para tu primer entrenamiento");
+  });
+
+  it("scheduling.skipFirstConsultHint composes article+noun for client and record", () => {
+    expect(resolveKey("scheduling.skipFirstConsultHint", TUTOR))
+      .toBe("Crea el alumno y agenda su primera clase más adelante desde la bitácora.");
+  });
+
+  it("home.rescheduleRequestsSub uses the client plural", () => {
+    expect(resolveKey("home.rescheduleRequestsSub", TUTOR))
+      .toBe("Tus alumnos pidieron mover sus citas. Acepta o rechaza desde aquí.");
+  });
+
+  it("measurements sheet 'other client' agrees the pronoun", () => {
+    expect(resolveKey("measurements.import.tagOtherPatient", NUTRI)).toBe("Otro paciente");
+    expect(resolveKey("measurements.import.tagOtherPatient", TRAINER)).toBe("Otro cliente");
+  });
+});

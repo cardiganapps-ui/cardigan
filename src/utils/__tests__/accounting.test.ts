@@ -4,6 +4,7 @@ import {
   computeConsumedByPatient,
   enrichPatientsWithBalance,
   applyConsumedToPatients,
+  mergeBaseConsumed,
 } from "../accounting";
 
 // Fixed reference time so tests are deterministic across years.
@@ -513,5 +514,43 @@ describe("C1 — yearless date inference anchored on created_at", () => {
       sess("p", "scheduled", 700, { date: "23-Abr", time: "10:00" }),
       NOW,
     )).toBe(true);
+  });
+});
+
+describe("mergeBaseConsumed (session-history windowing, migration 086)", () => {
+  const fresh = () => new Map([["p1", 500], ["p2", 300]]);
+
+  it("adds the server base onto the fresh walk per patient", () => {
+    const merged = mergeBaseConsumed(fresh(), { p1: 1000, p3: 700 });
+    expect(merged.get("p1")).toBe(1500); // old + windowed
+    expect(merged.get("p2")).toBe(300);  // no history pre-cutoff
+    expect(merged.get("p3")).toBe(700);  // all history pre-cutoff
+  });
+
+  it("accepts a Map base and never mutates the fresh input", () => {
+    const f = fresh();
+    const merged = mergeBaseConsumed(f, new Map([["p1", 100]]));
+    expect(merged.get("p1")).toBe(600);
+    expect(f.get("p1")).toBe(500);
+  });
+
+  it("returns the fresh map unchanged when windowing is off or base is empty", () => {
+    const f = fresh();
+    expect(mergeBaseConsumed(f, null)).toBe(f);
+    expect(mergeBaseConsumed(f, {})).toBe(f);
+  });
+
+  it("skips non-finite base values instead of corrupting balances", () => {
+    const merged = mergeBaseConsumed(fresh(), { p1: NaN, p2: 200 } as Record<string, number>);
+    expect(merged.get("p1")).toBe(500);
+    expect(merged.get("p2")).toBe(500);
+  });
+
+  it("enrichPatientsWithBalance composes the base into amountDue", () => {
+    const patients = [{ id: "p1", rate: 500, paid: 800 }];
+    // one fresh counted session (500) + 1000 pre-cutoff = 1500 consumed
+    const sessions = [{ patient_id: "p1", status: "completed", date: "8-Abr", time: "10:00", rate: 500 }];
+    const [p] = enrichPatientsWithBalance(patients, sessions, new Date("2026-07-04T12:00:00"), { p1: 1000 });
+    expect(p.amountDue).toBe(700); // 1500 − 800
   });
 });

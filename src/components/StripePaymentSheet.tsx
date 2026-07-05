@@ -303,6 +303,7 @@ export default function StripePaymentSheet({
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
+        aria-label={t("payment.title")}
       >
         <div className="sheet-handle" />
         <div className="sheet-header">

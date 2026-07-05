@@ -203,6 +203,36 @@ export function applyConsumedToPatients<P extends BalancePatient>(
 }
 
 /**
+ * Merge a server-side consumed base into a freshly computed consumed map.
+ *
+ * Session-history windowing (migration 086): the client hydrates only the
+ * recent + still-live session rows and receives the excluded history's
+ * consumed contribution as a per-patient aggregate from
+ * public.session_consumed_before (which applies the SAME canonical
+ * predicate via session_counts_at — JS↔SQL parity is already CI-locked).
+ * consumed_total = base (old rows, server) + fresh (fetched rows, JS
+ * predicate). The two sets partition the history on the load's single
+ * cutoff value, so no row is counted twice or dropped.
+ *
+ * `base` accepts the RPC's plain Record shape or a Map; null/undefined
+ * (windowing off, or nothing pre-cutoff) returns `fresh` unchanged.
+ */
+export function mergeBaseConsumed(
+  fresh: Map<string, number>,
+  base: Record<string, number> | Map<string, number> | null | undefined,
+): Map<string, number> {
+  if (!base) return fresh;
+  const entries = base instanceof Map ? base.entries() : Object.entries(base);
+  let merged: Map<string, number> | null = null;
+  for (const [pid, value] of entries) {
+    if (!pid || !Number.isFinite(value)) continue;
+    if (!merged) merged = new Map(fresh);
+    merged.set(pid, (merged.get(pid) || 0) + value);
+  }
+  return merged || fresh;
+}
+
+/**
  * Enrich a patients list with { amountDue, credit } derived from the raw
  * session rows. Uses DB status — never the display-auto-complete state.
  *
@@ -210,14 +240,21 @@ export function applyConsumedToPatients<P extends BalancePatient>(
  * then apply it. Kept so the many existing call sites
  * (enrichPatientsWithBalance is used across the app, the audit, and tests)
  * stay a single call. Behavior is identical to the previous inline form.
+ *
+ * `baseConsumed` (optional) is the windowing aggregate — see
+ * mergeBaseConsumed. Callers with full history simply omit it.
  */
 export function enrichPatientsWithBalance<P extends BalancePatient>(
   patients: P[] | null | undefined,
   rawSessions: BalanceSession[] | null | undefined,
   now: Date = new Date(),
+  baseConsumed?: Record<string, number> | Map<string, number> | null,
 ): (P & { amountDue: number; credit: number })[] {
   if (!patients) return [];
   const rateById = new Map<string, number>(patients.map(p => [p.id, p.rate || 0]));
-  const consumedByPatient = computeConsumedByPatient(rawSessions, rateById, now);
+  const consumedByPatient = mergeBaseConsumed(
+    computeConsumedByPatient(rawSessions, rateById, now),
+    baseConsumed,
+  );
   return applyConsumedToPatients(patients, consumedByPatient);
 }

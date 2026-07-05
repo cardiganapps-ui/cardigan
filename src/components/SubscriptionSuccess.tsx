@@ -128,6 +128,7 @@ export function SubscriptionSuccess({ open, onClose }: { open?: boolean; onClose
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
+        aria-label={t("subscriptionSuccess.eyebrow")}
         style={{
           maxWidth: 420,
           transform: mounted ? "scale(1) translateY(0)" : "scale(0.92) translateY(8px)",

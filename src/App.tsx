@@ -89,6 +89,7 @@ const ProfessionOnboarding = lazy(() => import("./screens/ProfessionOnboarding")
 const SignupSourceStep = lazy(() => import("./screens/SignupSourceStep").then(m => ({ default: m.SignupSourceStep })));
 import { useUserProfile } from "./hooks/useUserProfile";
 import { useAccentTheme } from "./hooks/useAccentTheme";
+import { useFontScale } from "./hooks/useFontScale";
 import { DEFAULT_PROFESSION, SIGNUP_SOURCE_CUTOFF_ISO } from "./data/constants";
 import { setSentryProfession } from "./lib/sentry";
 import { identify as analyticsIdentify, reset as analyticsReset } from "./lib/analytics";
@@ -245,6 +246,17 @@ function CardiganApp() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMfaResolved(false); }, [user?.id]);
 
+  // "Ver ejemplo" bridge — a signed-in user with an empty account can
+  // peek at the populated demo dataset without touching their own data
+  // (Home's zero-patient welcome dispatches this event; same pattern as
+  // the SW's cardigan-update-ready). Their session persists; exiting
+  // the demo drops them back into their real, still-empty account.
+  useEffect(() => {
+    const onEnterDemo = () => setDemoMode(true);
+    window.addEventListener("cardigan-enter-demo", onEnterDemo);
+    return () => window.removeEventListener("cardigan-enter-demo", onEnterDemo);
+  }, []);
+
   if (authLoading && !demoMode) {
     return <AuthSplash />;
   }
@@ -267,7 +279,18 @@ function CardiganApp() {
         </Suspense>
       );
     }
-    return <AppShell user={null} signOut={() => { setAuthIntent("signup"); setDemoMode(false); }} demo theme={theme} />;
+    // Anonymous visitors exit the demo into the signup sheet; a
+    // signed-in user exploring via "Ver ejemplo" exits back into their
+    // own account (session persisted underneath the demo shell).
+    return (
+      <AppShell
+        user={null}
+        signOut={() => { if (!user) setAuthIntent("signup"); setDemoMode(false); }}
+        demo
+        demoHasAccount={!!user}
+        theme={theme}
+      />
+    );
   }
 
   // Password recovery takes priority over every other gate. Supabase
@@ -388,10 +411,13 @@ type AppShellProps = {
   signOut: Row;
   refreshUser?: Row;
   demo?: boolean;
+  /* True when a signed-in user is exploring the demo via "Ver ejemplo"
+     — flips the demo banner CTA from "Crear cuenta" to "Salir". */
+  demoHasAccount?: boolean;
   theme?: Row;
 };
 
-function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
+function AppShell({ user, signOut, refreshUser, demo, demoHasAccount, theme }: AppShellProps) {
   const { t, setProfession: setI18nProfession } = useT();
   const { screen, direction, navigate, pushLayer, popLayer, removeLayer } = useNavigation();
   const setScreen = navigate; // alias for compatibility
@@ -481,6 +507,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // useAccentTheme hydrates the `data-accent` attribute on <html>;
   // accent-themes.css remaps `--teal*` / `--accent*` via the cascade.
   const accentTheme = useAccentTheme();
+  // User text-size preference — hydrates `data-font-scale` on <html>;
+  // base.css maps it to the --text-scale-user multiplier. This is the
+  // accessibility path for larger text (OS text scaling is disabled
+  // via text-size-adjust: none for WKWebView consistency).
+  const fontScale = useFontScale();
   // Tag Sentry events with the active profession + demo flag so
   // profession-specific bugs are easy to triage in the Sentry UI.
   useEffect(() => {
@@ -787,7 +818,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   // behaviorful handlers are characterization-tested there.
   const ctxValue = useCardiganContextValue({
     data, readOnly, subscription, requirePro, withUndoableDelete,
-    noteCrypto, profession, accentTheme, userProfile, groupsEnabled, setGroupsEnabled,
+    noteCrypto, profession, accentTheme, fontScale, userProfile, groupsEnabled, setGroupsEnabled,
     user, userName, userInitial,
     openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet,
     setHideFab, setHideBottomTabs, setScreen, admin,
@@ -967,6 +998,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
 
         <AppBanners
           demo={demo}
+          demoHasAccount={demoHasAccount}
           viewAsUserId={viewAsUserId}
           subscription={subscription}
           demoProfession={demoProfession}

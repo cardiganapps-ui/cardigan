@@ -22,7 +22,7 @@ export function SignOutEverywhereSheet({ open, onClose, signOut, setSheetPanel, 
   if (!open) return null;
   return (
     <SheetOverlay onClose={() => onClose()}>
-      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+      <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.signOutEverywhere")} {...sheetPanelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("settings.signOutEverywhere")}</span>

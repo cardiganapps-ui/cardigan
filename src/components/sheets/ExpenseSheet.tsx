@@ -18,6 +18,7 @@ import { supabase } from "../../supabaseClient";
 import { isNative } from "../../lib/platform";
 import { takePhoto } from "../../lib/nativeCamera";
 import { SheetOverlay } from "../SheetOverlay";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 const LAST_CATEGORY_KEY = "cardigan.lastExpenseCategory";
 
@@ -82,6 +83,7 @@ export function ExpenseSheet({ editingExpense, onClose }: { editingExpense?: Row
     return Number.isFinite(d.getDate()) ? d.getDate() : 1;
   });
   const [formError, setFormError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [ocring, setOcring] = useState(false);
   const [ocrNotice, setOcrNotice] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -290,16 +292,21 @@ export function ExpenseSheet({ editingExpense, onClose }: { editingExpense?: Row
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!isEditing) return;
-    if (!window.confirm(t("gastos.deleteConfirm") + "\n\n" + t("gastos.deleteWarning"))) return;
+    setConfirmDelete(true);
+  };
+
+  const doDelete = async () => {
     const ok = await deleteExpense(editingExpense.id);
+    setConfirmDelete(false);
     if (ok) { haptic.success(); animatedClose(t("gastos.deleted")); }
   };
 
   return (
     <SheetOverlay exiting={exiting} onClose={safeAnimatedClose || undefined}>
       <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
+        aria-label={isEditing ? t("gastos.edit") : t("gastos.record")}
         {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
@@ -610,6 +617,16 @@ export function ExpenseSheet({ editingExpense, onClose }: { editingExpense?: Row
           </div>
         </form>
       </div>
+      <ConfirmDialog
+        open={confirmDelete}
+        destructive
+        busy={mutating}
+        title={t("gastos.deleteConfirm")}
+        body={t("gastos.deleteWarning")}
+        confirmLabel={t("delete")}
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </SheetOverlay>
   );
 }

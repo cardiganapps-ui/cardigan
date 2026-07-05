@@ -10,6 +10,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic } from "../../data/constants";
 import { formatMXN } from "../../utils/format";
+import { timesOverlap } from "../../utils/sessions";
 import { SheetOverlay } from "../SheetOverlay";
 
 /* For episodic patients, the natural default is "next visit two weeks
@@ -95,12 +96,27 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
     if (!initialDate && p) setDate(defaultDateForPatient(p));
   };
 
-  // Conflict detection: check if any session exists at same date+time
+  // Conflict detection: an EXACT same-slot booking is hard-blocked —
+  // this mirrors the DB's uniq_sessions_user_slot index (user_id, date,
+  // time where scheduled), so submitting would 23505 anyway.
   const conflict = useMemo(() => {
     if (!date || !time || !sessions) return null;
     const shortDate = isoToShortDate(date);
     return sessions.find((s: Row) => s.date === shortDate && s.time === time && s.status === "scheduled");
   }, [date, time, sessions]);
+
+  // Overlap detection: a DIFFERENT start time whose range still crosses
+  // an existing session (16:00×60 vs 16:30). These are sometimes
+  // intentional (couples back-to-back, a tutor slot inside a family
+  // block), so it's a warning, not a block — previously they were
+  // silently allowed with no signal at all.
+  const overlap = useMemo(() => {
+    if (!date || !time || !sessions || conflict) return null;
+    const shortDate = isoToShortDate(date);
+    return sessions.find((s: Row) =>
+      s.date === shortDate && s.status === "scheduled" && s.time !== time
+      && timesOverlap(time, Number(duration) || 60, s.time, s.duration));
+  }, [date, time, duration, sessions, conflict]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +140,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
 
   return (
     <SheetOverlay exiting={exiting} onClose={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" aria-label={t("sessions.schedule")} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("sessions.schedule")}</span>
@@ -198,6 +214,11 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
           {conflict && (
             <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius-sm)", padding:"8px 12px", marginBottom:12, fontSize:12, color:"var(--amber)", fontWeight:600, lineHeight:1.4 }}>
               {t("sessions.conflict", { patient: conflict.patient })}
+            </div>
+          )}
+          {overlap && (
+            <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius-sm)", padding:"8px 12px", marginBottom:12, fontSize:12, color:"var(--amber)", fontWeight:600, lineHeight:1.4 }}>
+              {t("sessions.overlapWarning", { patient: overlap.patient, time: overlap.time })}
             </div>
           )}
           {isTutor && (

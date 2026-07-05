@@ -209,12 +209,17 @@ export function buildWidgetSnapshot({
   payments,
   tz = "America/Mexico_City",
   now = new Date(),
+  baseConsumed = null,
 }: {
   sessions: SnapshotSessionRow[] | null | undefined;
   patients: SnapshotPatientRow[] | null | undefined;
   payments: SnapshotPaymentRow[] | null | undefined;
   tz?: string;
   now?: Date;
+  /** Windowing (086): pre-cutoff consumed per patient. The client passes
+      it when its sessions array is windowed; the server builder
+      (api/widget-data) reads full history and omits it. */
+  baseConsumed?: Record<string, number> | null;
 }): WidgetSnapshot {
   const allSessions = sessions || [];
   const allPatients = patients || [];
@@ -296,7 +301,7 @@ export function buildWidgetSnapshot({
   // that makes a session near its hour count toward "Por cobrar" hours
   // early. userNow re-frames the reference into the same wall-clock
   // space as sessionEndMoment. (bug-hunt: widget UTC balance)
-  const enriched = enrichPatientsWithBalance(allPatients, allSessions, userNow);
+  const enriched = enrichPatientsWithBalance(allPatients, allSessions, userNow, baseConsumed);
   let pendingTotal = 0;
   let owingPatients = 0;
   for (const p of enriched) {

@@ -104,6 +104,8 @@
      rgba(91,155,175,…) call sites it replaces were a fixed light-teal
      that read wrong against dark inputs. dark.css overrides the color. */
   --focus-ring: 0 0 0 3px rgba(91,155,175,0.25);
+  /* Danger variant for .input-error focus — matches --red (#D96B6B). */
+  --focus-ring-danger: 0 0 0 3px rgba(217,107,107,0.15);
   /* ── Spacing scale ──
      The vertical/horizontal rhythm documented in CLAUDE.md, finally
      tokenized so new surfaces stop hand-coding padding/gap px. Use the
@@ -127,13 +129,20 @@
      without re-tuning every inline style. Eyebrow stays literal at 10px —
      tracked labels look wrong when fractionally scaled. */
   --text-scale: 1;
+  /* User text-size preference (Settings → Apariencia → Tamaño de
+     texto). A separate multiplier so it COMPOSES with the responsive
+     --text-scale bump instead of replacing it. Driven by the
+     data-font-scale attribute below; hook in hooks/useFontScale.ts.
+     This is the accessibility path for larger text — the app opts out
+     of OS text scaling (text-size-adjust: none, see html rule). */
+  --text-scale-user: 1;
   --text-eyebrow: 10px;  /* uppercase tracked labels */
-  --text-xs:      calc(11px * var(--text-scale));  /* meta, sub rows, badges */
-  --text-sm:      calc(12px * var(--text-scale));  /* secondary labels, chips */
-  --text-md:      calc(14px * var(--text-scale));  /* body default, row titles */
-  --text-lg:      calc(16px * var(--text-scale));  /* sheet titles, emphasized body */
-  --text-xl:      calc(20px * var(--text-scale));  /* KPI numbers */
-  --text-2xl:     calc(24px * var(--text-scale));  /* page-level numbers */
+  --text-xs:      calc(11px * var(--text-scale) * var(--text-scale-user));  /* meta, sub rows, badges */
+  --text-sm:      calc(12px * var(--text-scale) * var(--text-scale-user));  /* secondary labels, chips */
+  --text-md:      calc(14px * var(--text-scale) * var(--text-scale-user));  /* body default, row titles */
+  --text-lg:      calc(16px * var(--text-scale) * var(--text-scale-user));  /* sheet titles, emphasized body */
+  --text-xl:      calc(20px * var(--text-scale) * var(--text-scale-user));  /* KPI numbers */
+  --text-2xl:     calc(24px * var(--text-scale) * var(--text-scale-user));  /* page-level numbers */
   --font:        'Nunito Sans', sans-serif;
   --font-d:      'Nunito', sans-serif;
 
@@ -224,6 +233,14 @@
   --z-install:        600;
   --z-tutorial:       700;
 }
+
+/* User text-size preference (Settings → Apariencia → Tamaño de texto).
+   Attribute set on <html> by hooks/useFontScale.ts; composes with the
+   responsive --text-scale via the --text-* token calc. "default" sets
+   no attribute → multiplier stays 1. */
+html[data-font-scale="sm"] { --text-scale-user: 0.92; }
+html[data-font-scale="lg"] { --text-scale-user: 1.1; }
+html[data-font-scale="xl"] { --text-scale-user: 1.22; }
 
 /* color-scheme — must MATCH the active theme, not advertise both.
    `color-scheme: light dark` lets the browser pick based on the

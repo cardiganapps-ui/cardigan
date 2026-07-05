@@ -47,6 +47,7 @@ interface MarkdownEditorProps {
   onRequestFind?: () => void;
   autoFocus?: boolean;
   placeholder?: string;
+  ariaLabel?: string;
   attachmentTiles?: Record<string, { url?: string; failed?: true }> | null;
 }
 
@@ -323,6 +324,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
   onRequestFind,
   autoFocus = false,
   placeholder = PLACEHOLDER,
+  ariaLabel = "Editor de nota",
   // Map of attachment id → { url?, failed? }. Resolved by
   // useAttachmentSrc upstream (NoteEditor). Whenever a line tokenises
   // as an image block, the renderer emits an <img data-mde-
@@ -1254,7 +1256,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         aria-readonly={readOnly ? "true" : "false"}
         role="textbox"
         aria-multiline="true"
-        aria-label="Editor de nota"
+        aria-label={ariaLabel}
         data-placeholder={placeholder}
         data-empty={lines.length === 1 && lines[0] === "" ? "true" : "false"}
         spellCheck

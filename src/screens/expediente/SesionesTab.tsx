@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { IconClipboard } from "../../components/Icons";
-import { isTutorSession, isInterviewSession, statusClass } from "../../utils/sessions";
+import { isTutorSession, isInterviewSession, statusClass, statusLabel } from "../../utils/sessions";
+import { supabase } from "../../supabaseClient";
+import { SESSION_WINDOWING_ACTIVE, sessionWindowCutoffIso } from "../../hooks/useCardiganData";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
@@ -59,7 +61,7 @@ export function SesionesTab({
   sessDateFrom, setSessDateFrom, sessDateTo, setSessDateTo,
   sessTutorOnly, setSessTutorOnly,
   filteredPSessions, upcomingPSessions, pastPSessions,
-  onSelectSession, onOpenNote,
+  onSelectSession, onOpenNote, patientId,
 }: {
   pSessions: Row[];
   pNotes: Row[];
@@ -76,9 +78,40 @@ export function SesionesTab({
   pastPSessions: Row[];
   onSelectSession: (s: Row) => void;
   onOpenNote?: (s: Row) => void;
+  patientId?: string;
 }) {
   const { t } = useT();
   const { profession, updateSessionVisitType, readOnly, showSuccess } = useCardiganMain();
+  /* Older-history backfill (session windowing, migration 086). When the
+     hydrated rows are windowed, pre-cutoff history is fetchable on
+     demand into TAB-LOCAL state — deliberately NEVER merged into
+     upcomingSessions: accounting already counts those rows via the
+     server aggregate, so feeding them into the shared state would
+     double-count. The rows render READ-ONLY (no status/select actions)
+     because editing them server-side would go stale against the
+     aggregate until the next refresh. */
+  const [olderRows, setOlderRows] = useState<Row[] | null>(null);
+  const [olderLoading, setOlderLoading] = useState(false);
+  const loadOlder = async () => {
+    const cutoff = sessionWindowCutoffIso();
+    if (!cutoff || !patientId || olderLoading) return;
+    setOlderLoading(true);
+    try {
+      const { data } = await supabase.from("sessions").select("*")
+        .eq("patient_id", patientId)
+        .lt("created_at", cutoff)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      // Dedupe vs the hydrated set — a row created between the load's
+      // cutoff and this click can appear on both sides of the boundary.
+      const seen = new Set((pSessions || []).map((s: Row) => s.id));
+      setOlderRows((data || []).filter((r: Row) => !seen.has(r.id)));
+    } catch {
+      setOlderRows([]);
+    } finally {
+      setOlderLoading(false);
+    }
+  };
   const showVisitTypes = usesVisitTypes(profession);
   /* Cycle through visit types on tap: null → intake → followup →
      maintenance → null. Practitioner override; the auto-tag at create
@@ -95,6 +128,44 @@ export function SesionesTab({
     if (ok) showSuccess?.(t("visitType.updated"));
   };
 
+  // Shared between the main list and the zero-hydrated-rows branch (a
+  // long-inactive patient can have ALL history pre-cutoff).
+  const olderSection = SESSION_WINDOWING_ACTIVE && !readOnly && patientId ? (
+    <div style={{ marginTop: 14 }}>
+      {olderRows === null ? (
+        <button type="button" className="btn btn-ghost btn-tap" onClick={loadOlder} disabled={olderLoading}
+          style={{ width:"100%", height:"auto", minHeight:0, padding:"10px 0", fontSize:"var(--text-sm)" }}>
+          {olderLoading ? t("loading") : t("expediente.loadOlderHistory")}
+        </button>
+      ) : olderRows.length === 0 ? (
+        <div style={{ textAlign:"center", fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", padding:"8px 0" }}>
+          {t("expediente.noOlderHistory")}
+        </div>
+      ) : (
+        <>
+          <div style={FILTER_LABEL_STYLE}>{t("expediente.olderHistory")}</div>
+          <div className="card">
+            {olderRows.map((s: Row) => (
+              <div key={s.id} className="row-item" style={{ cursor:"default" }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal)" }}>
+                    {s.date} · {s.time}
+                  </div>
+                  <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)" }}>
+                    {statusLabel(s.status)}{s.rate != null ? ` · $${Number(s.rate).toLocaleString()}` : ""}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:6, textAlign:"center" }}>
+            {t("expediente.olderHistoryReadOnly")}
+          </div>
+        </>
+      )}
+    </div>
+  ) : null;
+
   if (pSessions.length === 0) {
     return (
       <div style={{ padding:"16px" }}>
@@ -104,6 +175,7 @@ export function SesionesTab({
           title={t("expediente.noSessions")}
           body={t("expediente.noSessionsBody") || null}
         />
+        {olderSection}
       </div>
     );
   }
@@ -199,6 +271,7 @@ export function SesionesTab({
           )}
         </>
       )}
+      {olderSection}
     </div>
   );
 }

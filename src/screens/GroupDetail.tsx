@@ -121,7 +121,7 @@ export function GroupDetail({ group, onClose }: { group: Row; onClose: () => voi
 
   return (
     <SheetOverlay exiting={exiting} onClose={animatedClose}>
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" {...panelHandlers}
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" aria-label={g.name} {...panelHandlers}
         style={{ maxHeight:"min(94lvh, calc(100lvh - var(--sat) - 12px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header" style={{ gap:12 }}>

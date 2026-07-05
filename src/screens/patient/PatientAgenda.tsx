@@ -515,7 +515,7 @@ function SessionManageSheet({ session, pending, withdrawing, onClose, onReschedu
 
   return (
     <SheetOverlay onClose={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true"
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("patientAgenda.manageTitle")}
         {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />

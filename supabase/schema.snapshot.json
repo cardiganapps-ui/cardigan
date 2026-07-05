@@ -5312,6 +5312,13 @@
       "security": "definer"
     },
     {
+      "args": "p_cutoff timestamp with time zone",
+      "definition": "CREATE OR REPLACE FUNCTION public.fetch_sessions_windowed(p_cutoff timestamp with time zone)\n RETURNS SETOF sessions\n LANGUAGE plpgsql\n STABLE\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare\n  v_tz text; v_tz_valid boolean;\n  v_now timestamptz := now();\nbegin\n  select coalesce(timezone, 'America/Mexico_City') into v_tz\n    from notification_preferences where user_id = (select auth.uid());\n  if v_tz is null then v_tz := 'America/Mexico_City'; end if;\n  select exists(select 1 from pg_timezone_names where name = v_tz) into v_tz_valid;\n  if not v_tz_valid then v_tz := 'America/Mexico_City'; end if;\n\n  return query\n    select s.* from sessions s\n    where s.user_id = (select auth.uid())\n      and (\n        s.created_at >= p_cutoff\n        or (\n          s.status = 'scheduled'\n          and not public.session_counts_at(s.status, s.date, s.time, v_tz, v_now, s.created_at)\n        )\n      );\nend;\n$function$\n",
+      "name": "fetch_sessions_windowed",
+      "returns": "SETOF sessions",
+      "security": "invoker"
+    },
+    {
       "args": "",
       "definition": "CREATE OR REPLACE FUNCTION public.get_therapists_for_patient()\n RETURNS TABLE(patient_id uuid, therapist_user_id uuid, therapist_email text, therapist_full_name text, therapist_profession text, therapist_avatar text, therapist_accepts_online_payments boolean)\n LANGUAGE sql\n SECURITY DEFINER\nAS $function$\n  select\n    p.id,\n    p.user_id,\n    au.email::text,\n    coalesce(au.raw_user_meta_data->>'full_name', '')::text,\n    coalesce(up.profession, 'psychologist')::text,\n    coalesce(au.raw_user_meta_data->>'avatar', '')::text,\n    coalesce(tca.charges_enabled, false)\n  from patients p\n  join auth.users au on au.id = p.user_id\n  left join user_profiles up on up.user_id = p.user_id\n  left join therapist_connect_accounts tca on tca.user_id = p.user_id\n  where p.patient_user_id = auth.uid()\n    and p.status in ('active', 'potential');\n$function$\n",
       "name": "get_therapists_for_patient",
@@ -5372,6 +5379,13 @@
       "definition": "CREATE OR REPLACE FUNCTION public.search_notes(p_query text, p_limit integer DEFAULT 10)\n RETURNS TABLE(id uuid, updated_at timestamp with time zone, rank real)\n LANGUAGE sql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  select n.id, n.updated_at,\n         ts_rank(n.search_tsv, websearch_to_tsquery('spanish', p_query)) as rank\n  from notes n\n  where n.user_id = auth.uid()\n    and n.search_tsv @@ websearch_to_tsquery('spanish', p_query)\n  order by rank desc, n.updated_at desc\n  limit greatest(1, coalesce(p_limit, 10));\n$function$\n",
       "name": "search_notes",
       "returns": "TABLE(id uuid, updated_at timestamp with time zone, rank real)",
+      "security": "invoker"
+    },
+    {
+      "args": "p_cutoff timestamp with time zone",
+      "definition": "CREATE OR REPLACE FUNCTION public.session_consumed_before(p_cutoff timestamp with time zone)\n RETURNS TABLE(patient_id uuid, consumed bigint, session_count bigint)\n LANGUAGE plpgsql\n STABLE\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare\n  v_tz text; v_tz_valid boolean;\n  v_now timestamptz := now();\nbegin\n  select coalesce(timezone, 'America/Mexico_City') into v_tz\n    from notification_preferences where user_id = (select auth.uid());\n  if v_tz is null then v_tz := 'America/Mexico_City'; end if;\n  select exists(select 1 from pg_timezone_names where name = v_tz) into v_tz_valid;\n  if not v_tz_valid then v_tz := 'America/Mexico_City'; end if;\n\n  return query\n    select\n      s.patient_id,\n      coalesce(sum(coalesce(s.rate, p.rate, 0)), 0)::bigint as consumed,\n      count(*)::bigint as session_count\n    from sessions s\n    join patients p on p.id = s.patient_id\n    where s.user_id = (select auth.uid())\n      and s.patient_id is not null\n      and s.created_at < p_cutoff\n      -- complement of the fetch's live-scheduled escape hatch…\n      and not (\n        s.status = 'scheduled'\n        and not public.session_counts_at(s.status, s.date, s.time, v_tz, v_now, s.created_at)\n      )\n      -- …restricted to rows that count toward balance (the canonical\n      -- predicate: completed/charged always, scheduled only once the\n      -- slot has passed; cancelled never).\n      and public.session_counts_at(s.status, s.date, s.time, v_tz, v_now, s.created_at)\n    group by s.patient_id;\nend;\n$function$\n",
+      "name": "session_consumed_before",
+      "returns": "TABLE(patient_id uuid, consumed bigint, session_count bigint)",
       "security": "invoker"
     },
     {

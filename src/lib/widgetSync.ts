@@ -82,11 +82,15 @@ export async function syncWidgets({
   sessions,
   payments,
   groups,
+  baseConsumed,
 }: {
   patients: Row[];
   sessions: Row[];
   payments: Row[];
   groups?: Row[];
+  /** Windowing (086): pre-cutoff consumed per patient — required for
+      correct widget balances when the sessions array is windowed. */
+  baseConsumed?: Record<string, number> | null;
 }): Promise<void> {
   if (!widgetBridgeAvailable() || widgetsDisabled()) return;
   try {
@@ -102,6 +106,7 @@ export async function syncWidgets({
       patients,
       payments,
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      baseConsumed,
     });
     await setWidgetSnapshot(JSON.stringify(snapshot));
     void ensureWidgetToken();

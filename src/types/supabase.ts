@@ -2055,6 +2055,40 @@ export type Database = {
         Returns: Json
       }
       diag_cron_job_state: { Args: never; Returns: Json }
+      fetch_sessions_windowed: {
+        Args: { p_cutoff: string }
+        Returns: {
+          cancel_reason: string | null
+          color_idx: number | null
+          created_at: string | null
+          date: string
+          day: string
+          duration: number | null
+          group_id: string | null
+          id: string
+          initials: string
+          is_recurring: boolean
+          last_rescheduled_at: string | null
+          last_rescheduled_from: Json | null
+          modality: string | null
+          patient: string
+          patient_id: string | null
+          rate: number | null
+          recurrence_frequency: string
+          session_type: string
+          status: string | null
+          time: string
+          user_id: string
+          version: number
+          visit_type: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "sessions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_therapists_for_patient: {
         Args: never
         Returns: {
@@ -2099,6 +2133,14 @@ export type Database = {
           id: string
           rank: number
           updated_at: string
+        }[]
+      }
+      session_consumed_before: {
+        Args: { p_cutoff: string }
+        Returns: {
+          consumed: number
+          patient_id: string
+          session_count: number
         }[]
       }
       session_counts_at: {

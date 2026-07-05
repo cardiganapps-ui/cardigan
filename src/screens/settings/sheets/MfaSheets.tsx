@@ -59,7 +59,7 @@ export function MfaSheets({ mode, mfa, onClose, showToast, setSheetPanel, sheetP
   if (mode === "enroll") {
     return (
       <SheetOverlay onClose={() => { if (!mfaBusy) { mfa.cancelEnroll(); onClose(); } }}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.mfaEnrollTitle")} {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.mfaEnrollTitle")}</span>
@@ -145,7 +145,7 @@ export function MfaSheets({ mode, mfa, onClose, showToast, setSheetPanel, sheetP
     const unenrollId = mfa.factors?.[0]?.id;
     return (
       <SheetOverlay onClose={() => !mfaBusy && onClose()}>
-        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" {...sheetPanelHandlers}>
+        <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" aria-label={t("settings.mfaTitle")} {...sheetPanelHandlers}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("settings.mfaTitle")}</span>

@@ -40,10 +40,12 @@ export function Agenda() {
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState<Row | null>(null);
   const [selectedGroupOcc, setSelectedGroupOcc] = useState<Row | null>(null);
-  // Bulk selection mode — only the day view participates today (the
-  // place a therapist actually goes to "cancel everything next week").
-  // Week + Month would require richer hit-testing on the event chips
-  // and are an obvious follow-up.
+  // Bulk selection mode — day + month views participate (both render
+  // the SessionRow list, which carries the selection affordance). Week
+  // view stays out: its grid chips are custom mini-blocks that already
+  // juggle tap + drag + context-menu on desktop, and a selection state
+  // without visible checkmarks would be a silent trap. Switching views
+  // exits selection so a set can never go invisible under week view.
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSet, setSelectedSet] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -94,10 +96,11 @@ export function Agenda() {
       setBulkBusy(false);
     }
   }, [bulkBusy, selectedSet, upcomingSessions, deleteSession, onCancelSession, onMarkCompleted, t, showSuccess, showToast, exitSelection]);
-  // When the user leaves the day view OR enters readOnly, abort
-  // selection so the bar doesn't outlive its context.
+  // When the user leaves the selection-capable views (day/month) OR
+  // enters readOnly, abort selection so the bar doesn't outlive its
+  // context (week view has no selection visuals).
   useEffect(() => {
-    if (selectionMode && (view !== "day" || readOnly)) exitSelection();
+    if (selectionMode && ((view !== "day" && view !== "month") || readOnly)) exitSelection();
   }, [view, readOnly, selectionMode, exitSelection]);
   // Selection mode owns the bottom of the screen with the action pill, so
   // hide the FAB + bottom-tab pill (they'd overlap the bar and bury its exit
@@ -118,7 +121,11 @@ export function Agenda() {
     setSelectedSession(item); setSelectedSessionMode(mode || null);
   }, []);
   const [editingNote, setEditingNote] = useState<Row | null>(null);
-  const [filterPatientId, setFilterPatientId] = useState("");
+  // Free-text patient filter (was a single-patient <select>): substring-
+  // matches the sessions' denormalized patient name, so a partial query
+  // covers several patients at once and typing beats scrolling a long
+  // dropdown. A <datalist> keeps the pick-from-list convenience.
+  const [filterQuery, setFilterQuery] = useState("");
   const [newSessionPrefill, setNewSessionPrefill] = useState<Row | null>(null);
   const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
   // Hide the CTA pill once the user has linked their calendar. Until
@@ -140,11 +147,12 @@ export function Agenda() {
   }, []);
 
   const filteredSessions = useMemo(() => {
-    if (!filterPatientId) return upcomingSessions;
-    return upcomingSessions.filter((s: Row) => s.patient_id === filterPatientId);
-  }, [upcomingSessions, filterPatientId]);
+    const q = filterQuery.trim().toLowerCase();
+    if (!q) return upcomingSessions;
+    return upcomingSessions.filter((s: Row) => (s.patient || "").toLowerCase().includes(q));
+  }, [upcomingSessions, filterQuery]);
 
-  const filterPatientName = filterPatientId ? patients.find((p: Row) => p.id === filterPatientId)?.name || "" : "";
+  const filterPatientName = filterQuery.trim();
 
   const handleCellTap = useCallback((date: Date, hour: string) => {
     setNewSessionPrefill({ date: toISODate(date), time: hour });
@@ -318,21 +326,27 @@ export function Agenda() {
               {selectedSet.size > 0 ? t("agenda.bulkBarCount", { n: selectedSet.size }) : t("agenda.bulkBarHint")}
             </span>
           </div>
-        ) : (patients.length > 0 || (view === "day" && !readOnly)) && (
+        ) : (patients.length > 0 || ((view === "day" || view === "month") && !readOnly)) && (
           <div style={{ padding:"0 16px 10px", display:"flex", gap:8, alignItems:"center" }}>
             {patients.length > 0 && (
-              <select
-                value={filterPatientId}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterPatientId(e.target.value)}
-                style={{ flex:1, minWidth:0, fontSize:"var(--text-sm)", fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", appearance:"auto" }}
-              >
-                <option value="">{t("agenda.allPatients")}</option>
-                {patients.filter((p: Row) => p.status === "active").sort((a: Row, b: Row) => a.name.localeCompare(b.name)).map((p: Row) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+              <>
+                <input
+                  type="search"
+                  list="agenda-patient-names"
+                  value={filterQuery}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterQuery(e.target.value)}
+                  placeholder={t("agenda.filterPlaceholder")}
+                  aria-label={t("agenda.filterPlaceholder")}
+                  style={{ flex:1, minWidth:0, fontSize:16, fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)" }}
+                />
+                <datalist id="agenda-patient-names">
+                  {patients.filter((p: Row) => p.status === "active").sort((a: Row, b: Row) => a.name.localeCompare(b.name)).map((p: Row) => (
+                    <option key={p.id} value={p.name} />
+                  ))}
+                </datalist>
+              </>
             )}
-            {view === "day" && !readOnly && (
+            {(view === "day" || view === "month") && !readOnly && (
               <button type="button" className="btn btn-ghost"
                 onClick={() => { haptic.tap(); setSelectionMode(true); }}
                 style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:6, width:"auto", height:"auto", padding:"6px 12px", fontSize:12, whiteSpace:"nowrap" }}>
@@ -344,7 +358,7 @@ export function Agenda() {
       </div>
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={selectItem} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} />}
       {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={selectItem} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isTabletSplit} onEventContextMenu={isTabletSplit ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} groupsById={groupsById} />}
-      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={selectItem} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} />}
+      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={selectItem} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly && !selectionMode} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} />}
       {upcomingSessions.length === 0 && (() => {
         // Two flavours of "no sessions": brand-new user with zero
         // patients, or an existing user whose calendar is genuinely

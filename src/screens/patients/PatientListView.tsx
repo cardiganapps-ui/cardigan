@@ -25,6 +25,8 @@ export type PatientListViewProps = {
   isPotentialView: boolean;
   potentialSubFilter: string;
   setPotentialSubFilter: (v: string) => void;
+  sortKey?: string;
+  onToggleSort?: () => void;
   filtered: Row[];
   splitMode: boolean;
   expediente: Row | null;
@@ -39,7 +41,8 @@ export type PatientListViewProps = {
 
 export function PatientListView({
   search, setSearch, filter, setFilter, filters, isPotentialView,
-  potentialSubFilter, setPotentialSubFilter, filtered, splitMode, expediente,
+  potentialSubFilter, setPotentialSubFilter, sortKey, onToggleSort,
+  filtered, splitMode, expediente,
   readOnly, requestFabAction, openDetail, setPotentialProfile,
   openPatientContextMenu, openRecordPaymentModal, t,
 }: PatientListViewProps) {
@@ -96,8 +99,27 @@ export function PatientListView({
           </button>
         </div>
       )}
-      <div className="sort-row" style={isPotentialView && potentialSubFilter === "active" && !readOnly ? { display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 } : undefined}>
+      <div className="sort-row" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
         <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{t("patients.count", { count: filtered.length })}</span>
+        {/* Sort toggle — Nombre ⇄ Deuda. Hidden in the Potenciales lane
+            (its slot holds the "Nuevo potencial" CTA and debt ordering
+            is meaningless pre-engagement). */}
+        {!isPotentialView && onToggleSort && (
+          <button type="button"
+            className="btn-tap"
+            onClick={onToggleSort}
+            aria-label={t("patients.sortToggleAria")}
+            style={{
+              display:"inline-flex", alignItems:"center", gap:4,
+              padding:"5px 11px", borderRadius:"var(--radius-pill)",
+              border:"1px solid var(--border)", background:"var(--white)",
+              color:"var(--charcoal-md)", fontSize:11, fontWeight:700,
+              fontFamily:"var(--font)", cursor:"pointer",
+              WebkitTapHighlightColor:"transparent",
+            }}>
+            {t("patients.sortLabel")}: {sortKey === "debt" ? t("patients.sortDebt") : t("patients.sortName")}
+          </button>
+        )}
         {/* "Nuevo potencial" CTA — bordered rose pill that reads as
             the lane's primary action without crowding the global
             FAB. Hidden under the Archivados sub-filter (no point

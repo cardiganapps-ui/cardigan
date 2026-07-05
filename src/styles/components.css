@@ -999,7 +999,10 @@ button.kpi-card:active {
 .input {
   width: 100%; padding: 11px 13px;
   border: 1.5px solid var(--border); border-radius: var(--radius);
-  font-size: 16px; font-family: var(--font); color: var(--charcoal);
+  /* 16px is the iOS zoom-on-focus floor — the user font-scale grows
+     inputs but never shrinks them below it. */
+  font-size: max(16px, calc(16px * var(--text-scale-user, 1)));
+  font-family: var(--font); color: var(--charcoal);
   background: var(--white); outline: none; -webkit-appearance: none;
   /* iOS Safari adds a 300ms double-tap-to-zoom delay on form
      elements without this hint, which reads as "my tap didn't
@@ -1020,7 +1023,7 @@ button.kpi-card:active {
 .input::placeholder { color: var(--charcoal-xl); transition: opacity var(--dur-fast) ease; }
 .input:focus::placeholder { opacity: 0.55; }
 .input.input-error { border-color: var(--red); }
-.input.input-error:focus { box-shadow: 0 0 0 3px rgba(217,107,107,0.15); }
+.input.input-error:focus { box-shadow: var(--focus-ring-danger); }
 .input:disabled { background: var(--cream); color: var(--charcoal-xl); cursor: not-allowed; }
 
 /* Inline form-field error message — fades in/out smoothly under the

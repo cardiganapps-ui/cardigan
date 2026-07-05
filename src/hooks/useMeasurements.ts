@@ -1,7 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
-import type { TablesUpdate } from "../types/db";
+import type { TablesInsert, TablesUpdate } from "../types/db";
 import type { MeasurementRow } from "../types/rows";
+import { enqueue, registerHandler, onReplay, removeByTempId, updateByTempId } from "../lib/mutationQueue";
 
 // ── Domain row types ────────────────────────────────────────────────
 // The measurement actions read/write the shared boundary row type
@@ -24,6 +25,37 @@ type SetError = Dispatch<SetStateAction<string>>;
 
 type Num = number | string | null | undefined;
 
+// Offline queue handlers — single-measurement CRUD degrades gracefully
+// offline like sessions/payments/expenses. bulkCreateMeasurements (CSV
+// import) stays online-only: it's an at-desk task and the DB unique
+// index already makes a re-import idempotent.
+registerHandler("measurements.insert", async ({ row }: { row: Record<string, unknown> }) => {
+  return await supabase.from("measurements").insert(row as TablesInsert<"measurements">).select().single();
+});
+registerHandler("measurements.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
+  return await supabase.from("measurements").update(patch as TablesUpdate<"measurements">).eq("id", id).eq("user_id", userId);
+});
+registerHandler("measurements.delete", async ({ id, userId }: { id: string; userId: string }) => {
+  return await supabase.from("measurements").delete().eq("id", id).eq("user_id", userId);
+});
+
+// Module-level setter ref so the once-registered onReplay listener
+// swaps temp ids in the live state holder (same pattern as the other
+// domain hooks).
+let _setMeasurementsRef: SetMeasurements | null = null;
+onReplay((entry, result: { error?: unknown; data?: Record<string, unknown> } | null) => {
+  if (entry.op !== "measurements.insert") return;
+  if (!result || result.error || !result.data) return;
+  const tempId = (entry.optimisticMeta as { tempId?: string } | null)?.tempId;
+  if (!tempId || !_setMeasurementsRef) return;
+  const data = result.data;
+  _setMeasurementsRef(prev => prev.map(m => m.id === tempId ? (data as Measurement) : m));
+});
+
+function isOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
 /* CRUD actions for the `measurements` table — anthropometric data
    (weight, waist, hip, body fat) tracked per visit by nutritionists +
    trainers. Mirrors the shape of usePatients / useSessions / etc. so
@@ -39,6 +71,9 @@ export function createMeasurementActions(
   setMutating: SetFlag,
   setMutationError: SetError,
 ) {
+  // Refresh the module-level ref so the once-registered onReplay
+  // listener writes into the live state holder.
+  _setMeasurementsRef = setMeasurements;
 
   /* Insert a new measurement. `taken_at` is required (the date the
      measurement was taken — defaults to today client-side); every
@@ -55,7 +90,7 @@ export function createMeasurementActions(
     if (!patientId || !takenAt) return false;
     setMutating(true);
     setMutationError("");
-    const { data, error } = await supabase.from("measurements").insert({
+    const row = {
       user_id: userId,
       patient_id: patientId,
       taken_at: takenAt,
@@ -66,11 +101,35 @@ export function createMeasurementActions(
       hip_cm:       hipCm       === "" || hipCm       == null ? null : Number(hipCm),
       body_fat_pct: bodyFatPct  === "" || bodyFatPct  == null ? null : Number(bodyFatPct),
       notes:        (notes || "").trim(),
-    }).select().single();
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
-    setMeasurements(prev => [data as Measurement, ...prev]);
-    return data;
+    };
+
+    // Offline (or transport failure below): land a temp-id row and
+    // queue the insert; the replay listener swaps in the server row.
+    const seedOptimistic = () => {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const optimistic = { ...row, id: tempId, _optimistic: true } as unknown as Measurement;
+      setMeasurements(prev => [optimistic, ...prev]);
+      return { tempId, optimistic };
+    };
+
+    if (isOffline()) {
+      const { tempId, optimistic } = seedOptimistic();
+      await enqueue("measurements.insert", { row }, { tempId });
+      setMutating(false);
+      return optimistic;
+    }
+    try {
+      const { data, error } = await supabase.from("measurements").insert(row).select().single();
+      setMutating(false);
+      if (error) { setMutationError(error.message); return false; }
+      setMeasurements(prev => [data as Measurement, ...prev]);
+      return data;
+    } catch {
+      const { tempId, optimistic } = seedOptimistic();
+      await enqueue("measurements.insert", { row }, { tempId });
+      setMutating(false);
+      return optimistic;
+    }
   }
 
   async function updateMeasurement(id: string, updates: Record<string, unknown>) {
@@ -83,12 +142,36 @@ export function createMeasurementActions(
       if (k in patch && (patch[k] === "" || patch[k] == null)) patch[k] = null;
       else if (k in patch) patch[k] = Number(patch[k]);
     }
-    const { data, error } = await supabase.from("measurements")
-      .update(patch as TablesUpdate<"measurements">).eq("id", id).eq("user_id", userId).select().single();
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
-    setMeasurements(prev => prev.map(m => m.id === id ? (data as Measurement) : m));
-    return true;
+    const applyLocal = () => setMeasurements(prev => prev.map(m => m.id === id ? ({ ...m, ...patch } as Measurement) : m));
+
+    // Offline-created row whose insert hasn't drained: patch the queued
+    // insert args so it lands with the edited values.
+    if (typeof id === "string" && id.startsWith("temp-")) {
+      applyLocal();
+      await updateByTempId(id, (args: { row: Record<string, unknown> }) => ({ ...args, row: { ...args.row, ...patch } }));
+      setMutating(false);
+      return true;
+    }
+    if (isOffline()) {
+      applyLocal();
+      await enqueue("measurements.update", { id, userId, patch });
+      setMutating(false);
+      return true;
+    }
+    try {
+      const { data, error } = await supabase.from("measurements")
+        .update(patch as TablesUpdate<"measurements">).eq("id", id).eq("user_id", userId).select().single();
+      setMutating(false);
+      if (error) { setMutationError(error.message); return false; }
+      setMeasurements(prev => prev.map(m => m.id === id ? (data as Measurement) : m));
+      return true;
+    } catch {
+      // Transport failure — keep the optimistic patch and queue.
+      applyLocal();
+      await enqueue("measurements.update", { id, userId, patch });
+      setMutating(false);
+      return true;
+    }
   }
 
   /* Bulk insert from an InBody / LookinBody CSV import. Each `row` is
@@ -107,6 +190,12 @@ export function createMeasurementActions(
   async function bulkCreateMeasurements({ patientId, rows }: { patientId?: string | null; rows?: ImportRow[] }) {
     if (!patientId || !Array.isArray(rows) || rows.length === 0) {
       return { created: 0, skipped: 0 };
+    }
+    // Online-only: CSV import is an at-desk task and the unique index
+    // makes a later re-import idempotent — fail loudly, don't queue.
+    if (isOffline()) {
+      setMutationError("Esta acción requiere conexión a internet. Intenta de nuevo al reconectar.");
+      return { created: 0, skipped: rows.length };
     }
     // Canonicalize timestamps before comparing — Supabase returns
     // timestamptz as `+00:00` and the parser emits `…Z`; same instant,
@@ -160,10 +249,30 @@ export function createMeasurementActions(
   }
 
   async function deleteMeasurement(id: string) {
+    // Offline-created row: cancel the queued insert, purge locally.
+    if (typeof id === "string" && id.startsWith("temp-")) {
+      await removeByTempId(id);
+      setMeasurements(prev => prev.filter(m => m.id !== id));
+      return true;
+    }
+    if (isOffline()) {
+      setMeasurements(prev => prev.filter(m => m.id !== id));
+      await enqueue("measurements.delete", { id, userId });
+      return true;
+    }
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("measurements")
-      .delete().eq("id", id).eq("user_id", userId);
+    let error: { message: string } | null;
+    try {
+      ({ error } = await supabase.from("measurements")
+        .delete().eq("id", id).eq("user_id", userId));
+    } catch {
+      // Transport failure — remove locally and queue the delete.
+      setMutating(false);
+      setMeasurements(prev => prev.filter(m => m.id !== id));
+      await enqueue("measurements.delete", { id, userId });
+      return true;
+    }
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setMeasurements(prev => prev.filter(m => m.id !== id));
