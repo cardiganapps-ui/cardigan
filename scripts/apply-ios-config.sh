@@ -298,6 +298,13 @@ fi
 # 20.5 and 20.6 are closed (a build on each was approved/released —
 # 20.5 hit error 90062 on the 2026-06-28 upload; 20.6 hit 90062 + 90186
 # "train is closed" on the 2026-07-08 upload).
+#
+# Bump this default when the current value ships to the App Store, OR
+# override it WITHOUT a code edit by setting the repo variable
+# IOS_MARKETING_VERSION (ios-build.yml passes it through as
+# $MARKETING_VERSION; the :- default below applies only when it's empty
+# or unset). Full runbook, incl. the loud CI error on 90062/90186:
+# CLAUDE.md → "build-failure triage".
 MARKETING_VERSION="${MARKETING_VERSION:-20.7}"
 APPLE_TEAM_ID="$APPLE_TEAM_ID" MARKETING_VERSION="$MARKETING_VERSION" python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
 import re, sys, os

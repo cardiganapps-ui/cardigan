@@ -182,6 +182,13 @@ jobs:
           # because passing it as an xcodebuild CLI arg leaks to
           # SPM dependency targets that don't support signing.
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Marketing version (CFBundleShortVersionString) override. Empty
+          # unless the repo variable IOS_MARKETING_VERSION is set, in which
+          # case apply-ios-config.sh uses it instead of its baked-in
+          # default. Lets you bump the version — the fix for the recurring
+          # 90062/90186 "train closed" upload rejection — from the GitHub
+          # UI with NO code edit. See CLAUDE.md → build-failure triage.
+          MARKETING_VERSION: ${{ vars.IOS_MARKETING_VERSION }}
         run: bash scripts/apply-ios-config.sh
 
       # Capacitor 8 ships with Swift Package Manager by default — no
@@ -315,11 +322,32 @@ jobs:
         run: |
           IPA=$(ls "$RUNNER_TEMP"/ipa/*.ipa | head -1)
           echo "Uploading $IPA to TestFlight..."
-          xcrun altool --upload-app \
+          # Capture altool output so we can turn Apple's two recurring,
+          # cryptic upload rejections into a loud, actionable ::error::.
+          # The archive/export already SUCCEEDED by this point, so these
+          # are never app-code bugs — they're version/quota issues that a
+          # red build should self-explain. Full runbook: CLAUDE.md →
+          # "build-failure triage".
+          set +e
+          OUT=$(xcrun altool --upload-app \
             -f "$IPA" \
             -t ios \
             --apiKey "$ASC_KEY_ID" \
-            --apiIssuer "$ASC_ISSUER"
+            --apiIssuer "$ASC_ISSUER" 2>&1)
+          CODE=$?
+          echo "$OUT"
+          if [ $CODE -eq 0 ]; then
+            echo "✓ Uploaded to TestFlight."
+            exit 0
+          fi
+          if echo "$OUT" | grep -qE '90062|90186'; then
+            echo "::error title=iOS marketing-version train closed::TestFlight rejected the upload: the CFBundleShortVersionString train is CLOSED (90062 'must be higher' / 90186 'train closed'). Apple locks a marketing version once a build on it ships to the App Store and refuses all later uploads to it. FIX (not an app-code change): bump the marketing version to the next value — set the repo variable IOS_MARKETING_VERSION, or edit MARKETING_VERSION in scripts/apply-ios-config.sh — then push. The archive + export SUCCEEDED; only the upload was blocked. Runbook: CLAUDE.md → build-failure triage."
+          elif echo "$OUT" | grep -q '90382'; then
+            echo "::error title=TestFlight daily upload cap::Upload throttled (90382 — Apple's ~24h per-app upload cap). The IPA built + signed fine; only the upload was rejected. Wait for the window to reset, then re-trigger. NOT a code failure. Runbook: CLAUDE.md → iOS builds."
+          else
+            echo "::error title=TestFlight upload failed::altool exited $CODE — see the output above."
+          fi
+          exit $CODE
 
       - name: Clean up API key
         if: always()
