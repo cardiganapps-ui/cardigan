@@ -49,6 +49,7 @@ import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
+import { useHapticsEnabled } from "../hooks/useHapticsEnabled";
 import { isClinicalProfession } from "../data/constants";
 import { haptic } from "../utils/haptics";
 import { notifErrorKey } from "./settings/sheets/notifErrorKey";
@@ -62,6 +63,9 @@ type SettingsProps = {
 export function Settings({ user, signOut, refreshUser }: SettingsProps) {
   const { t } = useT();
   const { tutorial, navigate, theme, accentTheme, fontScale, notifications, showToast, readOnly, noteCrypto, profession, setHideFab, subscription, requirePro, groups, groupsEnabled, setGroupsEnabled } = useCardigan();
+  // Vibration preference — per-device (localStorage), no context plumbing;
+  // the flag lives in utils/haptics.ts and applies app-wide instantly.
+  const { hapticsEnabled, setHapticsEnabled } = useHapticsEnabled();
   // Groups feature can only be turned OFF when there are no groups (turning
   // it back ON is always allowed). Disabling hides the whole Groups surface.
   const groupCount = (groups || []).length;
@@ -484,6 +488,8 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         groupsToggleLocked={groupsToggleLocked}
         readOnly={readOnly}
         setGroupsEnabled={setGroupsEnabled}
+        hapticsEnabled={hapticsEnabled}
+        setHapticsEnabled={setHapticsEnabled}
       />
 
       <NotificationsCalendarPanel
@@ -794,6 +800,7 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
         body={t("nav.signOutConfirm")}
         confirmLabel={t("nav.signOut")}
         destructive
+        hapticOnOpen={false}
         onConfirm={() => { setConfirmSignOut(false); signOut(); }}
         onCancel={() => setConfirmSignOut(false)}
       />
