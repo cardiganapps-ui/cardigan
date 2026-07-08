@@ -4,6 +4,7 @@ import { NoteCard } from "../../components/NoteEditor";
 import { DocumentList } from "../../components/DocumentList";
 import { ExternalFolderCard } from "../../components/ExternalFolderCard";
 import { isWordDoc } from "../../utils/files";
+import { displayShortDate } from "../../utils/dates";
 import { useT } from "../../i18n/index";
 import { useCardiganMain } from "../../context/CardiganContext";
 import { EmptyState } from "../../components/EmptyState";
@@ -83,7 +84,7 @@ export function ArchivoTab({
                   <NoteCard
                     note={n}
                     onClick={() => onEditNote(n)}
-                    sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : undefined}
+                    sessionLabel={linkedSession ? `${displayShortDate(linkedSession.date)} · ${linkedSession.time}` : undefined}
                   />
                 </div>
               );

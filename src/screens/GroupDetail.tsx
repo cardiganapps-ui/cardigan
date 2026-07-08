@@ -22,7 +22,7 @@ import { getClientColor } from "../data/seedData";
 import { buildGroupRoster, groupOccurrences, groupFinancesRollup, activeMemberCount } from "../utils/groups";
 import { GROUP_STATUS, SESSION_STATUS, MODALITY_I18N_KEY } from "../data/constants";
 import { formatMXN } from "../utils/format";
-import { parseShortDate } from "../utils/dates";
+import { parseShortDate, displayShortDate, displayDayName } from "../utils/dates";
 import { haptic } from "../utils/haptics";
 
 /* Group management overlay. Tabbed (Resumen / Integrantes / Sesiones /
@@ -157,7 +157,7 @@ export function GroupDetail({ group, onClose }: { group: Row; onClose: () => voi
                   )}
                 </div>
                 {g.day && g.time ? (
-                  <div style={{ fontSize:"var(--text-md)", fontWeight:700 }}>{g.day} · {g.time}</div>
+                  <div style={{ fontSize:"var(--text-md)", fontWeight:700 }}>{displayDayName(g.day)} · {g.time}</div>
                 ) : (
                   <div style={{ fontSize:"var(--text-md)", fontWeight:700 }}>{t("groups.oneOff")}</div>
                 )}
@@ -238,7 +238,7 @@ export function GroupDetail({ group, onClose }: { group: Row; onClose: () => voi
                     <button key={`${o.date}|${o.time}`} className={`row-item session-row rail-${rail} btn-tap`} style={{ width:"100%", border:"none", background:"transparent", textAlign:"left", cursor:"pointer" }}
                       onClick={() => { haptic.tap(); setOccurrence(o); }}>
                       <div className="row-content">
-                        <div className="row-title">{o.date} · {o.time}</div>
+                        <div className="row-title">{displayShortDate(o.date)} · {o.time}</div>
                         <div className="row-sub">{o.count === 1 ? t("groups.memberCountOne") : t("groups.membersCount", { count: o.count })}</div>
                       </div>
                       <span className="row-chevron" aria-hidden><IconChevronRight size={16} /></span>

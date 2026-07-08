@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
-import { shortDateToISO, formatShortDateWithYear } from "../../utils/dates";
+import { shortDateToISO, formatShortDateWithYear, displayShortDate } from "../../utils/dates";
 import { classifySessions } from "../../hooks/usePatientPortalData";
 import { usePatientDocuments } from "../../hooks/usePatientDocuments";
 import { IconCalendar, IconCheck, IconChevronRight, IconUser, IconX } from "../../components/Icons";
@@ -517,7 +517,7 @@ export function PatientHome({ data }: PatientHomeProps) {
         open={!!cancelTarget}
         title={cancelTarget
           ? t("patientHome.cancelDialogTitle", {
-              date: formatShortDateWithYear(new Date(shortDateToISO(cancelTarget.date) + "T12:00:00")),
+              date: displayShortDate(formatShortDateWithYear(new Date(shortDateToISO(cancelTarget.date) + "T12:00:00"))),
             })
           : ""}
         body={t("patientHome.cancelDialogBody", { name: therapistDisplayName })}

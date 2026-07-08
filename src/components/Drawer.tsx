@@ -302,6 +302,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
               body={t("nav.signOutConfirm")}
               confirmLabel={t("nav.signOut")}
               destructive
+              hapticOnOpen={false}
               onConfirm={() => { setConfirmSignOut(false); signOut(); onClose(); }}
               onCancel={() => setConfirmSignOut(false)}
             />

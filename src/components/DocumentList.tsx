@@ -6,6 +6,7 @@ import { getFileIcon, formatFileSize } from "../utils/files";
 import { clickableProps } from "../utils/a11y";
 import { useT } from "../i18n/index";
 import { formatDate } from "../utils/format";
+import { displayShortDate } from "../utils/dates";
 
 export function DocumentList({
   documents, sessions, patients,
@@ -89,7 +90,7 @@ export function DocumentList({
           <div key={doc.id} className={itemClass} style={itemStyle}>
             {linkedSession && (
               <div style={{ padding:"6px 14px 0", fontSize:10, color:"var(--teal-dark)", fontWeight:600 }}>
-                {t("sessions.session")} {linkedSession.date} · {linkedSession.time}
+                {t("sessions.session")} {displayShortDate(linkedSession.date)} · {linkedSession.time}
               </div>
             )}
             <div style={{ display:"flex", alignItems:"center", padding:"10px 14px", gap:10 }}>

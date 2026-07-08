@@ -123,7 +123,9 @@ files. Steps reference the detailed sections further down.
    - Promote internal → production from the Play Console, or run *Android
      Build & Play* with `track = production`. New personal accounts must
      run closed/open testing with a minimum tester count for ~14 days
-     before production unlocks. (§7)
+     before production unlocks. (§7) Prepared answers for the
+     production-access questionnaire live in
+     `docs/play-production-access.md`.
 
 That's the whole path from a phone. The sections below are the reference
 detail for each step.

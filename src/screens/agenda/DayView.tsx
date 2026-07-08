@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { TODAY } from "../../data/seedData";
-import { formatShortDate } from "../../utils/dates";
+import { formatShortDate, displayShortDate } from "../../utils/dates";
 import { useSwipe } from "../../hooks/useSwipe";
 import { useT } from "../../i18n/index";
 import { clickableProps } from "../../utils/a11y";
@@ -49,7 +49,7 @@ export function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomi
   const sunday = weekDays[6];
   const weekLabel = monday.getMonth() === sunday.getMonth()
     ? `${monday.getDate()}–${sunday.getDate()} ${strings.monthsShort[monday.getMonth()]}`
-    : `${formatShortDate(monday)} – ${formatShortDate(sunday)}`;
+    : `${displayShortDate(formatShortDate(monday))} – ${displayShortDate(formatShortDate(sunday))}`;
   const isCurrent = isSameDay(selectedDate, TODAY);
 
   const renderCalStrip = (days: Date[]) => (

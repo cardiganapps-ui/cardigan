@@ -4,7 +4,7 @@ import { isTutorSession, isInterviewSession, statusClass, statusLabel } from "..
 import { supabase } from "../../supabaseClient";
 import { SESSION_WINDOWING_ACTIVE, sessionWindowCutoffIso } from "../../hooks/useCardiganData";
 import { SegmentedControl } from "../../components/SegmentedControl";
-import { todayISO } from "../../utils/dates";
+import { todayISO, displayShortDate } from "../../utils/dates";
 import { useT } from "../../i18n/index";
 import { clickableProps } from "../../utils/a11y";
 import { useCardiganMain } from "../../context/CardiganContext";
@@ -149,7 +149,7 @@ export function SesionesTab({
               <div key={s.id} className="row-item" style={{ cursor:"default" }}>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal)" }}>
-                    {s.date} · {s.time}
+                    {displayShortDate(s.date)} · {s.time}
                   </div>
                   <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)" }}>
                     {statusLabel(s.status)}{s.rate != null ? ` · $${Number(s.rate).toLocaleString()}` : ""}
@@ -345,7 +345,7 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
                     there's no tutor/note badge, so the list feels denser. */}
                 <div style={{ display:"flex", alignItems:"center", gap:8, minHeight:22 }}>
                   <div className="row-title" style={{ fontFamily:"var(--font-d)", fontWeight:700, flex:1, minWidth:0 }}>
-                    {s.date} · {s.time}
+                    {displayShortDate(s.date)} · {s.time}
                   </div>
                   <span className={`session-status ${statusClass(s.status)}`} style={{ flexShrink:0 }}>
                     {t(`sessions.${s.status}`)}

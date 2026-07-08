@@ -30,6 +30,9 @@ export default defineConfig({
     : "list",
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
+    // Pin Spanish — the app auto-detects device language and Playwright
+    // defaults to en-US (see playwright.config.js).
+    locale: "es-MX",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

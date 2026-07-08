@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { TODAY } from "../../data/seedData";
-import { formatShortDate } from "../../utils/dates";
+import { formatShortDate, displayShortDate } from "../../utils/dates";
 import { useSwipe } from "../../hooks/useSwipe";
 import { useT } from "../../i18n/index";
 import { Toggle } from "../../components/Toggle";
@@ -37,7 +37,7 @@ export function WeekView({ selectedDate, setSelectedDate, setView, onSelectSessi
   const nextWeek = addDays(selectedDate, 7);
   const weekDays = getWeekDays(selectedDate);
   const monday = weekDays[0];
-  const weekLabel = `${t("sessions.weekOf")} ${formatShortDate(monday)}`;
+  const weekLabel = `${t("sessions.weekOf")} ${displayShortDate(formatShortDate(monday))}`;
   const isCurrent = weekDays.some((d: Date) => isSameDay(d, TODAY));
   const shared = { selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours: HOURS, groupsById };
 

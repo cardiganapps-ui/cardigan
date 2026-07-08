@@ -15,6 +15,7 @@ import { formatMXN } from "../../utils/format";
 import { isNative } from "../../lib/platform";
 import { launchUrl } from "../../lib/nativeBrowser";
 import { SheetOverlay } from "../SheetOverlay";
+import { displayShortDate } from "../../utils/dates";
 
 /* ── PotentialProfileSheet ────────────────────────────────────────
    Slim profile for a 'potential' patient. Deliberately NOT the full
@@ -208,7 +209,7 @@ export function PotentialProfileSheet({
                       {...clickableProps(() => onOpenSession?.(interviewSession))}>
                       <Avatar initials={patient.initials} color="var(--rose)" size="md" />
                       <div className="row-content">
-                        <div className="row-title">{interviewSession.date}</div>
+                        <div className="row-title">{displayShortDate(interviewSession.date)}</div>
                         <div className="row-sub">
                           {interviewSession.time}{endTime ? ` - ${endTime}` : ""}
                         </div>

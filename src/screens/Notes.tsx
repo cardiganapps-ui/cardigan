@@ -17,6 +17,7 @@ import { useViewport } from "../hooks/useViewport";
 import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { groupNotesByRecency } from "../utils/noteGrouping";
 import { tokenize, matches } from "../utils/noteSearch";
+import { displayShortDate } from "../utils/dates";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed note/patient/session/tag rows
 type Row = any;
@@ -410,7 +411,7 @@ export function Notes() {
                     onChange={e => setPropsNote((prev: Row) => ({ ...prev, _sessionId: e.target.value }))}>
                     <option value="">{t("notes.generalPatientNote")}</option>
                     {propsNoteSessions.map((s: Row) => (
-                      <option key={s.id} value={s.id}>{s.date} · {s.time} — {t(`sessions.${s.status}`)}</option>
+                      <option key={s.id} value={s.id}>{displayShortDate(s.date)} · {s.time} — {t(`sessions.${s.status}`)}</option>
                     ))}
                   </select>
                 </div>
@@ -614,7 +615,7 @@ function NoteGroupedList({
                     onTouchEnd={onLongPressCancel} onTouchMove={onLongPressCancel}
                     onTouchCancel={onLongPressCancel}>
                     <NoteCard note={n} onClick={(ev?: React.MouseEvent) => onNoteClick(n, ev)}
-                      patientName={p?.name} sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : undefined}
+                      patientName={p?.name} sessionLabel={linkedSession ? `${displayShortDate(linkedSession.date)} · ${linkedSession.time}` : undefined}
                       onPatientClick={p ? () => openExpediente(p) : undefined} />
                   </div>
                 </div>

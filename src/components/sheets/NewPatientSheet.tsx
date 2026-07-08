@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
 import { DAY_ORDER } from "../../data/seedData";
-import { todayISO } from "../../utils/dates";
+import { todayISO, displayDayName } from "../../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../../utils/contact";
 import { capitalizeName } from "../../utils/names";
 import { Toggle } from "../Toggle";
@@ -771,7 +771,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                           value={s.day}
                           onChange={e => updateSched(i, "day", e.target.value)}
                           style={hasIssue ? { borderColor:"var(--amber)" } : undefined}>
-                          {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+                          {DAY_ORDER.map(d => <option key={d} value={d}>{displayDayName(d)}</option>)}
                         </select>
                       </div>
                       <div className="input-group" style={{ marginBottom:0 }}>

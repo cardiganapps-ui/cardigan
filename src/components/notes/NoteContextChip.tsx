@@ -6,6 +6,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { displayShortDate } from "../../utils/dates";
 
 /* ── Cardigan notes — patient/session chip ──────────────────────────
    Replaces the expandable accordion context bar with a single
@@ -66,7 +67,7 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
           <>
             <span className="mde-context-sep" aria-hidden="true">·</span>
             <IconCalendar size={12} className="mde-context-icon" />
-            <span className="mde-context-label" style={{ maxWidth: 120 }}>{session.date} · {session.time}</span>
+            <span className="mde-context-label" style={{ maxWidth: 120 }}>{displayShortDate(session.date)} · {session.time}</span>
           </>
         )}
         {!readOnly && <IconChevron size={14} style={{ color: "var(--charcoal-xl)", marginLeft: 2, transform: "rotate(90deg)" }} />}

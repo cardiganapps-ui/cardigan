@@ -1,7 +1,7 @@
 /* ── Session display helpers used across Cardigan ── */
 
 import { SESSION_STATUS, SESSION_TYPE, PATIENT_STATUS } from "../data/constants";
-import { shortDateToISO, todayISO } from "./dates";
+import { shortDateToISO, todayISO, getDateDisplayLang, displayShortDate } from "./dates";
 
 /** Minimal session shape these helpers read (a subset of a sessions row). */
 export interface SessionLike {
@@ -70,6 +70,15 @@ export function statusClass(status: string | null | undefined): string {
 }
 
 export function statusLabel(status: string | null | undefined): string {
+  // Display-only labels. English routes off the same display-language
+  // flag the date helpers use (set by I18nProvider) because this pure
+  // module can't reach React context; stored status values stay fixed.
+  if (getDateDisplayLang() === "en") {
+    if (status === SESSION_STATUS.CHARGED)   return "Cancelled (charged)";
+    if (status === SESSION_STATUS.CANCELLED) return "Cancelled";
+    if (status === SESSION_STATUS.COMPLETED) return "Completed";
+    return "Scheduled";
+  }
   if (status === SESSION_STATUS.CHARGED)   return "Cancelada cobrada";
   if (status === SESSION_STATUS.CANCELLED) return "Cancelada";
   if (status === SESSION_STATUS.COMPLETED) return "Completada";
@@ -92,7 +101,7 @@ export function shortName(name: string | null | undefined): string {
 }
 
 export function sessionDisplayLabel(s: SessionLike): string {
-  return `${s.date} · ${s.time} — ${statusLabel(s.status)}`;
+  return `${displayShortDate(s.date)} · ${s.time} — ${statusLabel(s.status)}`;
 }
 
 /* ── Time-range overlap ──

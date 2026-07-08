@@ -53,6 +53,7 @@ export function ConfirmDialog({
   onCancel,
   dismissOnOverlay = true,
   typeToConfirm,
+  hapticOnOpen = true,
 }: {
   open?: boolean;
   title?: React.ReactNode;
@@ -66,6 +67,11 @@ export function ConfirmDialog({
   onCancel?: () => void;
   dismissOnOverlay?: boolean;
   typeToConfirm?: { value?: string; label?: React.ReactNode; placeholder?: string };
+  /* Opt-out for destructive dialogs that aren't actually dangerous
+     (e.g. sign-out — red CTA for visual weight, but a stray vibration
+     there reads as noise; Play Store testers flagged it). Data-loss
+     confirms keep the default. */
+  hapticOnOpen?: boolean;
 }) {
   const { t } = useT();
   const containerRef = useFocusTrap(!!open);
@@ -114,8 +120,8 @@ export function ConfirmDialog({
   // gate on `open` flipping to true rather than on render so a
   // re-render during the same open doesn't double-fire.
   useEffect(() => {
-    if (open && destructive) haptic.warn();
-  }, [open, destructive]);
+    if (open && destructive && hapticOnOpen) haptic.warn();
+  }, [open, destructive, hapticOnOpen]);
 
   if (!renderOpen) return null;
 

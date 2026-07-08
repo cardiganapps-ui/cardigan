@@ -11,6 +11,27 @@ import { isNative } from "../lib/platform";
 
 type HapticKind = "tap" | "success" | "warn";
 
+/* Global on/off switch (Settings → Funciones → Vibración). haptics is a
+   plain module consumed from non-hook code (some of it pre-login), so the
+   preference is per-DEVICE — like theme/accent/fontScale — under a single
+   localStorage key, lazily read once and cached in a module flag. Default
+   ON; private-mode localStorage failures fall back to ON. */
+const LS_KEY = "cardigan.hapticsEnabled";
+let enabled: boolean | null = null;
+
+export function isHapticsEnabled(): boolean {
+  if (enabled === null) {
+    try { enabled = localStorage.getItem(LS_KEY) !== "false"; }
+    catch { enabled = true; }
+  }
+  return enabled;
+}
+
+export function setHapticsEnabled(v: boolean) {
+  enabled = v;
+  try { localStorage.setItem(LS_KEY, String(v)); } catch { /* private mode */ }
+}
+
 function runWeb(pattern: number | number[]) {
   if (typeof navigator === "undefined") return;
   if (typeof navigator.vibrate !== "function") return;
@@ -34,6 +55,7 @@ async function runNative(kind: HapticKind) {
 }
 
 function fire(kind: HapticKind, webPattern: number | number[]) {
+  if (!isHapticsEnabled()) return;
   if (isNative()) {
     // fire-and-forget — callers don't await haptics
     runNative(kind);

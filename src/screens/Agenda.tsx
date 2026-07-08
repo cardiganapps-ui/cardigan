@@ -10,7 +10,7 @@ import { IconCheck, IconX, IconTrash, IconCalendar, IconPlus } from "../componen
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { BulkActionsSheet } from "../components/sheets/BulkActionsSheet";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { formatShortDate, toISODate } from "../utils/dates";
+import { formatShortDate, displayShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus } from "../utils/sessions";
 import { useViewport } from "../hooks/useViewport";
 import { useCalendarToken, isCalendarPromptDismissed, dismissCalendarPrompt } from "../hooks/useCalendarToken";
@@ -479,8 +479,8 @@ export function Agenda() {
           open
           title={t("agenda.moveDayTitle", { n: moveDayPair.sessions.length })}
           body={t("agenda.moveDayBody", {
-            src: formatShortDate(new Date(moveDayPair.srcIso + "T00:00:00")),
-            tgt: formatShortDate(new Date(moveDayPair.tgtIso + "T00:00:00")),
+            src: displayShortDate(formatShortDate(new Date(moveDayPair.srcIso + "T00:00:00"))),
+            tgt: displayShortDate(formatShortDate(new Date(moveDayPair.tgtIso + "T00:00:00"))),
             n: moveDayPair.sessions.length,
           })}
           confirmLabel={t("agenda.moveDayConfirm")}

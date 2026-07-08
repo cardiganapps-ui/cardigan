@@ -1,5 +1,6 @@
 import { useT } from "../../../i18n/index";
-import { IconX, IconCheck, IconSun, IconMoon, IconSmartphone } from "../../../components/Icons";
+import type { Locale } from "../../../i18n/index";
+import { IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconGlobe } from "../../../components/Icons";
 import { SheetOverlay } from "../../../components/SheetOverlay";
 import { clickableProps } from "../../../utils/a11y";
 
@@ -15,7 +16,7 @@ import { clickableProps } from "../../../utils/a11y";
 type Row = any;
 
 export interface AppearanceSheetsProps {
-  mode: "theme" | "accent" | "fontScale" | null;
+  mode: "theme" | "accent" | "fontScale" | "language" | null;
   theme: Row;
   accentTheme: Row;
   fontScale?: Row;
@@ -33,6 +34,14 @@ const ACCENTS = [
   { key: "steel",    swatch: "#7A8FA3" },
 ];
 
+// Language labels are native names on purpose (standard picker UX —
+// an English speaker stuck in Spanish must be able to find their own
+// language), so they're hardcoded, not i18n keys.
+const LANGUAGES: { key: Locale; label: string }[] = [
+  { key: "es", label: "Español" },
+  { key: "en", label: "English" },
+];
+
 // Preview glyph size per option — the "Aa" renders at the size the
 // body text would take, so the choice is legible before committing.
 const FONT_SCALES = [
@@ -43,7 +52,7 @@ const FONT_SCALES = [
 ];
 
 export function AppearanceSheets({ mode, theme, accentTheme, fontScale, onClose, setSheetPanel, sheetPanelHandlers }: AppearanceSheetsProps) {
-  const { t } = useT();
+  const { t, lang, switchLang } = useT();
   if (!mode) return null;
 
   const themeOptions = [
@@ -54,6 +63,7 @@ export function AppearanceSheets({ mode, theme, accentTheme, fontScale, onClose,
 
   const sheetTitle = mode === "theme" ? t("settings.appearance")
     : mode === "accent" ? t("settings.accentColor")
+    : mode === "language" ? t("settings.language")
     : t("settings.fontSize");
 
   return (
@@ -65,7 +75,18 @@ export function AppearanceSheets({ mode, theme, accentTheme, fontScale, onClose,
               <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px" }}>
-              {mode === "fontScale" ? (
+              {mode === "language" ? (
+                LANGUAGES.map(opt => (
+                  <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
+                    {...clickableProps(() => { switchLang(opt.key); onClose(); })}>
+                    <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconGlobe size={18} /></div>
+                    <div style={{ flex:1 }}>
+                      <div className="settings-row-title" style={{ fontWeight:500 }}>{opt.label}</div>
+                    </div>
+                    {lang === opt.key && <IconCheck size={18} style={{ color:"var(--teal)" }} />}
+                  </div>
+                ))
+              ) : mode === "fontScale" ? (
                 FONT_SCALES.map(opt => (
                   <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
                     {...clickableProps(() => { fontScale?.setFontScale(opt.key); onClose(); })}>

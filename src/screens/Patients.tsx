@@ -4,7 +4,7 @@ import { DAY_ORDER } from "../data/seedData";
 import { IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
 import { SwipeRevealRow } from "../components/SwipeRevealRow";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
-import { shortDateToISO, parseLocalDate } from "../utils/dates";
+import { shortDateToISO, parseLocalDate, displayDayName } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -450,7 +450,7 @@ export function Patients() {
                             <div className="input-group" style={{ marginBottom:8 }}>
                               <label className="input-label">{t("patients.day")}</label>
                               <select className="input" value={s.day} onChange={e => updateEditSched(i, "day", e.target.value)}>
-                                {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+                                {DAY_ORDER.map(d => <option key={d} value={d}>{displayDayName(d)}</option>)}
                               </select>
                             </div>
                             <div className="input-group" style={{ marginBottom:8 }}>

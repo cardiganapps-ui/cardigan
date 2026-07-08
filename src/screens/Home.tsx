@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useMemo } from "react";
 import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconClipboard, IconX, IconPlus, IconSun } from "../components/Icons";
-import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
+import { formatShortDate, displayShortDate, displayDayName, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass, statusLabel, railClass } from "../utils/sessions";
 import { ActivationChecklist } from "../components/ActivationChecklist";
 import { SheetOverlay } from "../components/SheetOverlay";
@@ -505,7 +505,7 @@ export function Home({ setScreen, userName }: HomeProps) {
         <button type="button" className="kpi-card" onClick={() => setScreen("agenda")}>
           <div className="kpi-label">{t("home.sessionsToday")}</div>
           <div className="kpi-value"><AnimatedNumber value={todaySessions.length} /></div>
-          <div className="kpi-meta">{todayDayName} {todayStr}</div>
+          <div className="kpi-meta">{displayDayName(todayDayName)} {displayShortDate(todayStr)}</div>
         </button>
         <button type="button" className="kpi-card" onClick={() => setScreen("patients")}>
           <div className="kpi-label">{t("patients.title")}</div>
@@ -529,10 +529,10 @@ export function Home({ setScreen, userName }: HomeProps) {
         <div className="section-header home-carousel">
           <span className="section-title" style={{ transition:"opacity 0.3s" }}>
             {carouselPage === 0
-              ? <>{t("sessions.today")} — {todayDayName} {todayStr}</>
+              ? <>{t("sessions.today")} — {displayDayName(todayDayName)} {displayShortDate(todayStr)}</>
               : nextDayLabel === nextDayName
-                ? <>{nextDayName} {nextDayStr}</>
-                : <>{nextDayLabel} — {nextDayName} {nextDayStr}</>
+                ? <>{displayDayName(nextDayName)} {displayShortDate(nextDayStr)}</>
+                : <>{nextDayLabel} — {displayDayName(nextDayName)} {displayShortDate(nextDayStr)}</>
             }
           </span>
           <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
@@ -661,10 +661,10 @@ export function Home({ setScreen, userName }: HomeProps) {
               const dueSoon = r.daysUntilDue >= 0 && r.daysUntilDue <= 7;
               const hasScheduled = !!r.nextTutorSession;
               const lastLine = r.lastTutorSession
-                ? `${t("home.lastTutorSession")}: ${r.lastTutorSession.date}`
+                ? `${t("home.lastTutorSession")}: ${displayShortDate(r.lastTutorSession.date)}`
                 : t("home.noTutorSession");
               const scheduledLine = hasScheduled
-                ? `${t("home.nextTutorSession")}: ${r.nextTutorSession.date}`
+                ? `${t("home.nextTutorSession")}: ${displayShortDate(r.nextTutorSession.date)}`
                 : null;
               const handleClick = () => {
                 if (readOnly) return openPatient(r.patient.name);
