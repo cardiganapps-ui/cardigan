@@ -32,6 +32,10 @@ export default defineConfig({
     : "list",
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
+    // The app now auto-detects the device language (en/es) and
+    // Playwright's default locale is en-US — pin es-MX so the smoke
+    // suite keeps asserting the canonical Spanish strings.
+    locale: "es-MX",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

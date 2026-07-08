@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { getClientColor } from "../data/seedData";
 import { isCancelledStatus, isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass } from "../utils/sessions";
-import { shortDateToISO, isoToShortDate } from "../utils/dates";
+import { shortDateToISO, isoToShortDate, displayShortDate, displayDayName } from "../utils/dates";
 import { IconX, IconTrash, IconCheck, IconRefresh, IconClipboard } from "./Icons";
 import { Avatar } from "./Avatar";
 import { haptic } from "../utils/haptics";
@@ -169,7 +169,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{session.day} {session.date} · {session.time} - {endTime}</div>
+                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{displayDayName(session.day)} {displayShortDate(session.date)} · {session.time} - {endTime}</div>
               </div>
             </div>
             <button aria-label={t("delete")} onClick={() => setConfirmDelete(true)}

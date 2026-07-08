@@ -6,7 +6,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useCardiganMain } from "../../context/CardiganContext";
-import { todayISO, isoToShortDate, parseShortDate } from "../../utils/dates";
+import { todayISO, isoToShortDate, parseShortDate, displayShortDate } from "../../utils/dates";
 import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../../data/constants";
 import { haptic } from "../../utils/haptics";
 import { SheetOverlay } from "../SheetOverlay";
@@ -201,7 +201,7 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }: {
               marginBottom: 10,
               lineHeight: 1.4,
             }}>
-              {t("scheduling.lastConsultLabel")}: <strong style={{ color: "var(--charcoal-md)", fontWeight: 600 }}>{lastSession.date} · {lastSession.time}</strong>
+              {t("scheduling.lastConsultLabel")}: <strong style={{ color: "var(--charcoal-md)", fontWeight: 600 }}>{displayShortDate(lastSession.date)} · {lastSession.time}</strong>
             </div>
           )}
 

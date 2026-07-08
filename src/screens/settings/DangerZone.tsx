@@ -27,8 +27,8 @@ export const DangerZone = React.memo(function DangerZone({
           <div className="settings-row" {...clickableProps(onOpenDiagnostics)}>
             <div className="settings-row-icon"><IconSmartphone size={18} /></div>
             <div style={{ flex:1 }}>
-              <div className="settings-row-title">Diagnóstico</div>
-              <div className="settings-row-sub">Plataforma, push y haptics</div>
+              <div className="settings-row-title">{t("settings.diagnostics")}</div>
+              <div className="settings-row-sub">{t("settings.diagnosticsSub")}</div>
             </div>
             <IconChevron />
           </div>

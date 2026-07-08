@@ -19,6 +19,12 @@ export function setDateDisplayLang(lang: "es" | "en") {
   _displayLang = lang;
 }
 
+/* Read the active display language — for other pure display helpers
+   (e.g. utils/sessions.ts::statusLabel) that can't reach React context. */
+export function getDateDisplayLang(): "es" | "en" {
+  return _displayLang;
+}
+
 /* Translate a stored/derived short date ("8-Abr", "8-Abr-26", legacy
    "8 Abr") for display. Spanish lang or unrecognized input → returned
    normalized/unchanged, so double-wrapping is harmless. */

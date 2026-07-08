@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { DAY_ORDER } from "../../data/seedData";
-import { todayISO } from "../../utils/dates";
+import { todayISO, displayDayName } from "../../utils/dates";
 import { Toggle } from "../Toggle";
 import { IconX } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
@@ -225,7 +225,7 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
                       <div className="input-group" style={{ marginBottom:0 }}>
                         {i === 0 && <label className="input-label">{t("patients.day")}</label>}
                         <select className="input" value={s.day} onChange={e => updateSched(i, "day", e.target.value)} style={hasIssue ? { borderColor:"var(--amber)" } : undefined}>
-                          {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+                          {DAY_ORDER.map(d => <option key={d} value={d}>{displayDayName(d)}</option>)}
                         </select>
                       </div>
                       <div className="input-group" style={{ marginBottom:0 }}>

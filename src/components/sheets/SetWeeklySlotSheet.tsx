@@ -6,7 +6,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useCardiganMain } from "../../context/CardiganContext";
-import { todayISO } from "../../utils/dates";
+import { todayISO, displayDayName } from "../../utils/dates";
 import { DAY_ORDER } from "../../data/seedData";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, SCHEDULING_MODE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
 import { SegmentedControl } from "../SegmentedControl";
@@ -165,7 +165,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }: {
                 <label className="input-label">{t("scheduling.weekday")}</label>
                 <select className="input" value={day} onChange={(e) => setDay(e.target.value)}>
                   {DAY_ORDER.map((d) => (
-                    <option key={d} value={d}>{d}</option>
+                    <option key={d} value={d}>{displayDayName(d)}</option>
                   ))}
                 </select>
               </div>

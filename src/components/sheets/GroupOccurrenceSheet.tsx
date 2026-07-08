@@ -11,6 +11,7 @@ import { useLayer } from "../../hooks/useLayer";
 import { getClientColor } from "../../data/seedData";
 import { SESSION_STATUS } from "../../data/constants";
 import { SheetOverlay } from "../SheetOverlay";
+import { displayShortDate } from "../../utils/dates";
 
 // Same status vocabulary + colors as the individual SessionSheet (the
 // canonical sessions.* labels and the .status-* color system), so a group
@@ -73,7 +74,7 @@ export function GroupOccurrenceSheet({ group, occurrence, onClose }: {
         </div>
         <div style={{ padding:"0 20px 22px" }}>
           <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)", fontWeight:600, marginBottom:14 }}>
-            {occurrence.date} · {occurrence.time}
+            {displayShortDate(occurrence.date)} · {occurrence.time}
           </div>
 
           <div className="section-sub" style={{ marginBottom:8, textTransform:"uppercase", letterSpacing:"0.06em" }}>{t("groups.attendance")}</div>

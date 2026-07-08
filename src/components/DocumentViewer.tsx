@@ -3,6 +3,7 @@ import { IconChevron } from "./Icons";
 import { getFileIcon, formatFileSize, isImageDoc, isPdfDoc } from "../utils/files";
 import { clickableProps } from "../utils/a11y";
 import { useT } from "../i18n/index";
+import { displayShortDate } from "../utils/dates";
 
 export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, onPatientClick }: {
   doc: { name?: string | null; file_type?: string | null; file_size?: number | null };
@@ -44,7 +45,7 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, 
                 {patientName && <span {...(onPatientClick ? clickableProps((e) => { e?.stopPropagation(); onPatientClick(); }) : {})}
                   style={onPatientClick ? { cursor:"pointer", color:"var(--teal-dark)", fontWeight:600 } : undefined}>{patientName}</span>}
                 {patientName && " · "}{formatFileSize(doc.file_size)}
-                {linkedSession && ` · ${t("sessions.session")} ${linkedSession.date}`}
+                {linkedSession && ` · ${t("sessions.session")} ${displayShortDate(linkedSession.date)}`}
               </div>
             </div>
             <a href={url} target="_blank" rel="noopener noreferrer"

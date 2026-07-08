@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
-import { shortDateToISO, formatShortDateWithYear } from "../../utils/dates";
+import { shortDateToISO, formatShortDateWithYear, displayShortDate } from "../../utils/dates";
 import { sessionCountsTowardBalance } from "../../utils/accounting";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import {
@@ -307,7 +307,7 @@ export function PatientAgenda({ data }: PatientAgendaProps) {
         open={!!cancelTarget}
         title={cancelTarget
           ? t("patientHome.cancelDialogTitle", {
-              date: formatShortDateWithYear(new Date(shortDateToISO(cancelTarget.date) + "T12:00:00")),
+              date: displayShortDate(formatShortDateWithYear(new Date(shortDateToISO(cancelTarget.date) + "T12:00:00"))),
             })
           : ""}
         body={t("patientHome.cancelDialogBody", { name: therapistDisplayName })}

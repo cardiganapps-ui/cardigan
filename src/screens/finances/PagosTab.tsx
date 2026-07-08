@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { getClientColor } from "../../data/seedData";
 import { IconPlus, IconChevron } from "../../components/Icons";
 import { Toggle } from "../../components/Toggle";
-import { shortDateToISO, todayISO } from "../../utils/dates";
+import { shortDateToISO, todayISO, displayShortDate } from "../../utils/dates";
 import { formatMXN } from "../../utils/format";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Avatar } from "../../components/Avatar";
@@ -151,7 +151,7 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
             marginTop: groupByClient ? 0 : 2,
             fontSize: nested ? 12 : undefined,
           }}>
-            <span>{p.date}</span>
+            <span>{displayShortDate(p.date)}</span>
             <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
             <span>{p.method}</span>
           </div>

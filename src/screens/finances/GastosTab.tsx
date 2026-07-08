@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { IconPlus, IconRepeat, IconPaperclip } from "../../components/Icons";
-import { shortDateToISO, todayISO } from "../../utils/dates";
+import { shortDateToISO, todayISO, displayShortDate } from "../../utils/dates";
 import { formatMXN } from "../../utils/format";
 import { useCardiganMain } from "../../context/CardiganContext";
 import { SegmentedControl } from "../../components/SegmentedControl";
@@ -349,7 +349,7 @@ export function GastosTab({
                   {t(`gastos.cat.${e.category}`) || e.category}
                 </div>
                 <div className="bal-sub">
-                  {e.date}
+                  {displayShortDate(e.date)}
                   {e.description ? ` · ${e.description}` : ""}
                   {e.payment_method ? ` · ${e.payment_method}` : ""}
                   {e.recurring_id ? <> · <IconRepeat size={10} /></> : null}

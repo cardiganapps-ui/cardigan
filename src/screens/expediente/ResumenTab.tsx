@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { shortDateToISO, todayISO, parseLocalDate } from "../../utils/dates";
+import { shortDateToISO, todayISO, parseLocalDate, displayShortDate, displayDayName } from "../../utils/dates";
 import { isTutorSession, getLastTutorSession, getNextTutorSession } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
@@ -303,7 +303,7 @@ export function ResumenTab({
             ? t("patients.notRecurring") || "Sin recurrencia"
             : schedules.map((s) => {
                 const end = addMinutesToTime(s.time, s.duration);
-                const base = end ? `${s.day} · ${s.time}–${end}` : `${s.day} · ${s.time}`;
+                const base = end ? `${displayDayName(s.day)} · ${s.time}–${end}` : `${displayDayName(s.day)} · ${s.time}`;
                 // Show the frequency only when it's NOT the default
                 // weekly — keeps the row clean for the common case
                 // (pre-migration patients all read as weekly) while
@@ -338,7 +338,7 @@ export function ResumenTab({
                   // node renders a button when there's no upcoming
                   // session; otherwise a plain date+time string.
                   node: nextEpisodicSession ? (
-                    <span>{nextEpisodicSession.date} · {nextEpisodicSession.time}</span>
+                    <span>{displayShortDate(nextEpisodicSession.date)} · {nextEpisodicSession.time}</span>
                   ) : readOnly ? (
                     // Read-only mode (demo / admin view-as) — show the
                     // "no agenda" state but skip the CTA; the underlying
@@ -369,7 +369,7 @@ export function ResumenTab({
                 {
                   label: t("scheduling.lastConsult"),
                   value: lastEpisodicSession
-                    ? `${lastEpisodicSession.date} · ${lastEpisodicSession.time}`
+                    ? `${displayShortDate(lastEpisodicSession.date)} · ${lastEpisodicSession.time}`
                     : "—",
                 },
               ]
@@ -579,7 +579,7 @@ export function ResumenTab({
             )}
             <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)" }}>
               {lastTutor
-                ? `${t("home.lastTutorSession")}: ${lastTutor.date}`
+                ? `${t("home.lastTutorSession")}: ${displayShortDate(lastTutor.date)}`
                 : t("home.noTutorSession")}
             </div>
           </div>

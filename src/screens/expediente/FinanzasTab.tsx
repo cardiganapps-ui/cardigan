@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { shortDateToISO, todayISO } from "../../utils/dates";
+import { shortDateToISO, todayISO, displayShortDate } from "../../utils/dates";
 import { exportPayments } from "../../utils/export";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { SwipeableRow } from "../../components/SwipeableRow";
@@ -90,7 +90,7 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
                 <div className="bal-row" {...clickableProps(() => setConfirmDeletePayId(isDeleting ? null : p.id))} style={{ cursor:"pointer", background:"var(--white)" }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6 }}>
-                      <span>{p.date}</span>
+                      <span>{displayShortDate(p.date)}</span>
                       <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
                       <span>{p.method}</span>
                     </div>
