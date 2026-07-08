@@ -175,26 +175,9 @@ jobs:
         # xcodeproj gem. Pinned to the 1.x line we validated against.
         run: sudo gem install xcodeproj -v '~> 1.27' --no-document
 
-      - name: Layer entitlements + Privacy Manifest
-        env:
-          # Used by the pbxproj patch inside apply-ios-config.sh to set
-          # DEVELOPMENT_TEAM on the App target's Release config —
-          # because passing it as an xcodebuild CLI arg leaks to
-          # SPM dependency targets that don't support signing.
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Marketing version (CFBundleShortVersionString) override. Empty
-          # unless the repo variable IOS_MARKETING_VERSION is set, in which
-          # case apply-ios-config.sh uses it instead of its baked-in
-          # default. Lets you bump the version — the fix for the recurring
-          # 90062/90186 "train closed" upload rejection — from the GitHub
-          # UI with NO code edit. See CLAUDE.md → build-failure triage.
-          MARKETING_VERSION: ${{ vars.IOS_MARKETING_VERSION }}
-        run: bash scripts/apply-ios-config.sh
-
-      # Capacitor 8 ships with Swift Package Manager by default — no
-      # Podfile, no xcworkspace. xcodebuild resolves SPM deps itself
-      # at -project parse time, so no separate install step is needed.
-
+      # Decode the ASC API key early — both the marketing-version resolver
+      # (next) and the TestFlight upload (later) read it off disk. Moved
+      # ahead of the entitlements step so the resolver can call the ASC API.
       - name: Decode App Store Connect API key
         env:
           ASC_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
@@ -203,6 +186,59 @@ jobs:
           mkdir -p ~/private_keys
           echo "$ASC_KEY_BASE64" | base64 --decode > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           chmod 600 "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      # Auto-resolve the marketing version (CFBundleShortVersionString) from
+      # App Store Connect so it NEVER needs a manual bump. Apple closes a
+      # version "train" once a build on it is released and rejects further
+      # uploads (90062/90186 — the recurring failure this eliminates).
+      # resolve-ios-version.mjs bumps past the highest RELEASED version and
+      # otherwise reuses the current open draft, so the version advances
+      # exactly once per App Store release with no human involvement.
+      #
+      # Precedence: the repo variable IOS_MARKETING_VERSION (manual escape
+      # hatch) wins; then the ASC-derived value; then FALLBACK_VERSION.
+      # Fail-open — any resolver error degrades to the fallback and the
+      # build still proceeds (never blocks). Result is exported via
+      # $GITHUB_ENV so apply-ios-config.sh picks it up.
+      - name: Resolve iOS marketing version
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
+          OVERRIDE: ${{ vars.IOS_MARKETING_VERSION }}
+          FALLBACK_VERSION: '20.7'
+        run: |
+          set +e
+          if [ -n "$OVERRIDE" ]; then
+            echo "Marketing version: repo-variable override IOS_MARKETING_VERSION=$OVERRIDE"
+            echo "MARKETING_VERSION=$OVERRIDE" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          RESOLVED=$(ASC_KEY_PATH="$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            FALLBACK_VERSION="$FALLBACK_VERSION" \
+            node scripts/resolve-ios-version.mjs)
+          RC=$?
+          if [ $RC -ne 0 ] || [ -z "$RESOLVED" ]; then
+            echo "::warning title=iOS version auto-resolve fell back::Could not derive the marketing version from App Store Connect (rc=$RC); using FALLBACK $FALLBACK_VERSION. If TestFlight then rejects with 90062/90186, set the repo variable IOS_MARKETING_VERSION. See CLAUDE.md → build-failure triage."
+            RESOLVED="$FALLBACK_VERSION"
+          fi
+          echo "Marketing version (auto-resolved): $RESOLVED"
+          echo "MARKETING_VERSION=$RESOLVED" >> "$GITHUB_ENV"
+
+      - name: Layer entitlements + Privacy Manifest
+        env:
+          # Used by the pbxproj patch inside apply-ios-config.sh to set
+          # DEVELOPMENT_TEAM on the App target's Release config —
+          # because passing it as an xcodebuild CLI arg leaks to
+          # SPM dependency targets that don't support signing.
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # MARKETING_VERSION is injected into the job env by the
+          # "Resolve iOS marketing version" step above (override →
+          # ASC auto-resolve → fallback); apply-ios-config.sh reads it.
+        run: bash scripts/apply-ios-config.sh
+
+      # Capacitor 8 ships with Swift Package Manager by default — no
+      # Podfile, no xcworkspace. xcodebuild resolves SPM deps itself
+      # at -project parse time, so no separate install step is needed.
 
       # Manual signing setup — the App Store Connect API key we have is
       # App-Manager-scoped, so xcodebuild's -allowProvisioningUpdates with

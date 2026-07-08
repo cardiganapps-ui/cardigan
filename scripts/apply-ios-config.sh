@@ -299,12 +299,14 @@ fi
 # 20.5 hit error 90062 on the 2026-06-28 upload; 20.6 hit 90062 + 90186
 # "train is closed" on the 2026-07-08 upload).
 #
-# Bump this default when the current value ships to the App Store, OR
-# override it WITHOUT a code edit by setting the repo variable
-# IOS_MARKETING_VERSION (ios-build.yml passes it through as
-# $MARKETING_VERSION; the :- default below applies only when it's empty
-# or unset). Full runbook, incl. the loud CI error on 90062/90186:
-# CLAUDE.md → "build-failure triage".
+# You should NOT need to touch this default: CI now auto-derives the
+# marketing version from App Store Connect (ios-build.yml's "Resolve iOS
+# marketing version" step → scripts/resolve-ios-version.mjs) and passes
+# it in as $MARKETING_VERSION, so it advances on its own after each App
+# Store release. The value below is only the FALLBACK when the resolver
+# can't reach ASC, and running this script locally with no env set. To
+# force a specific version, set the repo variable IOS_MARKETING_VERSION
+# (it takes precedence). Full runbook: CLAUDE.md → "build-failure triage".
 MARKETING_VERSION="${MARKETING_VERSION:-20.7}"
 APPLE_TEAM_ID="$APPLE_TEAM_ID" MARKETING_VERSION="$MARKETING_VERSION" python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
 import re, sys, os
