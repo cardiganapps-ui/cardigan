@@ -163,3 +163,44 @@ describe("formatCurrency", () => {
     expect(formatCurrency(undefined)).toBe("$0");
   });
 });
+
+describe("display-language layer (English UI)", () => {
+  // Imported lazily so the module-level flag reset is explicit per test.
+  it("passes through unchanged in Spanish (default)", async () => {
+    const { displayShortDate, displayDayName, setDateDisplayLang } = await import("../dates");
+    setDateDisplayLang("es");
+    expect(displayShortDate("8-Abr")).toBe("8-Abr");
+    expect(displayDayName("Lunes")).toBe("Lunes");
+  });
+
+  it("translates month abbreviations and day names in English", async () => {
+    const { displayShortDate, displayDayName, setDateDisplayLang } = await import("../dates");
+    setDateDisplayLang("en");
+    try {
+      expect(displayShortDate("8-Abr")).toBe("8-Apr");
+      expect(displayShortDate("14-Abr-26")).toBe("14-Apr-26");
+      expect(displayShortDate("14 Abr")).toBe("14-Apr");   // legacy space form
+      expect(displayShortDate("1-Ene")).toBe("1-Jan");
+      expect(displayShortDate("31-Dic")).toBe("31-Dec");
+      expect(displayDayName("Lunes")).toBe("Monday");
+      expect(displayDayName("Miércoles")).toBe("Wednesday");
+      expect(displayDayName("Sáb")).toBe("Sat");
+    } finally {
+      setDateDisplayLang("es");
+    }
+  });
+
+  it("returns garbage/empty input unchanged (idempotent + safe)", async () => {
+    const { displayShortDate, displayDayName, setDateDisplayLang } = await import("../dates");
+    setDateDisplayLang("en");
+    try {
+      expect(displayShortDate("8-Apr")).toBe("8-Apr");   // already English → unchanged
+      expect(displayShortDate("hola")).toBe("hola");
+      expect(displayShortDate(null)).toBe("");
+      expect(displayDayName("Monday")).toBe("Monday");
+      expect(displayDayName(undefined)).toBe("");
+    } finally {
+      setDateDisplayLang("es");
+    }
+  });
+});

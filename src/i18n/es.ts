@@ -1137,6 +1137,7 @@ export default {
     groupsFeature: "Grupos",
     groupsFeatureSub: "Imparte {session.p} a varios {client.p} a la vez. Desactívalo para ocultar todo lo relacionado con grupos.",
     groupsFeatureLocked: "Elimina todos los grupos para poder desactivar esta función.",
+    language: "Idioma",
     hapticsFeature: "Vibración",
     hapticsFeatureSub: "Vibración sutil al confirmar acciones. Desactívala si prefieres una experiencia silenciosa.",
     sectionNotifCal: "Notificaciones y calendario",

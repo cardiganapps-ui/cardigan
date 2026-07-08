@@ -642,7 +642,7 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
       {/* ── APARIENCIA (tema) + COLOR DE ACENTO + TAMAÑO DE TEXTO sheets ──
          One mode-driven component covers the three option-list sheets. */}
       <AppearanceSheets
-        mode={activeSheet === "theme" ? "theme" : activeSheet === "accent" ? "accent" : activeSheet === "fontScale" ? "fontScale" : null}
+        mode={activeSheet === "theme" ? "theme" : activeSheet === "accent" ? "accent" : activeSheet === "fontScale" ? "fontScale" : activeSheet === "language" ? "language" : null}
         theme={theme}
         accentTheme={accentTheme}
         fontScale={fontScale}

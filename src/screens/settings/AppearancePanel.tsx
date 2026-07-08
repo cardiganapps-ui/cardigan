@@ -1,5 +1,5 @@
 import React from "react";
-import { IconSun, IconMoon, IconChevron } from "../../components/Icons";
+import { IconSun, IconMoon, IconChevron, IconGlobe } from "../../components/Icons";
 import { clickableProps } from "../../utils/a11y";
 import { useT } from "../../i18n/index";
 
@@ -14,7 +14,7 @@ export const AppearancePanel = React.memo(function AppearancePanel({
   fontScale?: Row;
   onOpenSheet: (sheet: string) => void;
 }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   return (
     <>
       {/* ── APARIENCIA ── */}
@@ -35,6 +35,14 @@ export const AppearancePanel = React.memo(function AppearancePanel({
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.accentColor")}</div>
             <div className="settings-row-sub">{t(`settings.accent.${accentTheme?.accent || "default"}`)}</div>
+          </div>
+          <IconChevron />
+        </div>
+        <div className="settings-row" {...clickableProps(() => onOpenSheet("language"))}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconGlobe size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.language")}</div>
+            <div className="settings-row-sub">{lang === "en" ? "English" : "Español"}</div>
           </div>
           <IconChevron />
         </div>

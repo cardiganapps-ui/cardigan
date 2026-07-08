@@ -130,6 +130,83 @@ export const VOCAB = {
   },
 };
 
-export function getVocab(profession: string) {
-  return VOCAB[profession as keyof typeof VOCAB] ?? VOCAB[DEFAULT_PROFESSION as keyof typeof VOCAB];
+/* ── English vocabulary ──
+   Same key set per noun as the Spanish factory (shape parity lets any
+   Spanish-authored template that reaches the merged-fallback path still
+   resolve to something grammatical, and one TS shape types both maps).
+
+   Authoring rule for en.ts: English templates should stick to {noun.s},
+   {noun.p}, {noun.S}, {noun.P} and the bare count-aware {noun}. The
+   del/al/withArt/agreed forms exist for shape parity — English has no
+   contractions or gender agreement, so `agreed`/`agreedP` are empty and
+   a template like "modificad{rate.agreedP}" must be rephrased in en.ts,
+   never reused verbatim. */
+
+type NounForms = ReturnType<typeof noun>;
+
+function nounEn(s: string, p: string): NounForms {
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+  return {
+    s, p,
+    art: "the", artP: "the",
+    del: `of the ${s}`,  al: `to the ${s}`,
+    delP: `of the ${p}`, alP: `to the ${p}`,
+    withArt: `the ${s}`,  withArtP: `the ${p}`,
+    WithArt: `The ${cap(s)}`, WithArtP: `The ${cap(p)}`,
+    first: "first", First: "First",
+    agreed: "", agreedP: "",
+  };
+}
+
+export const VOCAB_EN: Record<keyof typeof VOCAB, Record<keyof typeof VOCAB.psychologist, NounForms>> = {
+  psychologist: {
+    client:       nounEn("patient",  "patients"),
+    session:      nounEn("session",  "sessions"),
+    record:       nounEn("chart",    "charts"),
+    rate:         nounEn("Fees",     "Fees"),
+    minorContact: nounEn("guardian", "guardians"),
+    prospect:     nounEn("prospective patient", "prospective patients"),
+    intake:       nounEn("intake interview",    "intake interviews"),
+  },
+  nutritionist: {
+    client:       nounEn("patient",      "patients"),
+    session:      nounEn("consultation", "consultations"),
+    record:       nounEn("history",      "histories"),
+    rate:         nounEn("Fees",         "Fees"),
+    minorContact: nounEn("guardian",     "guardians"),
+    prospect:     nounEn("prospective patient", "prospective patients"),
+    intake:       nounEn("initial consultation", "initial consultations"),
+  },
+  tutor: {
+    client:       nounEn("student", "students"),
+    session:      nounEn("lesson",  "lessons"),
+    record:       nounEn("log",     "logs"),
+    rate:         nounEn("Tuition", "Tuition"),
+    minorContact: nounEn("parent",  "parents"),
+    prospect:     nounEn("prospective student", "prospective students"),
+    intake:       nounEn("trial lesson",        "trial lessons"),
+  },
+  music_teacher: {
+    client:       nounEn("student", "students"),
+    session:      nounEn("lesson",  "lessons"),
+    record:       nounEn("log",     "logs"),
+    rate:         nounEn("Tuition", "Tuition"),
+    minorContact: nounEn("parent",  "parents"),
+    prospect:     nounEn("prospective student", "prospective students"),
+    intake:       nounEn("trial lesson",        "trial lessons"),
+  },
+  trainer: {
+    client:       nounEn("client",           "clients"),
+    session:      nounEn("training session", "training sessions"),
+    record:       nounEn("history",          "histories"),
+    rate:         nounEn("Rate",             "Rates"),
+    minorContact: nounEn("guardian",         "guardians"),
+    prospect:     nounEn("prospective client",  "prospective clients"),
+    intake:       nounEn("initial assessment",  "initial assessments"),
+  },
+};
+
+export function getVocab(profession: string, lang: string = "es") {
+  const map = lang === "en" ? VOCAB_EN : VOCAB;
+  return map[profession as keyof typeof VOCAB] ?? map[DEFAULT_PROFESSION as keyof typeof VOCAB];
 }

@@ -87,6 +87,16 @@ export function formatPercent(n: unknown): string {
    Storage-format helpers ("D-MMM" — see utils/dates.js::formatShortDate)
    are SEPARATE on purpose: those are persisted in the DB and aren't
    subject to the locale/format pass. This helper only owns display. */
+/* Display locale for date WORDS only. The NF_* number formats above stay
+   pinned es-MX on purpose — en-US produces identical digits (comma
+   thousands, period decimals), so switching them would be churn for no
+   visible change. I18nProvider calls setDisplayLocale on locale switch. */
+let _displayLocale = "es-MX";
+
+export function setDisplayLocale(locale: "es-MX" | "en-US") {
+  _displayLocale = locale;
+}
+
 const DATE_OPTS: Record<string, Intl.DateTimeFormatOptions> = {
   short:      { day: "numeric", month: "short" },
   shortDay:   { day: "numeric", month: "short", weekday: "short" },
@@ -106,5 +116,5 @@ export function formatDate(
   // Strip the trailing period es-MX appends to short month names
   // ("30 may." → "30 may"). Keeps display tight; the period adds no
   // information and clashes with how amounts/badges sit beside dates.
-  return d.toLocaleDateString("es-MX", opts).replace(/\.(?=,|$|\s)/g, "");
+  return d.toLocaleDateString(_displayLocale, opts).replace(/\.(?=,|$|\s)/g, "");
 }

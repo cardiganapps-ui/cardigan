@@ -1,5 +1,7 @@
 {
   "name": "Cardigan",
+  "lang": "es-MX",
+  "dir": "ltr",
   "short_name": "Cardigan",
   "description": "Gestión de consulta para terapeutas",
   "start_url": "/",
