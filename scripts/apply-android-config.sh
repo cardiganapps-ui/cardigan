@@ -10,6 +10,11 @@
 #
 # Idempotent — safe to run repeatedly and locally after a manual
 # `npx @capacitor/assets generate --android`.
+#
+# CI runs this between the assets-generate and gradle bundleRelease steps
+# (see android-build.yml). A transient setup-android SDK-unzip flake
+# ("Error on ZipFile unknown archive") is an infra hiccup, not a code
+# failure — re-trigger the build to clear it.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
