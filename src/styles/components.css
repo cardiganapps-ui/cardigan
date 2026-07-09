@@ -197,6 +197,97 @@
    attempt at an in-flow bar collided with an iOS PWA quirk where
    100dvh excludes var(--sab), which pushed the bar
    34px up into the FAB's zone. */
+/* ── Liquid Glass utilities ──
+   Reusable material classes for NEW chrome surfaces. The established
+   surfaces (.bottom-tabs, .topbar, .toast-panel, …) consume the same
+   --glass-* tokens in their own rules — same material, zero JSX churn.
+   Grades (see the token block in base.css for the vocabulary):
+     .glass-chrome — floating lens (tab pill grade), with the
+                     edge-lensing pseudo-layers built in
+     .glass-bar    — bar strip (topbar grade)
+     .glass-panel  — floating panel (toast/palette grade)
+     .glass-tinted — accent lens (FAB grade)
+   NEVER stack one glass surface over another — WebKit composites
+   stacked backdrop-filters out of z-order (see the :has() rule that
+   hides .bottom-tabs under sheets). A child of a glass surface must
+   set its own backdrop-filter to none. */
+.glass-chrome, .glass-bar, .glass-panel, .glass-tinted { position: relative; }
+.glass-chrome {
+  background: var(--glass-bg-chrome);
+  -webkit-backdrop-filter: var(--glass-filter-chrome);
+  backdrop-filter: var(--glass-filter-chrome);
+  border: 1px solid var(--glass-edge-chrome);
+  box-shadow: var(--glass-shadow-chrome);
+}
+/* Edge-lensing highlights — top rim-light + bloom (::before) and the
+   bottom catch-light (::after) that make the pane read as THICK glass.
+   Mirrors the hand-tuned .bottom-tabs layers; kept static by design
+   (an animated layer would recomposite the blur every frame). */
+.glass-chrome::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit; pointer-events: none; z-index: 0;
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0.08) 9%,
+      transparent 28%),
+    radial-gradient(135% 78% at 50% -12%,
+      rgba(255, 255, 255, 0.20) 0%,
+      transparent 56%);
+}
+.glass-chrome::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit; pointer-events: none; z-index: 0;
+  background:
+    linear-gradient(0deg,
+      rgba(255, 255, 255, 0.20) 0%,
+      rgba(255, 255, 255, 0.04) 7%,
+      transparent 22%);
+  mix-blend-mode: screen;
+}
+.glass-bar {
+  background: var(--glass-bg-bar);
+  -webkit-backdrop-filter: var(--glass-filter-bar);
+  backdrop-filter: var(--glass-filter-bar);
+}
+.glass-panel {
+  background: var(--glass-bg-panel);
+  -webkit-backdrop-filter: var(--glass-filter-panel);
+  backdrop-filter: var(--glass-filter-panel);
+  border: 1px solid var(--glass-edge-panel);
+  box-shadow: var(--glass-shadow-panel);
+}
+.glass-tinted {
+  background: var(--glass-tint-accent);
+  -webkit-backdrop-filter: var(--glass-filter-chrome);
+  backdrop-filter: var(--glass-filter-chrome);
+}
+/* CENTRAL no-backdrop-filter fallback: swap the material tokens to
+   solid so EVERY consumer (utilities above + the per-surface rules in
+   base.css / this file) degrades in one place. Surfaces that predate
+   the token system keep their own legacy @supports blocks where their
+   fallback differs (e.g. banner brand tints). */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* :root:root (0,2,0) deliberately out-specifies dark.css's
+     html[data-theme="dark"] (0,1,1) token overrides — without the
+     bump, legacy dark mode would keep the TRANSLUCENT dark values with
+     no blur behind them (washed-out chrome). var(--white) resolves
+     per-theme, so this one block yields solid white in light and solid
+     #1A1A1A in dark. */
+  :root:root {
+    --glass-bg-chrome: var(--white);
+    --glass-bg-bar:    var(--white);
+    --glass-bg-panel:  var(--white);
+    --glass-edge-panel: var(--border-lt);
+    --glass-tint-accent: var(--teal);
+    --glass-filter-chrome: none;
+    --glass-filter-bar:    none;
+    --glass-filter-panel:  none;
+  }
+}
+
 /* ── Bottom tab bar — Liquid Glass pill ──
    Floating, translucent, blurred. Modeled on iOS 26 system bars and
    WhatsApp's redesigned chat tab strip: a single rounded capsule that
@@ -267,29 +358,20 @@
      Showing OVER sheet CTAs is prevented by the
      `:has(.sheet-overlay)` display:none rule below — restoring
      translucency does not reintroduce that bug. */
-  background: color-mix(in srgb, var(--white) 30%, transparent);
-  /* contrast(1.05) deepens the content showing through so the glass
-     reads as a real refractive lens (Apple's Liquid Glass subtly
-     boosts contrast of what's behind it) rather than a flat frosted
-     wash; the heavier 30px blur + saturation keep labels legible. */
-  -webkit-backdrop-filter: saturate(192%) brightness(1.05) contrast(1.05) blur(30px);
-  backdrop-filter: saturate(192%) brightness(1.05) contrast(1.05) blur(30px);
+  background: var(--glass-bg-chrome);
+  /* contrast(1.05) in the chrome filter deepens the content showing
+     through so the glass reads as a real refractive lens (Apple's
+     Liquid Glass subtly boosts contrast of what's behind it) rather
+     than a flat frosted wash; the heavy blur + saturation keep the
+     tab labels legible. */
+  -webkit-backdrop-filter: var(--glass-filter-chrome);
+  backdrop-filter: var(--glass-filter-chrome);
 
-  /* Floating glass pill. The shadow stack is what sells "real glass":
-       1-2. layered drop shadow → it floats above the page
-       3.   bright crisp TOP rim (the primary specular highlight)
-       4.   faint full edge rim → light gathering at the lens edge
-       5.   bottom inner shadow → the glass has THICKNESS / depth
-       6.   faint bottom catch-light → light passing through the pane
-     (Dark mode supplies its own stack in dark.css.) */
-  border: 1px solid color-mix(in srgb, var(--charcoal) 6%, transparent);
-  box-shadow:
-    0 12px 34px -10px rgba(0, 0, 0, 0.22),
-    0 5px 14px -6px rgba(0, 0, 0, 0.10),
-    inset 0 1.5px 0.5px 0 rgba(255, 255, 255, 0.75),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
-    inset 0 -10px 16px -12px rgba(38, 56, 66, 0.18),
-    inset 0 -1px 0.5px 0 rgba(255, 255, 255, 0.30);
+  /* Chrome-grade material — border + 6-layer specular stack come from
+     the shared tokens (dark mode re-tunes the TOKENS in dark.css; see
+     base.css for the layer-by-layer anatomy). */
+  border: 1px solid var(--glass-edge-chrome);
+  box-shadow: var(--glass-shadow-chrome);
 }
 /* Edge-lensing highlight: a bright rim-light hugging the top edge that
    fades fast, plus a soft top-center bloom — mimicking how light gathers
@@ -336,12 +418,9 @@
       transparent 22%);
   mix-blend-mode: screen;
 }
-/* Safari < 17 + Firefox fall back gracefully — solid white if the
-   browser can't render the blur. The glass effect is enhancement,
-   not foundational. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .bottom-tabs { background: var(--white); }
-}
+/* Safari < 17 + Firefox fall back gracefully — the central token swap
+   in the Liquid Glass utilities block above turns --glass-bg-chrome
+   solid when the browser can't render the blur. */
 
 /* CRITICAL: hide the floating tabs while any BOTTOM-SHEET is open.
    The pill is z-index 40 and sheets are z-index 350, so normally
@@ -566,14 +645,11 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
   font-family: var(--font); font-size: var(--text-md); font-weight: 600;
   color: var(--charcoal);
 
-  background: rgba(255, 255, 255, 0.78);
-  -webkit-backdrop-filter: saturate(180%) blur(22px);
-  backdrop-filter: saturate(180%) blur(22px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow:
-    0 12px 28px -8px rgba(46, 46, 46, 0.22),
-    0 3px 10px rgba(46, 46, 46, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: var(--glass-bg-panel);
+  -webkit-backdrop-filter: var(--glass-filter-panel);
+  backdrop-filter: var(--glass-filter-panel);
+  border: 1px solid var(--glass-edge-panel);
+  box-shadow: var(--glass-shadow-panel);
 
   /* Type stripe — a 4px tinted band on the leading edge, just inside
      the panel's rounded corner. The pseudo-element sits behind the
@@ -590,10 +666,8 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
 .toast-panel--error::before   { background: var(--red);   }
 .toast-panel--warning::before { background: var(--amber); }
 
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  /* Solid fallback. Stripe still conveys type. */
-  .toast-panel { background: var(--white); }
-}
+/* Solid fallback comes from the central --glass-* token swap in the
+   Liquid Glass utilities block. Stripe still conveys type. */
 .toast-icon {
   display: inline-flex; align-items: center; justify-content: center;
   width: 24px; height: 24px; border-radius: 50%;
@@ -1210,8 +1284,8 @@ button.kpi-card:active {
 .app-banner {
   padding: 8px 16px; display: flex; align-items: center; justify-content: space-between;
   z-index: var(--z-banner); flex-shrink: 0;
-  -webkit-backdrop-filter: saturate(160%) blur(18px);
-  backdrop-filter: saturate(160%) blur(18px);
+  -webkit-backdrop-filter: var(--glass-filter-bar);
+  backdrop-filter: var(--glass-filter-bar);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .app-banner--demo {
@@ -1794,26 +1868,21 @@ button.kpi-card:active {
 .cmdp-panel {
   width: min(640px, 92vw);
   max-height: 70vh;
-  /* Liquid Glass — translucent white card that lets the page hint
-     through behind. Saturate-before-blur keeps text content readable
-     against busy backgrounds (e.g. cmd-K invoked over Agenda month
-     view with colored event chips). */
-  background: rgba(255, 255, 255, 0.82);
-  -webkit-backdrop-filter: saturate(180%) blur(28px);
-  backdrop-filter: saturate(180%) blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  /* Liquid Glass panel grade — translucent white card that lets the
+     page hint through behind. Saturate-before-blur keeps text content
+     readable against busy backgrounds (e.g. cmd-K invoked over Agenda
+     month view with colored event chips). Modal-weight elevation. */
+  background: var(--glass-bg-panel);
+  -webkit-backdrop-filter: var(--glass-filter-panel);
+  backdrop-filter: var(--glass-filter-panel);
+  border: 1px solid var(--glass-edge-panel);
   border-radius: var(--radius-lg);
-  box-shadow:
-    0 24px 56px -16px rgba(46, 46, 46, 0.28),
-    0 6px 18px -4px rgba(46, 46, 46, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  box-shadow: var(--glass-shadow-modal);
   display: flex; flex-direction: column;
   overflow: hidden;
   animation: cmdpIn 0.32s var(--ease-spring);
 }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .cmdp-panel { background: var(--white); border-color: var(--border-lt); }
-}
+/* Solid fallback via the central --glass-* token swap. */
 @keyframes cmdpIn {
   0%   { opacity: 0; transform: translateY(-8px) scale(0.97); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
@@ -2158,20 +2227,15 @@ html.cap-android .scroll-bounce {
    editor. The floating glass surface mirrors CommandPalette + HelpTip
    so every floating menu in the app shares one visual language. */
 .slash-menu {
-  background: rgba(255, 255, 255, 0.82);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  backdrop-filter: saturate(180%) blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: var(--glass-bg-panel);
+  -webkit-backdrop-filter: var(--glass-filter-panel);
+  backdrop-filter: var(--glass-filter-panel);
+  border: 1px solid var(--glass-edge-panel);
   border-radius: var(--radius-lg);
-  box-shadow:
-    0 14px 32px -8px rgba(46, 46, 46, 0.22),
-    0 4px 12px -2px rgba(46, 46, 46, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: var(--glass-shadow-panel);
   padding: 6px;
 }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .slash-menu { background: var(--white); border-color: var(--border-lt); }
-}
+/* Solid fallback via the central --glass-* token swap. */
 
 /* ── .empty-state ──
    Canonical empty / orphan / "nothing here yet" surface. Centered

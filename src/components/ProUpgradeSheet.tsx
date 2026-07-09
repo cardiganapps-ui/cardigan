@@ -115,11 +115,12 @@ export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; fe
               style={{
                 position: "absolute", top: 12, right: 12,
                 width: 32, height: 32, borderRadius: 999,
-                background: "rgba(255,255,255,0.7)",
+                background: "var(--glass-bg-bar)",
                 border: "none", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 color: "var(--charcoal-md)",
-                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "var(--glass-filter-bar)",
+                backdropFilter: "var(--glass-filter-bar)",
               }}
             >
               <IconX size={14} />

@@ -76,6 +76,55 @@
   --blur-drawer:  blur(4px);
   --blur-fab:     blur(3px);
   --blur-dialog:  blur(8px) saturate(1.3);
+  /* ── Liquid Glass material tokens ──
+     One vocabulary for every frosted chrome surface (tab pill, topbar,
+     toasts, banners, ⌘K palette, slash menu, FAB). Three grades:
+       chrome — the floating tab pill / FAB: low alpha + heavy blur so
+                content clearly reads THROUGH it (the "lens" grade).
+       bar    — the topbar strip: higher alpha, moderate blur — content
+                fades behind it but the bar stays quiet.
+       panel  — floating panels (toast, ⌘K, slash menu): high alpha for
+                text legibility over arbitrary page content.
+     Backgrounds use color-mix over var(--white) so dark.css's token
+     flip (--white → #1A1A1A) restyles every glass surface at once;
+     dark.css re-tunes the alphas/edges/shadows by overriding THESE
+     tokens (not per-surface rules). The @supports no-backdrop-filter
+     fallbacks and the prefers-reduced-transparency degradation also
+     swap these tokens centrally, so a new glass surface only has to
+     consume them to inherit every fallback for free. */
+  --glass-bg-chrome: color-mix(in srgb, var(--white) 30%, transparent);
+  --glass-bg-bar:    color-mix(in srgb, var(--white) 72%, transparent);
+  --glass-bg-panel:  color-mix(in srgb, var(--white) 82%, transparent);
+  --glass-filter-chrome: saturate(192%) brightness(1.05) contrast(1.05) blur(30px);
+  --glass-filter-bar:    saturate(180%) blur(20px);
+  --glass-filter-panel:  saturate(180%) blur(24px);
+  --glass-edge-chrome: color-mix(in srgb, var(--charcoal) 6%, transparent);
+  --glass-edge-panel:  rgba(255, 255, 255, 0.55);
+  /* The 6-layer chrome stack is what sells "real glass":
+       1-2. layered drop shadow → floats above the page
+       3.   bright crisp TOP rim (primary specular highlight)
+       4.   faint full edge rim → light gathering at the lens edge
+       5.   bottom inner shadow → the glass has THICKNESS / depth
+       6.   faint bottom catch-light → light passing through the pane */
+  --glass-shadow-chrome:
+    0 12px 34px -10px rgba(0, 0, 0, 0.22),
+    0 5px 14px -6px rgba(0, 0, 0, 0.10),
+    inset 0 1.5px 0.5px 0 rgba(255, 255, 255, 0.75),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 -10px 16px -12px rgba(38, 56, 66, 0.18),
+    inset 0 -1px 0.5px 0 rgba(255, 255, 255, 0.30);
+  --glass-shadow-panel:
+    0 12px 28px -8px rgba(46, 46, 46, 0.22),
+    0 3px 10px rgba(46, 46, 46, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --glass-shadow-modal:
+    0 24px 56px -16px rgba(46, 46, 46, 0.28),
+    0 6px 18px -4px rgba(46, 46, 46, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  /* Tinted (accent) glass — the FAB grade: translucent teal that
+     refracts the content behind it while keeping the brand read.
+     Solid-teal fallbacks swap this token, same as the grades above. */
+  --glass-tint-accent: color-mix(in srgb, var(--teal) 55%, transparent);
   /* Document viewer backdrop for image content. Near-black so the
      image edges contrast cleanly; PDFs / docs render on --white. */
   --doc-viewer-image-bg: #1A1A1A;
@@ -385,9 +434,9 @@ a[href^="tel:"], a[href^="mailto:"] {
      and the `inset 0 1px 0 rgba(255,255,255,0.5)` highlight became
      a visible white line below the topbar — both root causes of
      the "weird dark-mode line" complaint. */
-  background: color-mix(in srgb, var(--white) 72%, transparent);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
+  background: var(--glass-bg-bar);
+  -webkit-backdrop-filter: var(--glass-filter-bar);
+  backdrop-filter: var(--glass-filter-bar);
   /* Lateral env() keeps the hamburger / avatar out from under the
      rounded-corner curve in iPad landscape. Vertical safe-area is
      handled by the sibling .status-bar spacer (height: var(--sat))
@@ -401,9 +450,9 @@ a[href^="tel:"], a[href^="mailto:"] {
      dark page. */
   border-bottom: 1px solid var(--border-lt);
 }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .topbar { background: var(--white); }
-}
+/* No-backdrop-filter fallback lives centrally in components.css's
+   Liquid Glass utilities block — it swaps the --glass-bg-* tokens to
+   solid, so every token consumer (this bar included) degrades at once. */
 .topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); transition: background var(--dur-base) ease, color var(--dur-base) ease, transform var(--dur-slow) var(--ease-spring); -webkit-tap-highlight-color: transparent; user-select: none; padding: 4px 12px; border-radius: var(--radius-pill); }
 .topbar-brand:active { background: var(--teal-pale); color: var(--teal-dark); transform: translateX(-50%) scale(0.88); }
 .topbar-right { display: flex; align-items: center; gap: 6px; }
