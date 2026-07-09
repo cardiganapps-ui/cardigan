@@ -430,6 +430,37 @@
    in the Liquid Glass utilities block above turns --glass-bg-chrome
    solid when the browser can't render the blur. */
 
+/* ── TRUE refraction (Chromium only) ──
+   src/lib/glassRefraction.ts puts .glass-refract on <html> when the
+   engine can render SVG displacement filters inside backdrop-filter
+   (Chromium family; WebKit ignores url() there). The runtime-built
+   #lg-lens-* filters bend the backdrop at the lens edge — REAL
+   refraction — so the painted edge-lens layers and inset speculars
+   come off: physics replaces the fake. Non-Chromium engines never get
+   the class and keep the hand-tuned CSS glass. If an old Chromium
+   drops the url() declaration at parse time, the cascade falls back
+   to the -webkit- prefixed token filter above — plain blur, no hole. */
+html.glass-refract .bottom-tabs {
+  -webkit-backdrop-filter: var(--glass-filter-chrome);
+  backdrop-filter: url(#lg-lens-pill);
+  box-shadow:
+    0 12px 34px -10px rgba(0, 0, 0, 0.22),
+    0 5px 14px -6px rgba(0, 0, 0, 0.10);
+}
+html.glass-refract .bottom-tabs::before,
+html.glass-refract .bottom-tabs::after {
+  display: none;
+}
+html.glass-refract .fab {
+  -webkit-backdrop-filter: var(--glass-filter-chrome);
+  backdrop-filter: url(#lg-lens-fab);
+}
+html[data-theme="dark"].glass-refract .bottom-tabs {
+  box-shadow:
+    0 12px 34px -10px rgba(0, 0, 0, 0.62),
+    0 5px 14px -6px rgba(0, 0, 0, 0.45);
+}
+
 /* CRITICAL: hide the floating tabs while any BOTTOM-SHEET is open.
    The pill is z-index 40 and sheets are z-index 350, so normally
    sheets render above; but with backdrop-filter on both surfaces,
