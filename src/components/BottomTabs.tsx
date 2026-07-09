@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import { IconHome, IconCalendar, IconUser, IconUsers, IconDollar } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
+import { syncNativeChrome, releaseNativeChrome } from "../lib/nativeChrome";
 
 /* ── Mobile bottom tab bar ──
    Primary navigation for the four most-visited screens (Home, Agenda,
@@ -19,6 +21,17 @@ const TABS = [
   { key: "finances", Icon: IconDollar,   tKey: "nav.finances" },
 ];
 
+/* SF Symbol analogs of the web icon set — used by the native iOS 26
+   Liquid Glass bar (plugins/native-chrome), which renders REAL Apple
+   glass instead of this component's CSS approximation. */
+const SF_SYMBOLS: Record<string, string> = {
+  home: "house",
+  agenda: "calendar",
+  patients: "person",
+  groups: "person.3",
+  finances: "dollarsign",
+};
+
 export function BottomTabs() {
   const { screen, navigate, groupsEnabled } = useCardigan();
   const { t } = useT();
@@ -29,6 +42,28 @@ export function BottomTabs() {
   // hides the indicator entirely via the conditional render below.
   const activeIndex = tabs.findIndex(tab => tab.key === screen);
   const showIndicator = activeIndex >= 0;
+
+  // Native iOS 26+: hand the tab bar to the real Liquid Glass SwiftUI
+  // pill and render nothing here. syncNativeChrome resolves false
+  // everywhere else (web, Android, iOS < 26, tablet) — the DOM pill
+  // stays. The unmount cleanup hides the native bar so hideBottomTabs
+  // flows (auth, admin view-as) mirror automatically.
+  const [nativeActive, setNativeActive] = useState(false);
+  const navigateRef = useRef(navigate);
+  useEffect(() => { navigateRef.current = navigate; }, [navigate]);
+  useEffect(() => {
+    let cancelled = false;
+    void syncNativeChrome(
+      tabs.map(tab => ({ id: tab.key, title: t(tab.tKey), symbol: SF_SYMBOLS[tab.key] ?? "circle" })),
+      activeIndex,
+      (id) => navigateRef.current(id),
+    ).then(active => { if (!cancelled) setNativeActive(active); });
+    return () => { cancelled = true; };
+    // `tabs` is rebuilt every render — length captures the real input
+    // (the set only changes when groupsEnabled flips).
+  }, [tabs.length, activeIndex, t]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => releaseNativeChrome(), []);
+  if (nativeActive) return null;
 
   return (
     <>

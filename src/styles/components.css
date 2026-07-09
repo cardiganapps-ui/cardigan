@@ -321,6 +321,11 @@
    are computed from it, so bumping here keeps the whole bottom zone in
    proportion automatically. */
 :root { --bottom-tabs-h: 66px; }
+/* Native iOS 26+ Liquid Glass bar (plugins/native-chrome): the DOM
+   pill unmounts and the native bar takes its zone — 56pt + 8pt float
+   offset = 64pt, ÷ the webview's 0.80 zoom = 80 CSS px reserved so
+   .page / FAB clear it. Class managed by src/lib/nativeChrome.ts. */
+html.native-chrome { --bottom-tabs-h: 80px; }
 .bottom-tabs {
   position: fixed;
   /* Floating pill — detached from the screen edges so it reads as a

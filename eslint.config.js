@@ -107,7 +107,7 @@ const unusedVarsOpts = {
 export default defineConfig([
   // 'ios' only exists after a local `npx cap add ios` (CI generates it
   // fresh each build) — its bundled JS assets would otherwise flood lint.
-  globalIgnores(['dist', 'scripts', 'android', 'ios']),
+  globalIgnores(['dist', 'scripts', 'android', 'ios', 'plugins']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
