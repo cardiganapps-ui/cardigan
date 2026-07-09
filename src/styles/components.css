@@ -451,7 +451,8 @@
    JS approach stuck the class on after sheet close (race between
    MutationObserver and React unmount), leaving the tabs hidden on
    home. :has() is purely declarative against the live DOM; no race. */
-body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
+body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs,
+body:has(.sheet-overlay:not(.sheet-overlay--exit)) .fab {
   display: none;
 }
 
@@ -727,9 +728,11 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
 }
 .toast-close:active { color: var(--charcoal); }
 
-/* FAB — teal gradient pill with a soft diffused glow for emphasis.
-   Floats 24px above the bottom tab bar so it's clearly a floating
-   action, not another tab. */
+/* FAB — tinted Liquid Glass lens. Translucent teal with the chrome-
+   grade backdrop blur, so page content refracts through the disc while
+   the brand teal stays the read (iOS 26 keeps prominent actions as
+   TINTED glass, not clear). Floats 24px above the bottom tab bar so
+   it's clearly a floating action, not another tab. */
 .fab {
   /* Floats above the bottom tab pill. Reserve enough room for the
      pill height + a 20px visual gap so the FAB never overlaps the
@@ -738,30 +741,28 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
   bottom: calc(var(--sab) + var(--bottom-tabs-h) + 30px);
   right: 20px;
   width: 54px; height: 54px;
-  /* Solid Cardigan teal — same exact color as .btn-primary-teal so
-     the FAB reads as the same "brand action" object users see on
-     primary CTAs throughout the app. Previous iterations layered a
-     radial gradient that put the LIGHTEST teal at the bottom-middle
-     and the DARKEST at the edges — most of the visible 54px disc
-     ended up in the dark-edge zone, reading as muted blue-grey
-     rather than vibrant teal.
-     The white spec highlight is now a TIGHT, subtle ellipse at the
-     top (8% → fades by 30%), not a broad wash. Just enough to
-     suggest dimensionality without bleaching out the brand color. */
+  /* Tinted glass base + the tight top spec highlight (8% → fades by
+     30%) that suggests sphere curvature without bleaching the brand
+     color. The tint token stays ≥72% teal because of the white glyph
+     (see --glass-tint-accent in base.css). */
   background:
     radial-gradient(ellipse 70% 35% at 50% 12%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 70%),
-    var(--teal);
+    var(--glass-tint-accent);
+  -webkit-backdrop-filter: var(--glass-filter-chrome);
+  backdrop-filter: var(--glass-filter-chrome);
   border-radius: 50%;
   border: none;
   display: flex; align-items: center; justify-content: center;
   color: white;
   padding: 0;
   /* Layered shadow: teal-tinted ambient glow (lifts the disc off the
-     page with brand color) + soft neutral shadow for depth + inset
-     bottom edge that hints at sphere curvature. */
+     page with brand color) + soft neutral shadow for depth + crisp
+     specular top rim (the glass lip) + inset bottom edge that gives
+     the lens thickness. */
   box-shadow:
     0 10px 28px -8px rgba(91, 155, 175, 0.55),
     0 4px 12px rgba(46, 46, 46, 0.14),
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.5),
     inset 0 -2px 6px rgba(48, 108, 124, 0.35);
   cursor: pointer; z-index: var(--z-fab);
   -webkit-tap-highlight-color: transparent;

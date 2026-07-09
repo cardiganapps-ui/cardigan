@@ -123,8 +123,12 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.65);
   /* Tinted (accent) glass — the FAB grade: translucent teal that
      refracts the content behind it while keeping the brand read.
-     Solid-teal fallbacks swap this token, same as the grades above. */
-  --glass-tint-accent: color-mix(in srgb, var(--teal) 55%, transparent);
+     72% (not lower) because the FAB carries a WHITE glyph: the solid
+     teal baseline is already only ~2.6:1 against white, so the tint
+     can't afford to dilute further — the chrome filter's saturate +
+     the content behind claw some depth back. Solid-teal fallbacks
+     swap this token, same as the grades above. */
+  --glass-tint-accent: color-mix(in srgb, var(--teal) 72%, transparent);
   /* Document viewer backdrop for image content. Near-black so the
      image edges contrast cleanly; PDFs / docs render on --white. */
   --doc-viewer-image-bg: #1A1A1A;
