@@ -486,6 +486,58 @@ a[href^="tel:"], a[href^="mailto:"] {
   .shell--scrolled .app-chrome-top::after { opacity: 1; }
 }
 
+/* ── Liquid Glass accessibility ladder ──
+   Layer 3 of the degradation story (layer 1: full glass; layer 2:
+   the @supports no-backdrop-filter token swap in components.css).
+   Users who ask the OS for reduced transparency get SOLID chrome —
+   the same central token swap, plus the decorative lens layers and
+   blur scrims turned off. :root:root out-specifies the dark-theme
+   token overrides (same trick as the @supports block). */
+@media (prefers-reduced-transparency: reduce) {
+  :root:root {
+    --glass-bg-chrome: var(--white);
+    --glass-bg-bar:    var(--white);
+    --glass-bg-panel:  var(--white);
+    --glass-edge-panel: var(--border-lt);
+    --glass-tint-accent: var(--teal);
+    --glass-filter-chrome: none;
+    --glass-filter-bar:    none;
+    --glass-filter-panel:  none;
+    --blur-sheet:  none;
+    --blur-drawer: none;
+    --blur-fab:    none;
+    --blur-dialog: none;
+  }
+  /* Decorative lens layers + the scroll-edge blur strip are pure
+     transparency theater — off. */
+  .glass-chrome::before, .glass-chrome::after,
+  .bottom-tabs::before, .bottom-tabs::after,
+  .app-chrome-top::after { display: none; }
+  /* Overlay scrims keep their dim but lose the blur (dark.css's
+     sheet-overlay override hardcodes one, hence the specificity). */
+  :root:root .sheet-overlay, :root:root .drawer-overlay,
+  :root:root .fab-overlay, :root:root .cmdp-overlay {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  /* Solid chrome needs its structural divider back. */
+  .app-chrome-top .topbar { border-bottom: 1px solid var(--border-lt); }
+}
+
+/* Increased contrast: keep the glass read but harden it — near-opaque
+   backgrounds and real hairline edges so the chrome boundary is
+   unambiguous over any content. */
+@media (prefers-contrast: more) {
+  :root:root {
+    --glass-bg-chrome: color-mix(in srgb, var(--white) 92%, transparent);
+    --glass-bg-bar:    color-mix(in srgb, var(--white) 94%, transparent);
+    --glass-bg-panel:  color-mix(in srgb, var(--white) 96%, transparent);
+    --glass-edge-chrome: var(--border);
+    --glass-edge-panel:  var(--border);
+  }
+  .app-chrome-top .topbar { border-bottom: 1px solid var(--border-lt); }
+}
+
 /* TOPBAR — Liquid Glass strip matching the floating bottom-tab pill.
    Translucent + backdrop-blurred so scroll content fades behind it
    instead of hitting a hard white edge. The 1px hairline border-
