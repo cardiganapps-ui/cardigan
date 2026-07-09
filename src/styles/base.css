@@ -268,6 +268,7 @@
      600  install-prompt
   */
   --z-banner:         10;
+  --z-chrome-top:     45;
   --z-fab-overlay:    50;
   --z-fab-menu:       51;
   --z-fab:            52;
@@ -419,6 +420,67 @@ a[href^="tel:"], a[href^="mailto:"] {
 }
 .main-content { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: clip; }
 .status-bar { height: var(--sat); background: var(--white); flex-shrink: 0; }
+
+/* ── Floating top chrome — Liquid Glass ──
+   .app-chrome-top wraps the status bar + banners + install prompt +
+   topbar (App.tsx). On phones it's an absolute overlay carrying ONE
+   bar-grade glass layer, so page content genuinely scrolls under the
+   chrome (the pre-2026 topbar was in normal flow — its blur never had
+   content behind it). On tablet/desktop (768+) it stays in normal
+   flow: that tier uses the persistent sidebar + a deliberately solid
+   topbar (responsive.css), so nothing overlaps there.
+
+   --chrome-top-h is measured by a ResizeObserver in App.tsx (banners
+   mount/unmount, so the height is dynamic); the fallback approximates
+   status bar + topbar for the first pre-JS paint.
+   --chrome-top-overlap is the layout-facing var every consumer reads
+   (.page padding-top, pull-to-refresh spinner, toast anchor): equal to
+   the chrome height on phones, 0 on 768+ where nothing floats. */
+.app-chrome-top { display: flex; flex-direction: column; flex-shrink: 0; }
+.shell { --chrome-top-overlap: var(--chrome-top-h, calc(var(--sat) + 56px)); }
+@media (min-width: 768px) {
+  .shell { --chrome-top-overlap: 0px; }
+}
+@media (max-width: 767px) {
+  .app-chrome-top {
+    position: absolute; top: 0; left: 0; right: 0;
+    z-index: var(--z-chrome-top);
+    background: var(--glass-bg-bar);
+    -webkit-backdrop-filter: var(--glass-filter-bar);
+    backdrop-filter: var(--glass-filter-bar);
+  }
+  /* ONE glass layer per region: children drop their own blur and any
+     near-white translucent background (they'd double up against the
+     wrapper's). Banners keep their semantic color TINTS — a flat tint
+     over the wrapper's blur composites fine; it's stacked
+     backdrop-filters that WebKit mis-composites (see the sheet/tab
+     :has() rule in components.css). */
+  .app-chrome-top .status-bar { background: transparent; }
+  .app-chrome-top .topbar { background: transparent; border-bottom: none; }
+  .app-chrome-top .topbar,
+  .app-chrome-top .app-banner {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  /* Scroll-edge effect (iOS 26): instead of a hairline divider, a
+     24px blur strip just past the chrome's bottom edge that fades
+     content INTO the glass. Hidden at rest (chrome blends seamlessly
+     with the unscrolled page); App.tsx toggles .shell--scrolled from
+     the page's scroll position. Sits BELOW the wrapper's own filter
+     region, so the two backdrop-filters never overlap. */
+  .app-chrome-top::after {
+    content: "";
+    position: absolute; top: 100%; left: 0; right: 0; height: 24px;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, transparent 100%);
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .shell--scrolled .app-chrome-top::after { opacity: 1; }
+}
 
 /* TOPBAR — Liquid Glass strip matching the floating bottom-tab pill.
    Translucent + backdrop-blurred so scroll content fades behind it

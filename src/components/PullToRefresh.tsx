@@ -96,6 +96,11 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => void |
           minHeight: refreshing || done ? THRESHOLD : 0,
           transition: (refreshing || releasing || done) ? "height 0.8s var(--ease-spring), min-height 0.8s var(--ease-spring)" : "none",
           flexShrink: 0, overflow: "hidden",
+          // The floating top chrome overlays the first --chrome-top-overlap
+          // px of this wrapper on phones; shift the spinner strip below the
+          // glass (transform: no layout impact — the strip still opens the
+          // same gap above .page, whose own padding-top hides the seam).
+          transform: "translateY(var(--chrome-top-overlap, 0px))",
         }}>
           <div style={{
             display: "flex", flexDirection: "column", alignItems: "center", gap: 4,

@@ -711,6 +711,14 @@ function AppShell({ user, signOut, refreshUser, demo, demoHasAccount, theme }: A
      lock and bails out, so even a finger that crosses the edge band
      mid-drag can't drive two animations at once. */
   const shellRef = useRef<HTMLDivElement | null>(null);
+  // Floating top chrome (status bar + banners + topbar). On phones the
+  // wrapper is position:absolute glass that content scrolls UNDER, so
+  // .page needs to reserve its real height — measured here (banners and
+  // the install prompt mount/unmount, so the height is dynamic) and
+  // published as --chrome-top-h on the shell. offsetHeight (not
+  // getBoundingClientRect) so the value stays in layout px and composes
+  // correctly with html.cap-ios { zoom: 0.80 }.
+  const chromeTopRef = useRef<HTMLDivElement | null>(null);
   const edgeRef = useRef<Row>(null);
   const drawerOpenRef = useRef(drawerOpen);
   // Screen-slide animations from bottom-tab nav play for ~500ms. If we
@@ -743,6 +751,52 @@ function AppShell({ user, signOut, refreshUser, demo, demoHasAccount, theme }: A
     shellRef, edgeRef, drawerOpenRef, screenSlidingRef,
     isTablet, setSwipeProgress, setDrawerOpen,
   });
+
+  // Publish the floating top chrome's height as --chrome-top-h on the
+  // shell (consumed by .page padding-top, the pull-to-refresh spinner
+  // offset, and the toast anchor — see base.css --chrome-top-overlap).
+  useEffect(() => {
+    const el = chromeTopRef.current;
+    const shell = shellRef.current;
+    if (!el || !shell || typeof ResizeObserver === "undefined") return;
+    const apply = () => shell.style.setProperty("--chrome-top-h", `${el.offsetHeight}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => { ro.disconnect(); shell.style.removeProperty("--chrome-top-h"); };
+  }, []);
+
+  // Scroll-edge effect (iOS 26): the chrome's bottom fade-blur strip
+  // only appears once content is actually scrolled under the glass —
+  // at rest the chrome blends seamlessly into the page. Scroll events
+  // don't bubble, so listen in the CAPTURE phase at document level and
+  // filter for the active .page (recreated on every screen change).
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const sync = (t: HTMLElement | null) => {
+      if (!t) return;
+      shell.classList.toggle("shell--scrolled", t.scrollTop > 4);
+    };
+    const onScroll = (e: Event) => {
+      const t = e.target as HTMLElement | null;
+      if (t && t.classList && t.classList.contains("page")) sync(t);
+    };
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => document.removeEventListener("scroll", onScroll, { capture: true });
+  }, []);
+
+  // New screens mount with scrollTop 0 but fire no scroll event — clear
+  // the scrolled state on navigation so the edge effect doesn't stick.
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const id = requestAnimationFrame(() => {
+      const page = shell.querySelector<HTMLElement>(".page");
+      shell.classList.toggle("shell--scrolled", !!page && page.scrollTop > 4);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [screen]);
 
   // Register the open drawer on the shared Escape stack so both the
   // Escape key and the Android hardware back button close it before
@@ -986,6 +1040,14 @@ function AppShell({ user, signOut, refreshUser, demo, demoHasAccount, theme }: A
           via .focus() / hash navigation, but not in the normal tab
           sequence" — exactly the contract we want. */}
       <div className="main-content" id="main-content" tabIndex={-1}>
+        {/* Floating top chrome — ONE glass layer wrapping the status
+            bar, banners, install prompt, and topbar. On phones it's
+            position:absolute so page content scrolls under the glass
+            (base.css .app-chrome-top); children must NOT carry their
+            own backdrop-filter (WebKit mis-composites stacked glass —
+            same bug as the sheet/tab-pill :has() rule). Height is
+            measured into --chrome-top-h by the effect above. */}
+        <div className="app-chrome-top" ref={chromeTopRef}>
         <div className="status-bar" />
 
         {/* Dismissible, one-time iOS-Safari hint pointing users to the
@@ -1038,6 +1100,7 @@ function AppShell({ user, signOut, refreshUser, demo, demoHasAccount, theme }: A
           avatarImageUrl={avatarImageUrl}
           t={t}
         />
+        </div>
         <ToastStack toasts={toasts} onDismiss={dismissToast} />
         <PullToRefresh onRefresh={refresh}>
           <div style={{

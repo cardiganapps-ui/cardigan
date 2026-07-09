@@ -94,7 +94,10 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
   // Stacking offset: each subsequent toast is ~58px further down, with
   // a slight scale fade so older entries recede visually rather than
   // fighting the newer one for attention.
-  const top = `calc(var(--sat, 44px) + 52px + ${stackIndex * 58}px)`;
+  // Anchor just below the floating top chrome on phones (measured
+  // --chrome-top-overlap includes any banners); the max() keeps the
+  // legacy status-bar+topbar offset on 768+ where the overlap var is 0.
+  const top = `calc(max(var(--chrome-top-overlap, 0px) + 6px, var(--sat, 44px) + 52px) + ${stackIndex * 58}px)`;
   const opacity = stackIndex === 0 ? 1 : Math.max(0.75, 1 - stackIndex * 0.1);
   const scale = stackIndex === 0 ? 1 : Math.max(0.94, 1 - stackIndex * 0.03);
 

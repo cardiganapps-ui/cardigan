@@ -25,6 +25,14 @@
      rubber-banded. Reserve the pill's real top edge (8px offset) PLUS a
      24px breathing gap. */
   padding-bottom: calc(var(--sab) + var(--bottom-tabs-h) + 32px);
+  /* Reserve the floating top chrome's height so content starts below
+     the glass but scrolls UNDER it (mirror of the bottom reservation
+     above). 0 on 768+ where the chrome is in normal flow — and the
+     desktop `.page { padding: … }` shorthand in responsive.css resets
+     it anyway. scroll-padding keeps anchor/focus scrolls clear of the
+     chrome. */
+  padding-top: var(--chrome-top-overlap, 0px);
+  scroll-padding-top: calc(var(--chrome-top-overlap, 0px) + 8px);
 
   /* Content flows from the TOP, top-down, like every normal screen.
      `justify-content: flex-start` (the default) stacks children from
