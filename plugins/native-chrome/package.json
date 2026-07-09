@@ -1,0 +1,26 @@
+{
+  "name": "cardigan-native-chrome",
+  "version": "0.1.0",
+  "description": "Native iOS 26 Liquid Glass bottom tab bar overlaying the Cardigan Capacitor webview",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "ios/",
+    "index.js",
+    "index.d.ts",
+    "CardiganNativeChrome.podspec"
+  ],
+  "keywords": [
+    "capacitor",
+    "plugin",
+    "native"
+  ],
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  }
+}

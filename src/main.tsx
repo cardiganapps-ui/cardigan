@@ -17,6 +17,7 @@ import { initNativeShell } from './lib/nativeBoot'
 import { initNativeDeepLinks } from './lib/nativeDeepLinks'
 import { initNativeBackButton } from './lib/nativeBackButton'
 import { initNativePasskeys } from './lib/nativePasskeyShim'
+import { initGlassRefraction } from './lib/glassRefraction'
 
 /* Defer Sentry init to browser idle. The SDK is dynamic-imported
    inside initSentry() — without the deferral the chunk would still
@@ -57,6 +58,11 @@ initNativeBackButton()
 // cardigan.mx passkey. No-op on web + Android. Fire-and-forget — it
 // resolves well before the user could tap a passkey button.
 initNativePasskeys()
+
+// Chromium-only: true Liquid Glass refraction — SVG displacement
+// filters routed into the chrome's backdrop-filter. No-op on WebKit
+// (Safari / iOS), which keeps the CSS glass material.
+initGlassRefraction()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
