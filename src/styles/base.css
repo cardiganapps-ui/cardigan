@@ -92,17 +92,21 @@
      fallbacks and the prefers-reduced-transparency degradation also
      swap these tokens centrally, so a new glass surface only has to
      consume them to inherit every fallback for free. */
-  /* Chrome grade is deliberately CLEAR (14%, no brightness boost) —
-     the Instagram-bar read: content visibly ghosts through the pill
-     instead of milking out to a flat white strip. The old recipe
-     (30% white + brightness(1.05)) washed the backdrop toward white,
-     which over Cardigan's white pages rendered as a pure opaque bar
-     in light mode. Legibility comes from the blur + saturation, not
-     from opacity. */
-  --glass-bg-chrome: color-mix(in srgb, var(--white) 14%, transparent);
+  /* Chrome grade is deliberately CLEAR (8%, no brightness boost) —
+     the Instagram-bar read: content visibly shows THROUGH the pill
+     instead of milking out to a flat white strip. Two prior recipes
+     failed the eye test on device: 30% white + brightness(1.05)
+     (opaque white bar), then 14% + blur(24) (still reads solid — a
+     24px blur over near-white content averages to white). Tint is now
+     token-thin and the blur moderate so content SHAPES stay visible
+     behind the labels; saturation keeps the ghosted colors alive.
+     Note: over an all-white region ANY glass reads white — the effect
+     is only visible where content (avatars, amounts, photos) passes
+     under the bar. */
+  --glass-bg-chrome: color-mix(in srgb, var(--white) 8%, transparent);
   --glass-bg-bar:    color-mix(in srgb, var(--white) 72%, transparent);
   --glass-bg-panel:  color-mix(in srgb, var(--white) 82%, transparent);
-  --glass-filter-chrome: saturate(200%) contrast(1.08) blur(24px);
+  --glass-filter-chrome: saturate(190%) contrast(1.05) blur(16px);
   --glass-filter-bar:    saturate(180%) blur(20px);
   --glass-filter-panel:  saturate(180%) blur(24px);
   --glass-edge-chrome: color-mix(in srgb, var(--charcoal) 6%, transparent);
