@@ -12,6 +12,7 @@
 // All operations are no-ops on web (isNative() short-circuits).
 
 import { isNative, isIOS, isAndroid } from "./platform";
+import { syncNativeChromeStyle } from "./nativeChrome";
 
 export async function initNativeShell() {
   if (!isNative()) return;
@@ -96,6 +97,9 @@ function currentThemeIsDark() {
 //             is what shows behind the keyboard inset gap.
 export async function applyStatusBarStyle(isDark: boolean) {
   if (!isNative()) return;
+  // Keep the native Liquid Glass tab bar's material in step with the
+  // app theme (fire-and-forget; no-op off iOS 26+).
+  syncNativeChromeStyle(isDark);
   try {
     if (isAndroid()) {
       const { SystemBars, SystemBarsStyle } = await import("@capacitor/core");

@@ -42,6 +42,7 @@ interface NativeChromePluginI {
   configure(opts: { tabs: NativeChromeTab[]; activeIndex: number }): Promise<void>;
   setActive(opts: { index: number }): Promise<void>;
   setVisible(opts: { visible: boolean }): Promise<void>;
+  setStyle(opts: { dark: boolean }): Promise<void>;
   teardown(): Promise<void>;
   addListener(
     event: "tabSelected",
@@ -176,6 +177,19 @@ export async function syncNativeChrome(
     await plugin.setVisible({ visible: true });
   }
   return true;
+}
+
+/** Mirror the APP theme (data-theme, incl. the in-app override) onto
+    the native bar: sets the hosting controller's interface style so
+    the glass material and glyph colors adapt — the system scheme alone
+    is wrong when the user pins a theme in Settings. Called from
+    applyStatusBarStyle (nativeBoot.ts) at boot + on every theme
+    change; safe no-op everywhere the native bar can't exist. */
+export function syncNativeChromeStyle(dark: boolean): void {
+  if (!plugin) return;
+  void checkAvailability().then((ok) => {
+    if (ok) void plugin.setStyle({ dark }).catch(() => {});
+  });
 }
 
 /** Hide the native bar when the web pill unmounts (hideBottomTabs
