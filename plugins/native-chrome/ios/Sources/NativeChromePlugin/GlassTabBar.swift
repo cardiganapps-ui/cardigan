@@ -39,11 +39,26 @@ final class GlassTabModel: ObservableObject {
 @available(iOS 26.0, *)
 struct GlassTabBar: View {
     @ObservedObject var model: GlassTabModel
+    /// Follows the host controller's overrideUserInterfaceStyle, which
+    /// the plugin syncs to the APP theme (Cardigan has an in-app theme
+    /// override — the system scheme alone can be wrong).
+    @Environment(\.colorScheme) private var colorScheme
 
     /// Cardigan teal (--teal #5B9BAF). The active tint only colors the
     /// glyph/label — the pill body stays clear system glass so content
     /// refracts through it, matching the web treatment.
     private let teal = Color(red: 0x5B / 255.0, green: 0x9B / 255.0, blue: 0xAF / 255.0)
+
+    /// Clear glass in dark mode renders nearly invisible: bright content
+    /// ghosts straight through and fights the glyphs (device feedback:
+    /// "needs a bit more contrast"). A dark tint dims the backdrop just
+    /// enough for the icons to pop while keeping the liquid read; light
+    /// mode stays fully clear.
+    private var barGlass: Glass {
+        colorScheme == .dark
+            ? Glass.clear.tint(Color.black.opacity(0.42)).interactive()
+            : Glass.clear.interactive()
+    }
 
     var body: some View {
         GlassEffectContainer {
@@ -75,11 +90,9 @@ struct GlassTabBar: View {
             // material backing that renders near-opaque milky white in
             // light mode — the "pure opaque bottom bar" complaint.
             // Clear glass is the Instagram-style variant: content
-            // visibly refracts through the pill. Label/glyph contrast
-            // holds because Cardigan's content layer is light in light
-            // mode and the dark scheme keeps dark glass behind light
-            // glyphs.
-            .glassEffect(.clear.interactive(), in: Capsule())
+            // visibly refracts through the pill. Dark mode adds a dark
+            // tint for glyph contrast — see barGlass above.
+            .glassEffect(barGlass, in: Capsule())
         }
         .padding(.horizontal, 14)
         .opacity(model.visible ? 1 : 0)

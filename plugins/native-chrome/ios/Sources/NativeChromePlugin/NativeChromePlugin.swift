@@ -20,11 +20,18 @@ public class NativeChromePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "configure", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setActive", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setVisible", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setStyle", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "teardown", returnType: CAPPluginReturnPromise)
     ]
 
     private var hostController: UIViewController?
     private let model = GlassTabModel()
+    /// App-theme override (Cardigan has an in-app light/dark setting —
+    /// the system scheme alone can be wrong). Applied to the hosting
+    /// controller so the SwiftUI environment + glass material adapt;
+    /// kept here too so a setStyle BEFORE the first configure/mount
+    /// still lands.
+    private var interfaceStyle: UIUserInterfaceStyle = .unspecified
 
     @objc func isAvailable(_ call: CAPPluginCall) {
         if #available(iOS 26.0, *) {
@@ -83,6 +90,16 @@ public class NativeChromePlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    @objc func setStyle(_ call: CAPPluginCall) {
+        let dark = call.getBool("dark") ?? false
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.interfaceStyle = dark ? .dark : .light
+            self.hostController?.overrideUserInterfaceStyle = self.interfaceStyle
+            call.resolve()
+        }
+    }
+
     @objc func teardown(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -101,6 +118,7 @@ public class NativeChromePlugin: CAPPlugin, CAPBridgedPlugin {
               let container = parent.view else { return }
         let hosting = UIHostingController(rootView: GlassTabBar(model: model))
         hosting.view.backgroundColor = .clear
+        hosting.overrideUserInterfaceStyle = interfaceStyle
         parent.addChild(hosting)
         container.addSubview(hosting.view)
         hosting.view.translatesAutoresizingMaskIntoConstraints = false
