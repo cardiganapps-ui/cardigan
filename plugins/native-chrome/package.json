@@ -8,6 +8,7 @@
     "ios/",
     "index.js",
     "index.d.ts",
+    "Package.swift",
     "CardiganNativeChrome.podspec"
   ],
   "keywords": [
