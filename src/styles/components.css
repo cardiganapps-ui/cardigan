@@ -521,12 +521,17 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .fab {
      A faint top-down gloss + inset hairline + soft teal glow make the
      capsule itself read as a smaller pane of tinted glass sitting on
      the bar — the "liquid glass within glass" iOS 26 look. */
+  /* TRANSLUCENT teal, not var(--teal-pale): the pale token is an
+     OPAQUE hex (#EAF4F7) in light mode, and an opaque capsule covering
+     a fifth of the bar was the single biggest "the pill looks solid"
+     contributor. color-mix over --teal stays see-through and still
+     flips with the dark-mode teal. */
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.30) 0%,
-      rgba(255, 255, 255, 0.04) 48%,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.03) 48%,
       transparent 78%),
-    var(--teal-pale);
+    color-mix(in srgb, var(--teal) 14%, transparent);
   /* Lens read: a crisp bright top rim + tinted edge ring, a soft inner
      glow (the "magnified" centre of the glass), and an outer teal cast
      so the capsule looks like a thicker pane of tinted glass floating on
