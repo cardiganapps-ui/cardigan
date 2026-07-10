@@ -237,12 +237,12 @@
   border-radius: inherit; pointer-events: none; z-index: 0;
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.42) 0%,
-      rgba(255, 255, 255, 0.08) 9%,
-      transparent 28%),
+      rgba(255, 255, 255, 0.28) 0%,
+      rgba(255, 255, 255, 0.05) 9%,
+      transparent 26%),
     radial-gradient(135% 78% at 50% -12%,
-      rgba(255, 255, 255, 0.20) 0%,
-      transparent 56%);
+      rgba(255, 255, 255, 0.12) 0%,
+      transparent 52%);
 }
 .glass-chrome::after {
   content: "";
@@ -250,9 +250,9 @@
   border-radius: inherit; pointer-events: none; z-index: 0;
   background:
     linear-gradient(0deg,
-      rgba(255, 255, 255, 0.20) 0%,
-      rgba(255, 255, 255, 0.04) 7%,
-      transparent 22%);
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.03) 7%,
+      transparent 20%);
   mix-blend-mode: screen;
 }
 .glass-bar {
@@ -400,14 +400,17 @@ html.native-chrome { --bottom-tabs-h: 80px; }
   border-radius: inherit;
   pointer-events: none;
   z-index: 0;
+  /* Kept LIGHT-handed: with the clearer 14% chrome bg these painted
+     highlights are the main residual "milk" — any stronger and the
+     pill reads opaque-white again over light pages. */
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.42) 0%,
-      rgba(255, 255, 255, 0.08) 9%,
-      transparent 28%),
+      rgba(255, 255, 255, 0.28) 0%,
+      rgba(255, 255, 255, 0.05) 9%,
+      transparent 26%),
     radial-gradient(135% 78% at 50% -12%,
-      rgba(255, 255, 255, 0.20) 0%,
-      transparent 56%);
+      rgba(255, 255, 255, 0.12) 0%,
+      transparent 52%);
 }
 /* Bottom-edge refraction lens: a soft catch-light hugging the LOWER lip
    that mirrors the top glint, so light appears to enter the top of the
@@ -426,9 +429,9 @@ html.native-chrome { --bottom-tabs-h: 80px; }
   z-index: 0;
   background:
     linear-gradient(0deg,
-      rgba(255, 255, 255, 0.20) 0%,
-      rgba(255, 255, 255, 0.04) 7%,
-      transparent 22%);
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.03) 7%,
+      transparent 20%);
   mix-blend-mode: screen;
 }
 /* Safari < 17 + Firefox fall back gracefully — the central token swap
