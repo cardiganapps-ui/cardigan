@@ -43,4 +43,9 @@ coverage/
 # Generated iOS project — CI runs `npx cap add ios` fresh every build
 # and layers scripts/apply-ios-config.sh + scripts/add-widget-target.rb
 # on top. Never commit it (see CLAUDE.md "iOS → TestFlight builds").
-ios/
+# ANCHORED to the repo root (leading /): the unanchored `ios/` pattern
+# silently swallowed plugins/native-chrome/ios/ — the local Capacitor
+# plugin's Swift sources — so the native Liquid Glass bar shipped as an
+# EMPTY pod in the first TestFlight build. Plugin iOS sources under
+# plugins/**/ios/ MUST be tracked.
+/ios/
