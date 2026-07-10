@@ -1,0 +1,83 @@
+# iOS compile check — validate Swift/native changes WITHOUT TestFlight.
+#
+# The full pipeline (ios-build.yml) only runs on main, and every run
+# that reaches the upload step burns one of Apple's ~24h TestFlight
+# upload slots. That means native code pushed to main compiles for the
+# FIRST time in the production pipeline — exactly how a Swift typo can
+# cost both a failed build and quota.
+#
+# This workflow closes that gap: it runs on FEATURE BRANCHES whenever
+# iOS-critical paths change, generates the ios/ project the same way,
+# and stops after `xcodebuild build` with signing disabled. No
+# signing secrets, no version resolution, no archive, no upload — a
+# pure "does the native code compile against the iOS 26 SDK" gate.
+# macOS runner minutes are free on public repos.
+#
+# Deliberate differences from ios-build.yml (keep in mind when a main
+# build still fails after a green check here):
+#   * Web bundle is built with --mode e2e (fake Supabase env from
+#     .env.e2e) — no VITE_* secrets needed; the bundle's CONTENT is
+#     irrelevant to Swift compilation.
+#   * apply-ios-config.sh is NOT run, so the CardiganWidgets extension
+#     target is not created — widget Swift (ios-config/widgets/*.swift)
+#     is NOT covered by this check, and neither are signing/pbxproj
+#     patches. Capacitor plugins (plugins/**, node_modules pods) ARE
+#     fully compiled.
+
+name: iOS compile check
+
+on:
+  push:
+    branches-ignore: [main]
+    paths:
+      - 'plugins/**'
+      - 'ios-config/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ios-compile-check.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-compile-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: xcodebuild (no signing, no upload)
+    # Same image as the real pipeline so the SDK matches what
+    # production builds against (Xcode 26 / iOS 26 SDK).
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle (e2e mode — no secrets)
+        run: npx vite build --mode e2e
+
+      - name: Generate iOS project (cap add ios + sync)
+        run: |
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Compile (Release, signing disabled)
+        run: |
+          cd ios/App
+          xcodebuild -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build

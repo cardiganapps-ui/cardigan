@@ -92,10 +92,17 @@
      fallbacks and the prefers-reduced-transparency degradation also
      swap these tokens centrally, so a new glass surface only has to
      consume them to inherit every fallback for free. */
-  --glass-bg-chrome: color-mix(in srgb, var(--white) 30%, transparent);
+  /* Chrome grade is deliberately CLEAR (14%, no brightness boost) —
+     the Instagram-bar read: content visibly ghosts through the pill
+     instead of milking out to a flat white strip. The old recipe
+     (30% white + brightness(1.05)) washed the backdrop toward white,
+     which over Cardigan's white pages rendered as a pure opaque bar
+     in light mode. Legibility comes from the blur + saturation, not
+     from opacity. */
+  --glass-bg-chrome: color-mix(in srgb, var(--white) 14%, transparent);
   --glass-bg-bar:    color-mix(in srgb, var(--white) 72%, transparent);
   --glass-bg-panel:  color-mix(in srgb, var(--white) 82%, transparent);
-  --glass-filter-chrome: saturate(192%) brightness(1.05) contrast(1.05) blur(30px);
+  --glass-filter-chrome: saturate(200%) contrast(1.08) blur(24px);
   --glass-filter-bar:    saturate(180%) blur(20px);
   --glass-filter-panel:  saturate(180%) blur(24px);
   --glass-edge-chrome: color-mix(in srgb, var(--charcoal) 6%, transparent);
